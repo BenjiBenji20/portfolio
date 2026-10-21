@@ -46,7 +46,6 @@ trigger: always_on
 - **Refactor instead of creating a new:** If we are refactoring a code, refactor it. Do NOT create a new and dead code.
 
 ### 6. DOCUMENTATION 
-
 - **My Github Workflow:** I'll always create a new branch per features. When I'm done, I'll create a pull request and merged it myself.
 
 - **What I'd Expect to You:** Every merged branch, you'll update the `README.md` IF an updates is necessary to document for future reference.

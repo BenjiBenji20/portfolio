@@ -36,7 +36,7 @@ All prompt documents are partitioned by domain under `.agents/`. Each directory 
 | `.agents/architecture/` | System topology, CMS contracts, webhook intake, chat RAG, and generation engine | [architecture/README.md](.agents/architecture/README.md) |
 | `.agents/rules/` | Invariant execution rules, git read-only safety, and artifact-first planning | [rules/WORKFLOW_RULES.md](.agents/rules/WORKFLOW_RULES.md) |
 | `.agents/workflow/` | Branching lifecycle, PR procedures, and documentation sync requirements | [workflow/README.md](.agents/workflow/README.md) |
-| `.agents/code_quality/` | Linting invariants, strict typing standards, and test verification gates | [code_quality/README.md](.agents/code_quality/README.md) |
+| `.agents/code_quality/` | Linting invariants, strict typing standards, test verification gates and code reusability standards | [code_quality/README.md](.agents/code_quality/README.md) |
 
 ---
 

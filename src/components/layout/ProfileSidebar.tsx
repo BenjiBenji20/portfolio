@@ -57,7 +57,7 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
             </div>
             {profile.status.isAvailable && (
               <span
-                className="absolute bottom-1 right-1 md:bottom-3 md:right-3 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-4 ring-zinc-950"
+                className="absolute bottom-1 right-1 md:bottom-3 md:right-3 flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 ring-4 ring-zinc-950"
                 title="Available for opportunities"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-white" />
@@ -83,7 +83,7 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
 
         {/* Status Pill */}
         {profile.status.statusMessage && (
-          <div className="inline-flex items-center gap-1.5 self-start text-xs font-medium text-emerald-400">
+          <div className="inline-flex items-center gap-1.5 self-start text-xs font-medium text-sky-400">
             <span>{profile.status.statusMessage}</span>
           </div>
         )}
@@ -106,7 +106,7 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
                     href={profile.currentAffiliation.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-zinc-300 hover:text-emerald-400 transition-colors underline decoration-zinc-700 underline-offset-2"
+                    className="text-zinc-300 hover:text-sky-400 transition-colors underline decoration-zinc-700 underline-offset-2"
                   >
                     {profile.currentAffiliation.company}
                   </a>
@@ -147,7 +147,7 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
                 <FiMail className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
                 <a
                   href={`mailto:${profile.socialLinks.email}`}
-                  className="truncate text-zinc-300 hover:text-emerald-400 transition-colors"
+                  className="truncate text-zinc-300 hover:text-sky-400 transition-colors"
                 >
                   {profile.socialLinks.email}
                 </a>
@@ -160,7 +160,7 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
                 title="Copy email"
               >
                 {copied ? (
-                  <FiCheck className="w-3 h-3 text-emerald-400" />
+                  <FiCheck className="w-3 h-3 text-sky-400" />
                 ) : (
                   <FiCopy className="w-3 h-3" />
                 )}
@@ -176,7 +176,7 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
                 href={profile.socialLinks.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="truncate text-zinc-300 hover:text-emerald-400 transition-colors"
+                className="truncate text-zinc-300 hover:text-sky-400 transition-colors"
               >
                 {profile.socialLinks.website.replace(/^https?:\/\//, '')}
               </a>
@@ -191,7 +191,7 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
                 href={profile.socialLinks.github}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="truncate text-zinc-300 hover:text-emerald-400 transition-colors"
+                className="truncate text-zinc-300 hover:text-sky-400 transition-colors"
               >
                 github.com/BenjiBenji20 ↗
               </a>
@@ -206,7 +206,7 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
                 href={profile.socialLinks.linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="truncate text-zinc-300 hover:text-emerald-400 transition-colors"
+                className="truncate text-zinc-300 hover:text-sky-400 transition-colors"
               >
                 linkedin.com/in/benji-cañones ↗
               </a>

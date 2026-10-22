@@ -52,8 +52,8 @@ export default function ProjectsPage() {
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2">
-                <FiFolder className="w-4 h-4 text-emerald-400 shrink-0" />
-                <h3 className="text-sm font-semibold text-zinc-100 hover:text-emerald-400 transition-colors">
+                <FiFolder className="w-4 h-4 text-sky-400 shrink-0" />
+                <h3 className="text-sm font-semibold text-zinc-100 hover:text-sky-400 transition-colors">
                   {project.name}
                 </h3>
               </div>

@@ -29,10 +29,10 @@ export function HeaderNav() {
           href="/"
           className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100 hover:text-white transition-colors"
         >
-          <span className="flex h-5 w-5 items-center justify-center rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold border border-emerald-500/20">
+          <span className="flex h-5 w-5 items-center justify-center rounded bg-sky-500/10 text-sky-400 text-xs font-mono font-bold border border-sky-500/20">
             B
           </span>
-          <span>Benjineer</span>
+          <span className="uppercase">Benjineer</span>
         </Link>
 
         {/* Canonical Navigation Links: Home, Projects, Blogs */}
@@ -51,7 +51,7 @@ export function HeaderNav() {
               >
                 {route.label}
                 {active && (
-                  <span className="absolute inset-x-2 -bottom-[13px] h-0.5 bg-emerald-500 rounded-full" />
+                  <span className="absolute inset-x-2 -bottom-[13px] h-0.5 bg-sky-400 rounded-full" />
                 )}
               </Link>
             );

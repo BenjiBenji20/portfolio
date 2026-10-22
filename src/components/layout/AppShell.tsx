@@ -38,7 +38,7 @@ function SidebarSkeleton() {
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-emerald-500/20 selection:text-emerald-400">
+    <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-sky-500/20 selection:text-sky-400">
       {/* Top Navigation */}
       <HeaderNav />
 

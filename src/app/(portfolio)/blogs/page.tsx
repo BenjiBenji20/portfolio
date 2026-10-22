@@ -51,7 +51,7 @@ export default function BlogsPage() {
             className="p-4 rounded-lg bg-zinc-900/30 border border-zinc-800/60 hover:border-zinc-700/80 transition-colors"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-800/40">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-950/40 text-sky-400 border border-sky-800/40">
                 {blog.tag}
               </span>
               <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-500">
@@ -61,7 +61,7 @@ export default function BlogsPage() {
                 <span>{blog.readTime}</span>
               </div>
             </div>
-            <h3 className="text-sm font-semibold text-zinc-100 hover:text-emerald-400 transition-colors mt-2 flex items-center gap-1.5">
+            <h3 className="text-sm font-semibold text-zinc-100 hover:text-sky-400 transition-colors mt-2 flex items-center gap-1.5">
               <FiFileText className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
               <span>{blog.title}</span>
             </h3>

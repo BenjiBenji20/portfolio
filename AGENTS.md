@@ -38,6 +38,7 @@ All prompt documents are partitioned by domain under `.agents/`. Each directory 
 | `.agents/workflow/` | Branching lifecycle, PR procedures, and documentation sync requirements | [workflow/README.md](.agents/workflow/README.md) |
 | `.agents/code_quality/` | Linting invariants, strict typing standards, test verification gates and code reusability standards | [code_quality/README.md](.agents/code_quality/README.md) |
 | `.agents/ui_ux/` | Design tokens, navigation flows, interaction states, media presentation, accessibility/performance and page specifications | [ui_ux/README.md](.agents/ui_ux/README.md) |
+| `.agents/skills/` | Procedural playbooks (HMAC webhook intake, reCAPTCHA, Gemini generator, streaming chat, GROQ mutations, Vercel runtime) | [skills/README.md](.agents/skills/README.md) |
 
 ---
 

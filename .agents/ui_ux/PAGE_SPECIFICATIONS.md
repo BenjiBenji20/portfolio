@@ -6,16 +6,15 @@
 ---
 
 ## 1. Home Page (`/`)
-High-density single-glance developer profile designed to communicate core capabilities and background immediately.
+High-density overview focusing on core backend engineering capabilities, experience history, and featured systems (developer identity is anchored globally in the persistent ProfileSidebar):
 
-- **Hero Section:**
-  - Developer identity: Profile photo, legal name, professional title, and concise high-impact value proposition.
-  - Current availability badge / status pill (e.g., active, open to select engineering opportunities).
-  - Quick outbound action triggers: Direct contact link, GitHub profile (`↗`), and primary portfolio CTA.
-- **About Section:**
-  - Background synopsis focusing on backend engineering, system re-architecture, and autonomous AI systems.
-  - Compact experience timeline: Chronological list of roles and core impact (dates, company, key contributions) presented as clean inline rows.
-  - Core tech stack overview: Grouped by category (Backend, Frontend, Cloud/Data) using clean, non-card inline tags.
+- **Overview Section:**
+  - Concise background synopsis focusing on backend engineering, RAG pipelines, and scalable architectures.
+  - Core focus pillars (e.g. RAG Pipelines, Backend Architecture, Technical Security & Auditing) highlighting domain competencies.
+- **Experience Timeline:**
+  - Chronological list of roles and verified impact (dates, company, key contributions) presented as clean connected timeline rows.
+- **Featured Systems Teaser:**
+  - High-impact production systems showcase linking directly to full project case studies.
 
 ---
 
@@ -35,10 +34,9 @@ Comprehensive index of tracked repositories, active systems, and featured archit
 ## 3. Blog & Project Knowledge Base (`/projects/[slug]`)
 Dynamic workspace serving both as developer portfolio context and as deep-dive project documentation.
 
-- **Global Blog Layout (Sidebar + Main Workspace):**
-  - **Desktop Sidebar (`lg:block`):**
-    - Developer Profile snippet & persistent project switcher (quick-jump list to other tracked projects).
-    - Status pill indicating last agent-tracked commit hash and sync date.
+- **Global Shell Layout (Sidebar + Main Workspace):**
+  - **Persistent Profile Sidebar (`md:w-64 lg:w-72 shrink-0`):**
+    - Globally rendered across all `(portfolio)` views, anchoring identity, availability status, motto, affiliation, location, education, contact, and tech highlights.
   - **Main Content Area:** Host for the dynamic multi-level tab system.
 
 ### Tab Hierarchy & Sub-Views:

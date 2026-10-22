@@ -16,7 +16,7 @@
   - Base Background: `zinc-50`
   - Subtle Surface Elevation: `zinc-100`
   - Body Text: `zinc-700` / Primary Heading Text: `zinc-900` / Muted Text: `zinc-500`
-- **Single Accent Color:** Use a single, crisp accent hue (e.g., emerald, cyan, or amber) strictly reserved for interactive indicators, active status pills, and links. Avoid multi-colored rainbow tags.
+- **Single Accent Color:** Strictly utilize **Sky Blue (`sky-400` / `#38bdf8`)** for interactive indicators, active status text, emphasized keywords, link hovers, and nav underlines. Avoid emerald-green (which conveys generic AI styling). Normal body and heading texts remain clean white and zinc (`zinc-100` / `zinc-300`).
 - **Typography Matrix:**
   - Reading / UI: Clean sans-serif (`font-sans`, e.g., Geist Sans, Inter).
   - Technical Data: Monospace (`font-mono`, e.g., Geist Mono, JetBrains Mono) for commit hashes, timestamps, tech tags, and file diffs.
@@ -34,10 +34,17 @@
 ---
 
 ## 3. Persistent Profile Sidebar & Layout Architecture
-Across all primary routes, developer identity is anchored via a GitHub-inspired layout rather than disconnected hero banners:
+Across all primary routes under `(portfolio)`, developer identity is anchored globally via a GitHub-inspired layout rather than disconnected hero banners:
 - **Left Profile Sidebar (Desktop & Tablet `>= md`, >= 768px):**
   - Persistent left column occupying ~25–30% layout width (`w-full md:w-64 lg:w-72 shrink-0`).
-  - Houses all user information: avatar with availability ring (`rounded-full ring-1 ring-zinc-800`), legal name, handle (`@username`), concise bio, metadata icon rows (org, location, timezone, links), and contact action.
+  - Houses user information:
+    - Circular avatar with availability status indicator (`bg-sky-500`).
+    - Legal name (`h1`, `text-xl font-bold text-zinc-100`) and headline/role (`zinc-400`).
+    - Constrained 1–2 line motto (max 120 characters, italic `zinc-400`).
+    - Active availability status pill (`text-sky-400`).
+    - `react-icons` metadata list: current company/role, location, education, 1-click copy email, personal website, GitHub, and LinkedIn.
+    - Core stack chips (`font-mono text-[11px] bg-zinc-900 border border-zinc-800`).
+    - *Exclusions:* No `@username` handle, no dynamic timezone clock, no downloadable resume button.
 - **Top Profile As Hero (Mobile `< md`, < 768px):**
   - Stacks linearly at the top of the viewport as a compact hero block before main page content.
 - **Main Content Area (~70–75% width):**

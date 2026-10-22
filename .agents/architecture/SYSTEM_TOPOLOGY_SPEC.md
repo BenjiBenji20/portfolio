@@ -6,22 +6,28 @@
 - **AI Processing:** Google Gemini API invoked inside route handlers or CI runners.
 - **Event Ingestion:** GitHub repository push, PR merge, and release webhooks.
 
-## 2. Codebase Directory Layout
+## 2. Codebase Directory Layout & Route Encapsulation
 ```text
-├── app/
-│   ├── (portfolio)/          # Portfolio pages, project showcase, and chat UI
-│   ├── studio/[[...tool]]/   # Embedded Sanity Studio route
-│   └── api/
-│       ├── chat/             # Visitor grounding and RAG route handler
-│       └── webhooks/github/  # Intake endpoint for incoming repo events
-├── sanity/
-│   ├── schemas/              # Document types (projects, devlogs, assets)
-│   └── lib/                  # Sanity client, mutations, and GROQ helpers
+├── src/
+│   ├── app/
+│   │   ├── (portfolio)/          # Portfolio pages wrapped by global AppShell (HeaderNav + ProfileSidebar)
+│   │   │   ├── layout.tsx        # Mounts <AppShell>{children}</AppShell>
+│   │   │   ├── page.tsx          # Home route (/)
+│   │   │   ├── projects/         # Projects index (/projects)
+│   │   │   └── blogs/            # Blogs & DevLogs (/blogs)
+│   │   ├── studio/[[...tool]]/   # Embedded Sanity Studio route (bypasses AppShell for full-screen workspace)
+│   │   ├── api/
+│   │   │   ├── chat/             # Visitor grounding and RAG route handler
+│   │   │   └── webhooks/github/  # Intake endpoint for incoming repo events
+│   │   └── layout.tsx            # Minimal root HTML/body shell with Geist font tokens
+│   ├── components/layout/        # HeaderNav, ProfileSidebar, AppShell
+│   └── sanity/
+│       ├── schemas/              # Document types (profile, projects, devlogs)
+│       └── lib/                  # Sanity client, mutations, image helper, GROQ queries
 ├── lib/
-│   ├── ai/                   # Gemini SDK setup, system prompts, schema parsers
-│   └── github/               # HMAC verification, payload typing, diff extractors
-└── .agents/                  # Technical specs guiding dev agents
-
+│   ├── ai/                       # Gemini SDK setup, system prompts, schema parsers
+│   └── github/                   # HMAC verification, payload typing, diff extractors
+└── .agents/                      # Technical specs guiding dev agents
 ```
 
 ## 3. Communication & Service Flow

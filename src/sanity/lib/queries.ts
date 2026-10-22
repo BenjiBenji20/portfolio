@@ -48,3 +48,59 @@ export const profileQuery = `*[_type == "profile"][0]{
   },
   featuredSkills
 }`;
+
+export const summaryOverviewQuery = `*[_type == "summaryOverview"][0]{
+  _id,
+  summaryText
+}`;
+
+export const focusPillarsQuery = `*[_type == "focusPillar"] | order(order asc, _createdAt asc)[0...3]{
+  _id,
+  title,
+  description,
+  icon {
+    asset->{ _id, url },
+    alt,
+    hotspot
+  },
+  order
+}`;
+
+export const experiencesQuery = `*[_type == "experience"] | order(order asc, _createdAt desc){
+  _id,
+  position,
+  employer,
+  employmentRange,
+  mainDescription,
+  accomplishments,
+  isCurrent,
+  order
+}`;
+
+export const featuredProjectsQuery = `*[_type == "project" && featured == true && hidden != true] | order(priorityValue desc, _createdAt desc)[0...4]{
+  _id,
+  title,
+  slug,
+  shortDescription,
+  projectType,
+  employer,
+  collaborators[] {
+    name,
+    role,
+    url
+  },
+  logo {
+    asset->{ _id, url },
+    alt,
+    hotspot
+  },
+  website,
+  repository,
+  techStacks,
+  status,
+  dateStarted,
+  dateFinished,
+  featured,
+  hidden,
+  priorityValue
+}`;

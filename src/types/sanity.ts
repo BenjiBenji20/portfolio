@@ -64,3 +64,81 @@ export interface NavRoute {
   label: string;
   href: string;
 }
+
+export interface PortableTextChild {
+  _key?: string;
+  _type?: string;
+  text: string;
+  marks?: string[];
+}
+
+export interface PortableTextParagraph {
+  _key?: string;
+  _type: 'block';
+  children: PortableTextChild[];
+  markDefs?: { _key: string; _type: string }[];
+  style?: string;
+}
+
+export interface SummaryOverviewData {
+  _id?: string;
+  summaryText?: PortableTextParagraph[];
+}
+
+export interface FocusPillar {
+  _id?: string;
+  _key?: string;
+  title: string;
+  description: string;
+  icon?: SanityImageReference;
+  order?: number;
+}
+export type FocusField = FocusPillar;
+
+export interface Experience {
+  _id?: string;
+  _key?: string;
+  position: string;
+  employer: string;
+  employmentRange: string;
+  mainDescription: string;
+  accomplishments?: string[];
+  isCurrent?: boolean;
+  order?: number;
+}
+export type ExperienceItem = Experience;
+
+export interface OverviewData {
+  _id?: string;
+  summaryText?: PortableTextParagraph[];
+  focusFields: FocusPillar[];
+  experiences: Experience[];
+}
+
+export type ProjectStatus = 'production' | 'development' | 'completed' | 'archived';
+
+export interface ProjectCollaborator {
+  name: string;
+  role?: string;
+  url?: string;
+}
+
+export interface ProjectData {
+  _id?: string;
+  title: string;
+  slug: { current: string };
+  shortDescription: string;
+  projectType?: string; // RAG, Public Site, AI, Automation, SaaS
+  employer?: string;
+  collaborators?: ProjectCollaborator[];
+  logo?: SanityImageReference;
+  website?: string;
+  repository?: string;
+  techStacks?: string[];
+  status: ProjectStatus;
+  dateStarted?: string;
+  dateFinished?: string;
+  featured: boolean;
+  hidden: boolean;
+  priorityValue: number;
+}

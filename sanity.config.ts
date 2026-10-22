@@ -17,7 +17,7 @@ export default defineConfig({
         S.list()
           .title('Content')
           .items([
-            // Singleton Profile Document
+            // Singleton Profile Document (Sidebar)
             S.listItem()
               .title('Profile (sidebar)')
               .id('profile')
@@ -26,10 +26,27 @@ export default defineConfig({
                   .schemaType('profile')
                   .documentId('profile')
               ),
-            // Generic list items excluding singleton
-            ...S.documentTypeListItems().filter(
-              (listItem) => listItem.getId() !== 'profile'
-            ),
+
+            // Horizontal line separator
+            S.divider(),
+
+            // Home Page Grouped Schemas
+            S.listItem()
+              .title('Summary Overview')
+              .id('summaryOverview')
+              .child(
+                S.document()
+                  .schemaType('summaryOverview')
+                  .documentId('summaryOverview')
+              ),
+            S.documentTypeListItem('focusPillar').title('Focus Pillars'),
+            S.documentTypeListItem('experience').title('Experience & Roles'),
+
+            // Horizontal line separator
+            S.divider(),
+
+            // Projects
+            S.documentTypeListItem('project').title('Projects'),
           ]),
     }),
   ],

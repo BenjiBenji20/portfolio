@@ -17,9 +17,22 @@ export default defineConfig({
         S.list()
           .title('Content')
           .items([
+            // Singleton Contact Document (Global)
+            S.listItem()
+              .title('Contact (Global)')
+              .id('contact')
+              .child(
+                S.document()
+                  .schemaType('contact')
+                  .documentId('contact')
+              ),
+
+            // Horizontal line separator
+            S.divider(),
+
             // Singleton Profile Document (Sidebar)
             S.listItem()
-              .title('Profile (sidebar)')
+              .title('Profile (Sidebar)')
               .id('profile')
               .child(
                 S.document()

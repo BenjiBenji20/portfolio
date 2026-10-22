@@ -3,6 +3,7 @@ import { summaryOverviewType } from './summaryOverview';
 import { focusPillarType } from './focusPillar';
 import { experienceType } from './experience';
 import { projectType } from './project';
+import { contactType } from './contact';
 
 export const schemaTypes = [
   profileType,
@@ -10,4 +11,5 @@ export const schemaTypes = [
   focusPillarType,
   experienceType,
   projectType,
+  contactType,
 ];

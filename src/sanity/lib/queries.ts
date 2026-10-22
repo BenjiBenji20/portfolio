@@ -104,3 +104,21 @@ export const featuredProjectsQuery = `*[_type == "project" && featured == true &
   hidden,
   priorityValue
 }`;
+
+export const contactQuery = `*[_type == "contact"][0]{
+  _id,
+  header,
+  shortDescription,
+  followUp,
+  contacts[] {
+    _key,
+    platform,
+    handle,
+    link,
+    icon {
+      asset->{ _id, url },
+      alt
+    }
+  },
+  subjects
+}`;

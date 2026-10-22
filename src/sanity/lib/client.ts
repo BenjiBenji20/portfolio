@@ -1,5 +1,6 @@
 import { createClient } from 'next-sanity';
 import type {
+  ContactData,
   Experience,
   FocusPillar,
   ProfileData,
@@ -7,6 +8,7 @@ import type {
   SummaryOverviewData,
 } from '@/types/sanity';
 import {
+  contactQuery,
   experiencesQuery,
   featuredProjectsQuery,
   focusPillarsQuery,
@@ -300,3 +302,50 @@ export async function getFeaturedProjects(): Promise<ProjectData[]> {
     return FALLBACK_FEATURED_PROJECTS;
   }
 }
+
+export const FALLBACK_CONTACT: ContactData = {
+  header: "Let's connect!",
+  shortDescription:
+    "Let's build high-impact systems starts with a conversation. Currently Open for Junior Roles.",
+  followUp: 'or message me in my other socials',
+  contacts: [
+    {
+      _key: 'c1',
+      platform: 'Email',
+      handle: 'benjicanones6@gmail.com',
+      link: 'mailto:benjicanones6@gmail.com',
+    },
+    {
+      _key: 'c2',
+      platform: 'GitHub',
+      handle: 'BenjiBenji20',
+      link: 'https://github.com/BenjiBenji20',
+    },
+    {
+      _key: 'c3',
+      platform: 'LinkedIn',
+      handle: 'Benji Cañones',
+      link: 'https://linkedin.com/in/benji-cañones',
+    },
+  ],
+  subjects: [
+    'Job Opportunity',
+    'Technical Inquiry',
+    'Just saying hi!',
+  ],
+};
+
+export async function getContactData(): Promise<ContactData> {
+  'use cache';
+  if (!client) {
+    return FALLBACK_CONTACT;
+  }
+  try {
+    const data = await client.fetch<ContactData | null>(contactQuery);
+    return data || FALLBACK_CONTACT;
+  } catch (error) {
+    console.warn('[Sanity Client] Fetch failed for contact data, falling back to local defaults:', error);
+    return FALLBACK_CONTACT;
+  }
+}
+

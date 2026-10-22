@@ -1,7 +1,8 @@
 import { Suspense } from 'react';
-import { getProfile } from '@/sanity/lib/client';
+import { getContactData, getProfile } from '@/sanity/lib/client';
 import { HeaderNav } from './HeaderNav';
 import { ProfileSidebar } from './ProfileSidebar';
+import { ContactSection } from '@/components/contact/ContactSection';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -10,6 +11,11 @@ interface AppShellProps {
 async function AsyncSidebar() {
   const profile = await getProfile();
   return <ProfileSidebar profile={profile} />;
+}
+
+async function AsyncContactSection() {
+  const contactData = await getContactData();
+  return <ContactSection contactData={contactData} />;
 }
 
 function SidebarSkeleton() {
@@ -36,6 +42,24 @@ function SidebarSkeleton() {
   );
 }
 
+function ContactSkeleton() {
+  return (
+    <div className="w-full pt-10 border-t border-zinc-800/80 animate-pulse">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <div className="lg:col-span-5 space-y-4">
+          <div className="h-8 w-48 bg-zinc-900 rounded" />
+          <div className="h-4 w-72 bg-zinc-900/70 rounded" />
+          <div className="h-4 w-52 bg-zinc-900/50 rounded" />
+        </div>
+        <div className="lg:col-span-7 space-y-4">
+          <div className="h-20 bg-zinc-900/50 rounded-lg" />
+          <div className="h-10 bg-zinc-900/50 rounded-lg" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AppShell({ children }: AppShellProps) {
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-sky-500/20 selection:text-sky-400">
@@ -43,7 +67,7 @@ export function AppShell({ children }: AppShellProps) {
       <HeaderNav />
 
       {/* Main Grid Wrapper */}
-      <div className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-10">
+      <div className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-10 space-y-16">
         <div className="flex flex-col md:flex-row md:items-start gap-8 lg:gap-12">
           {/* Persistent Profile Sidebar with Suspense */}
           <Suspense fallback={<SidebarSkeleton />}>
@@ -53,6 +77,11 @@ export function AppShell({ children }: AppShellProps) {
           {/* Dynamic Page Content Slot */}
           <main className="flex-1 min-w-0">{children}</main>
         </div>
+
+        {/* Global Contact Section with Suspense */}
+        <Suspense fallback={<ContactSkeleton />}>
+          <AsyncContactSection />
+        </Suspense>
       </div>
     </div>
   );

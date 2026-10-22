@@ -142,3 +142,20 @@ export interface ProjectData {
   hidden: boolean;
   priorityValue: number;
 }
+
+export interface ContactChannel {
+  _key?: string;
+  platform: string;
+  handle: string;
+  link: string;
+  icon?: SanityImageReference;
+}
+
+export interface ContactData {
+  _id?: string;
+  header: string;
+  shortDescription: string;
+  followUp: string;
+  contacts: ContactChannel[];
+  subjects: string[];
+}

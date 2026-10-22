@@ -2,7 +2,7 @@ import { defineType, defineField } from 'sanity';
 
 export const profileType = defineType({
   name: 'profile',
-  title: 'Profile Settings',
+  title: 'Profile (sidebar)',
   type: 'document',
   fields: [
     defineField({

@@ -8,9 +8,6 @@ export default function HomePage() {
       <section className="space-y-3">
         <h2 className="text-xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
           <span>Overview</span>
-          <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
-            readme.md
-          </span>
         </h2>
         <p className="text-sm text-zinc-300 leading-relaxed">
           Junior Backend Developer with hands-on experience architecting production-ready{' '}

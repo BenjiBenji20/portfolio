@@ -23,6 +23,9 @@
   - Branch reference: verify if the target branch matches the repository's default branch.
   - Commit context: head commit ID, commit message, timestamp, author name/username, and lists of added, modified, and removed file paths.
 - **Branch Guardrail:** Ignore pushes to non-production/feature branches unless explicitly configured. Acknowledge these requests with an HTTP 200 status and a descriptive skip message to prevent GitHub from flagging failed webhook deliveries.
+- **PR & Merge Metadata Extraction:**
+  - For merge commits or PR release events, extract both the `pull_request.title` and `pull_request.body` (or the complete squashed commit message containing the PR description).
+  - Ensure the extracted message and description payload are forwarded alongside the diff to provide the AI writer with developer intent and context.
 
 ---
 

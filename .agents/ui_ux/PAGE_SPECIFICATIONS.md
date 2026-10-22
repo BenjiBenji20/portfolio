@@ -6,14 +6,14 @@
 ---
 
 ## 1. Home Page (`/`)
-High-density overview focusing on core backend engineering capabilities, experience history, and featured systems (developer identity is anchored globally in the persistent ProfileSidebar):
+High-density overview focusing on core backend engineering capabilities, experience history, and Featured Projects (developer identity is anchored globally in the persistent ProfileSidebar):
 
 - **Overview Section:**
   - Concise background synopsis focusing on backend engineering, RAG pipelines, and scalable architectures.
   - Core focus pillars (e.g. RAG Pipelines, Backend Architecture, Technical Security & Auditing) highlighting domain competencies.
 - **Experience Timeline:**
   - Chronological list of roles and verified impact (dates, company, key contributions) presented as clean connected timeline rows.
-- **Featured Systems Teaser:**
+- **Featured Projects Teaser:**
   - High-impact production systems showcase linking directly to full project case studies.
 
 ---

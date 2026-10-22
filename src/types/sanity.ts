@@ -16,6 +16,7 @@ export interface SanityImageReference {
 export interface ProfileStatus {
   isAvailable: boolean;
   statusMessage?: string;
+  icon?: SanityImageReference;
 }
 
 export interface Affiliation {
@@ -28,6 +29,13 @@ export interface Education {
   degree?: string;
   institution?: string;
   period?: string;
+}
+
+export interface Certification {
+  title: string;
+  issuer: string;
+  date?: string;
+  url?: string;
 }
 
 export interface SocialLinks {
@@ -47,6 +55,7 @@ export interface ProfileData {
   currentAffiliation?: Affiliation;
   location?: string;
   education?: Education;
+  certifications?: Certification[];
   socialLinks?: SocialLinks;
   featuredSkills?: string[];
 }

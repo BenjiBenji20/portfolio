@@ -13,7 +13,15 @@ export const profileQuery = `*[_type == "profile"][0]{
   },
   status {
     isAvailable,
-    statusMessage
+    statusMessage,
+    icon {
+      asset->{
+        _id,
+        url
+      },
+      alt,
+      hotspot
+    }
   },
   currentAffiliation {
     role,
@@ -25,6 +33,12 @@ export const profileQuery = `*[_type == "profile"][0]{
     degree,
     institution,
     period
+  },
+  certifications[] {
+    title,
+    issuer,
+    date,
+    url
   },
   socialLinks {
     github,

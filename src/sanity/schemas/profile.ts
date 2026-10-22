@@ -1,4 +1,4 @@
-import { defineType, defineField } from 'sanity';
+import { defineType, defineField, defineArrayMember } from 'sanity';
 
 export const profileType = defineType({
   name: 'profile',
@@ -57,6 +57,23 @@ export const profileType = defineType({
           title: 'Status Message',
           type: 'string',
           initialValue: 'Open to engineering opportunities',
+        }),
+        defineField({
+          name: 'icon',
+          title: 'Status Badge Icon',
+          type: 'image',
+          description: 'Custom status badge icon (rendered as a 100% circle radius badge on the avatar)',
+          options: {
+            hotspot: true,
+          },
+          fields: [
+            defineField({
+              name: 'alt',
+              title: 'Alt Text',
+              type: 'string',
+              initialValue: 'Status icon',
+            }),
+          ],
         }),
       ],
     }),
@@ -144,6 +161,52 @@ export const profileType = defineType({
           type: 'url',
           initialValue: 'https://benjineer.vercel.app',
         }),
+      ],
+    }),
+    defineField({
+      name: 'certifications',
+      title: 'Training & Certifications',
+      type: 'array',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          fields: [
+            defineField({
+              name: 'title',
+              title: 'Certification / Training Title',
+              type: 'string',
+              validation: (rule) => rule.required(),
+            }),
+            defineField({
+              name: 'issuer',
+              title: 'Issuing Organization',
+              type: 'string',
+              validation: (rule) => rule.required(),
+            }),
+            defineField({
+              name: 'date',
+              title: 'Date / Period',
+              type: 'string',
+            }),
+            defineField({
+              name: 'url',
+              title: 'Credential URL',
+              type: 'url',
+            }),
+          ],
+        }),
+      ],
+      initialValue: [
+        {
+          title: 'Google AI Professional',
+          issuer: 'Google Career Certificates',
+          date: 'October 2026',
+        },
+        {
+          title: 'Computer Systems Servicing NCII',
+          issuer: 'TESDA Navotas Training Institute',
+          date: 'December 2025',
+        },
       ],
     }),
     defineField({

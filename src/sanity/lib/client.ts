@@ -35,6 +35,18 @@ export const FALLBACK_PROFILE: ProfileData = {
     institution: 'City of Malabon University',
     period: '2022 - 2026',
   },
+  certifications: [
+    {
+      title: 'Google AI Professional',
+      issuer: 'Google Career Certificates',
+      date: 'October 2026',
+    },
+    {
+      title: 'Computer Systems Servicing NCII',
+      issuer: 'TESDA Navotas Training Institute',
+      date: 'December 2025',
+    },
+  ],
   socialLinks: {
     github: 'https://github.com/BenjiBenji20',
     linkedin: 'https://linkedin.com/in/benji-cañones',

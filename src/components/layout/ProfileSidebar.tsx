@@ -12,6 +12,7 @@ import {
   FiGithub,
   FiCheck,
   FiCopy,
+  FiAward,
 } from 'react-icons/fi';
 import type { ProfileData } from '@/types/sanity';
 import { urlForImage } from '@/sanity/lib/image';
@@ -26,6 +27,8 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
   const avatarUrl =
     urlForImage(profile.avatar) ||
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+
+  const statusIconUrl = urlForImage(profile.status?.icon);
 
   const copyEmail = async () => {
     if (!profile.socialLinks?.email) return;
@@ -55,12 +58,25 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
                 unoptimized
               />
             </div>
-            {profile.status.isAvailable && (
+            {(statusIconUrl || profile.status?.isAvailable) && (
               <span
-                className="absolute bottom-1 right-1 md:bottom-3 md:right-3 flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 ring-4 ring-zinc-950"
-                title="Available for opportunities"
+                className="absolute bottom-0 right-0 md:bottom-2 md:right-2 flex h-6 w-6 md:h-9 md:w-9 items-center justify-center rounded-full bg-zinc-900 ring-4 ring-zinc-950 shadow-md border border-zinc-700/80 overflow-hidden z-10"
+                title={profile.status?.statusMessage || (profile.status?.isAvailable ? 'Available for opportunities' : 'Status')}
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                {statusIconUrl ? (
+                  <Image
+                    src={statusIconUrl}
+                    alt={profile.status.icon?.alt || 'Status badge icon'}
+                    fill
+                    sizes="(max-width: 768px) 24px, 36px"
+                    className="rounded-full object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center rounded-full bg-sky-500">
+                    <span className="h-2 w-2 md:h-2.5 md:w-2.5 rounded-full bg-white" />
+                  </span>
+                )}
               </span>
             )}
           </div>
@@ -142,7 +158,7 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
 
           {/* Email with 1-click copy */}
           {profile.socialLinks?.email && (
-            <div className="flex items-center justify-between group gap-2">
+            <div className="flex items-center group gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
                 <FiMail className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
                 <a
@@ -213,6 +229,44 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
             </div>
           )}
         </div>
+
+        {/* Training & Certifications */}
+        {profile.certifications && profile.certifications.length > 0 && (
+          <>
+            <hr className="border-zinc-800/60 my-1" />
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-zinc-500 font-medium mb-2 font-mono">
+                Training & Certifications
+              </p>
+              <div className="flex flex-col gap-2.5">
+                {profile.certifications.map((cert) => (
+                  <div key={cert.title} className="flex items-start gap-2 text-xs">
+                    <FiAward className="w-3.5 h-3.5 text-sky-400 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      {cert.url ? (
+                        <a
+                          href={cert.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-zinc-200 font-medium hover:text-sky-400 transition-colors block truncate"
+                        >
+                          {cert.title}
+                        </a>
+                      ) : (
+                        <span className="text-zinc-200 font-medium block truncate">
+                          {cert.title}
+                        </span>
+                      )}
+                      <span className="block text-zinc-500 text-[11px] truncate">
+                        {cert.issuer} {cert.date ? `· ${cert.date}` : ''}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Featured Skill Chips */}
         {profile.featuredSkills && profile.featuredSkills.length > 0 && (

@@ -15,8 +15,8 @@ export default function HomePage() {
         </p>
 
         {/* Focus Pillars */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-          <div className="p-3.5 rounded-lg bg-zinc-900/60 border border-zinc-800/60">
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-zinc-800 pt-2">
+          <div className="p-3.5">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-200">
               <FiTerminal className="w-3.5 h-3.5 text-sky-400" />
               <span>RAG Pipelines</span>
@@ -26,7 +26,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="p-3.5 rounded-lg bg-zinc-900/60 border border-zinc-800/60">
+          <div className="p-3.5">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-200">
               <FiCpu className="w-3.5 h-3.5 text-sky-400" />
               <span>Backend Architecture</span>
@@ -36,7 +36,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="p-3.5 rounded-lg bg-zinc-900/60 border border-zinc-800/60">
+          <div className="p-3.5">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-200">
               <FiShield className="w-3.5 h-3.5 text-sky-400" />
               <span>Security & Auditing</span>

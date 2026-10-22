@@ -14,6 +14,7 @@
 | `INTERACTION_STATE.md` | Universal modal standards (darkened backdrop, body scroll lock, ESC/click-outside dismissal), zero dead clicks, copy-to-clipboard feedback, and content-matched skeletons. |
 | `MEDIA_PRESENTATION.md` | Native Sanity assets, responsive YouTube/Vimeo embed wrappers, syntax-highlighted code blocks, Mermaid.js SVG styling, and the responsive image lightbox modal. |
 | `PAGINATION_AND_PERFORMANCE.md` | Smooth infinite scrolling on continuous devlog feeds, discrete page-based pagination for project catalogs, keyboard navigation, focus traps, and reduced-motion compliance. |
+| `PAGE_SPECIFICATIONS.md` | Page structural hierarchies (Home, Projects, Project Blog), dynamic tab architecture (Overview, Topics, DevLogs timeline, Tech, Media), desktop sidebar layout, and persistent chat dock. |
 
 ---
 
@@ -23,3 +24,4 @@
 - **Modals & Interactive Elements:** Load `INTERACTION_STATE.md` when creating buttons, dialogs, drawers, or skeleton loaders.
 - **Media, Code & Diagrams:** Load `MEDIA_PRESENTATION.md` when handling code blocks, Mermaid charts, videos, or lightbox galleries.
 - **Feeds & Accessibility:** Load `PAGINATION_AND_PERFORMANCE.md` when writing infinite-scroll observers, pagination bars, or accessibility keyboard hooks.
+- **Page Layouts & View Routing:** Load `PAGE_SPECIFICATIONS.md` when structuring page routes, section containers, project sidebar shells, or nested tab views.

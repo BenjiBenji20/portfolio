@@ -37,7 +37,7 @@ All prompt documents are partitioned by domain under `.agents/`. Each directory 
 | `.agents/rules/` | Invariant execution rules, git read-only safety, and artifact-first planning | [rules/WORKFLOW_RULES.md](.agents/rules/WORKFLOW_RULES.md) |
 | `.agents/workflow/` | Branching lifecycle, PR procedures, and documentation sync requirements | [workflow/README.md](.agents/workflow/README.md) |
 | `.agents/code_quality/` | Linting invariants, strict typing standards, test verification gates and code reusability standards | [code_quality/README.md](.agents/code_quality/README.md) |
-| `.agents/ui_ux/` | Design tokens, navigation flows, interaction states, media presentation, and accessibility/performance | [ui_ux/README.md](.agents/ui_ux/README.md) |
+| `.agents/ui_ux/` | Design tokens, navigation flows, interaction states, media presentation, accessibility/performance and page specifications | [ui_ux/README.md](.agents/ui_ux/README.md) |
 
 ---
 

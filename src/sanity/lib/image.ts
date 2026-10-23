@@ -8,10 +8,18 @@ export const imageBuilder = projectId
   : null;
 
 export function urlForImage(source: SanityImageSource | undefined): string | null {
-  if (!source || !imageBuilder) return null;
+  if (!source) return null;
+
+  // Direct URL fallback if already resolved by GROQ dereference (asset->{ url })
+  const directUrl =
+    (source as { asset?: { url?: string }; url?: string })?.asset?.url ||
+    (source as { url?: string })?.url;
+
+  if (!imageBuilder) return directUrl || null;
+
   try {
     return imageBuilder.image(source).auto('format').fit('max').url();
   } catch {
-    return null;
+    return directUrl || null;
   }
 }

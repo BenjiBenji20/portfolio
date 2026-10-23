@@ -18,16 +18,39 @@ interface ProjectMediaCarouselProps {
   aspectClass?: string;
 }
 
-function getYouTubeEmbedUrl(url: string): string | null {
+function getYouTubeVideoId(url: string): string | null {
+  if (!url) return null;
   const match = url.match(
     /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
   );
-  return match ? `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=1&mute=1` : null;
+  return match ? match[1] : null;
+}
+
+function getYouTubeEmbedUrl(url: string): string | null {
+  const videoId = getYouTubeVideoId(url);
+  return videoId
+    ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`
+    : null;
+}
+
+function getYouTubeThumbnailUrl(url: string): string | null {
+  const videoId = getYouTubeVideoId(url);
+  return videoId
+    ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+    : null;
+}
+
+function getVimeoVideoId(url: string): string | null {
+  if (!url) return null;
+  const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  return match ? match[1] : null;
 }
 
 function getVimeoEmbedUrl(url: string): string | null {
-  const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  return match ? `https://player.vimeo.com/video/${match[1]}?autoplay=1&muted=1` : null;
+  const videoId = getVimeoVideoId(url);
+  return videoId
+    ? `https://player.vimeo.com/video/${videoId}?autoplay=1`
+    : null;
 }
 
 export function ProjectMediaCarousel({
@@ -37,27 +60,29 @@ export function ProjectMediaCarousel({
   aspectClass = 'aspect-[16/10]',
 }: ProjectMediaCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [playingEmbedKey, setPlayingEmbedKey] = useState<string | null>(null);
+  const [playingKey, setPlayingKey] = useState<string | null>(null);
 
   const hasMedia = media && media.length > 0;
   const currentItem = hasMedia ? media[currentIndex] : null;
+  const itemKey = currentItem?._key || `slide-${currentIndex}`;
+  const isPlaying = playingKey === itemKey;
 
-  // Auto-swipe carousel every 5 seconds when multiple items exist and no video embed is playing
+  // Auto-swipe carousel every 5 seconds when multiple items exist and no video is playing
   useEffect(() => {
-    if (media.length <= 1 || playingEmbedKey !== null) return;
+    if (media.length <= 1 || playingKey !== null) return;
 
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % media.length);
     }, 5000);
 
     return () => clearInterval(timer);
-  }, [media.length, playingEmbedKey, currentIndex]);
+  }, [media.length, playingKey, currentIndex]);
 
   const nextSlide = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!hasMedia) return;
-    setPlayingEmbedKey(null);
+    setPlayingKey(null);
     setCurrentIndex((prev) => (prev + 1) % media.length);
   };
 
@@ -65,7 +90,7 @@ export function ProjectMediaCarousel({
     e.preventDefault();
     e.stopPropagation();
     if (!hasMedia) return;
-    setPlayingEmbedKey(null);
+    setPlayingKey(null);
     setCurrentIndex((prev) => (prev - 1 + media.length) % media.length);
   };
 
@@ -116,8 +141,8 @@ export function ProjectMediaCarousel({
       case 'projectMediaSanityVideo': {
         const videoUrl = currentItem.asset?.url;
         const posterUrl = currentItem.poster
-          ? urlForImage(currentItem.poster) ?? undefined
-          : undefined;
+          ? urlForImage(currentItem.poster)
+          : null;
 
         if (!videoUrl) {
           return (
@@ -127,58 +152,124 @@ export function ProjectMediaCarousel({
           );
         }
 
-        return (
-          <video
-            src={videoUrl}
-            poster={posterUrl}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          />
-        );
-      }
-
-      case 'projectMediaYoutube': {
-        const isPlaying = playingEmbedKey === currentItem._key;
-        const embedUrl = getYouTubeEmbedUrl(currentItem.url);
-        const posterUrl = currentItem.poster ? urlForImage(currentItem.poster) : null;
-
-        if (isPlaying && embedUrl) {
+        // Active Player (Mounts only when user clicks Play)
+        if (isPlaying) {
           return (
-            <iframe
-              src={embedUrl}
-              title={currentItem.title || `${title} YouTube video`}
-              className="w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+            <div className="relative w-full h-full bg-black flex items-center justify-center">
+              <video
+                src={videoUrl}
+                poster={posterUrl ?? undefined}
+                autoPlay
+                controls
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            </div>
           );
         }
 
-        // Lazy Facade with Ambient Image
+        // Lazy Facade: Displays thumbnail, avoids auto-play and automatic downloads
         return (
-          <div className="relative w-full h-full bg-zinc-900 flex items-center justify-center group/yt">
+          <div
+            className="relative w-full h-full bg-zinc-950 flex items-center justify-center cursor-pointer group/video"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setPlayingKey(itemKey);
+            }}
+          >
             {posterUrl ? (
-              <AmbientImage
-                src={posterUrl}
-                alt={currentItem.title || 'YouTube thumbnail'}
-                sizes="(max-width: 768px) 100vw, 800px"
-                unoptimized
-              />
+              <div className="absolute inset-0 pointer-events-none">
+                <AmbientImage
+                  src={posterUrl}
+                  alt={currentItem.title || `${title} video thumbnail`}
+                  sizes="(max-width: 768px) 100vw, 800px"
+                  unoptimized
+                />
+              </div>
             ) : (
-              <div className="absolute inset-0 bg-zinc-900" />
+              <div className="absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center text-zinc-600 gap-2">
+                <span className="text-[11px] font-mono tracking-wider uppercase text-zinc-500">
+                  {currentItem.title || `${title} Video`}
+                </span>
+              </div>
             )}
             <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setPlayingEmbedKey(currentItem._key);
+                setPlayingKey(itemKey);
               }}
-              className="relative z-20 w-11 h-11 bg-zinc-950/80 hover:bg-sky-500 text-white rounded-none border border-zinc-700/80 flex items-center justify-center transition-colors shadow-lg"
+              className="relative z-20 w-12 h-12 bg-zinc-950/85 hover:bg-sky-500 text-white rounded-none border border-zinc-700/80 hover:border-sky-400 flex items-center justify-center transition-all shadow-xl hover:scale-105 cursor-pointer"
+              title="Play Video"
+              aria-label="Play Video"
+            >
+              <FiPlay className="w-5 h-5 ml-0.5 fill-current" />
+            </button>
+          </div>
+        );
+      }
+
+      case 'projectMediaYoutube': {
+        const embedUrl = getYouTubeEmbedUrl(currentItem.url);
+        const customPoster = currentItem.poster
+          ? urlForImage(currentItem.poster)
+          : null;
+        const defaultPoster = getYouTubeThumbnailUrl(currentItem.url);
+        const posterUrl = customPoster || defaultPoster;
+
+        // Active Player (Mounts iframe only when user clicks Play)
+        if (isPlaying && embedUrl) {
+          return (
+            <div className="relative w-full h-full bg-black">
+              <iframe
+                src={embedUrl}
+                title={currentItem.title || `${title} YouTube video`}
+                className="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          );
+        }
+
+        // Lazy Facade: Shows custom thumbnail or YouTube default thumbnail with play button
+        return (
+          <div
+            className="relative w-full h-full bg-zinc-950 flex items-center justify-center cursor-pointer group/yt"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setPlayingKey(itemKey);
+            }}
+          >
+            {posterUrl ? (
+              <div className="absolute inset-0 pointer-events-none">
+                <AmbientImage
+                  src={posterUrl}
+                  alt={currentItem.title || `${title} YouTube thumbnail`}
+                  sizes="(max-width: 768px) 100vw, 800px"
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <div className="absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center text-zinc-600 gap-2">
+                <span className="text-[11px] font-mono tracking-wider uppercase text-zinc-500">
+                  {currentItem.title || 'YouTube Video'}
+                </span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setPlayingKey(itemKey);
+              }}
+              className="relative z-20 w-12 h-12 bg-zinc-950/85 hover:bg-sky-500 text-white rounded-none border border-zinc-700/80 hover:border-sky-400 flex items-center justify-center transition-all shadow-xl hover:scale-105 cursor-pointer"
               title="Play YouTube Video"
+              aria-label="Play YouTube Video"
             >
               <FiPlay className="w-5 h-5 ml-0.5 fill-current" />
             </button>
@@ -187,44 +278,62 @@ export function ProjectMediaCarousel({
       }
 
       case 'projectMediaVimeo': {
-        const isPlaying = playingEmbedKey === currentItem._key;
         const embedUrl = getVimeoEmbedUrl(currentItem.url);
-        const posterUrl = currentItem.poster ? urlForImage(currentItem.poster) : null;
+        const posterUrl = currentItem.poster
+          ? urlForImage(currentItem.poster)
+          : null;
 
+        // Active Player (Mounts iframe only when user clicks Play)
         if (isPlaying && embedUrl) {
           return (
-            <iframe
-              src={embedUrl}
-              title={currentItem.title || `${title} Vimeo video`}
-              className="w-full h-full border-0"
-              allow="autoplay; fullscreen; picture-in-picture"
-              allowFullScreen
-            />
+            <div className="relative w-full h-full bg-black">
+              <iframe
+                src={embedUrl}
+                title={currentItem.title || `${title} Vimeo video`}
+                className="w-full h-full border-0"
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
           );
         }
 
-        // Lazy Facade with Ambient Image
+        // Lazy Facade: Shows custom thumbnail or Vimeo backdrop with play button
         return (
-          <div className="relative w-full h-full bg-zinc-900 flex items-center justify-center group/vim">
+          <div
+            className="relative w-full h-full bg-zinc-950 flex items-center justify-center cursor-pointer group/vim"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setPlayingKey(itemKey);
+            }}
+          >
             {posterUrl ? (
-              <AmbientImage
-                src={posterUrl}
-                alt={currentItem.title || 'Vimeo thumbnail'}
-                sizes="(max-width: 768px) 100vw, 800px"
-                unoptimized
-              />
+              <div className="absolute inset-0 pointer-events-none">
+                <AmbientImage
+                  src={posterUrl}
+                  alt={currentItem.title || `${title} Vimeo thumbnail`}
+                  sizes="(max-width: 768px) 100vw, 800px"
+                  unoptimized
+                />
+              </div>
             ) : (
-              <div className="absolute inset-0 bg-zinc-900" />
+              <div className="absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center text-zinc-600 gap-2">
+                <span className="text-[11px] font-mono tracking-wider uppercase text-zinc-500">
+                  {currentItem.title || 'Vimeo Video'}
+                </span>
+              </div>
             )}
             <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setPlayingEmbedKey(currentItem._key);
+                setPlayingKey(itemKey);
               }}
-              className="relative z-20 w-11 h-11 bg-zinc-950/80 hover:bg-sky-500 text-white rounded-none border border-zinc-700/80 flex items-center justify-center transition-colors shadow-lg"
+              className="relative z-20 w-12 h-12 bg-zinc-950/85 hover:bg-sky-500 text-white rounded-none border border-zinc-700/80 hover:border-sky-400 flex items-center justify-center transition-all shadow-xl hover:scale-105 cursor-pointer"
               title="Play Vimeo Video"
+              aria-label="Play Vimeo Video"
             >
               <FiPlay className="w-5 h-5 ml-0.5 fill-current" />
             </button>
@@ -248,8 +357,10 @@ export function ProjectMediaCarousel({
       {/* Media Element */}
       <div className="absolute inset-0">{renderMediaContent()}</div>
 
-      {/* Subtle Bottom Gradient for seamless visual integration */}
-      <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-transparent to-transparent pointer-events-none" />
+      {/* Subtle Bottom Gradient (Visible only when no video is actively playing) */}
+      {!isPlaying && (
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-transparent to-transparent pointer-events-none" />
+      )}
 
       {/* Carousel Navigation Overlay (Only when multiple items exist) */}
       {media.length > 1 && (
@@ -266,7 +377,7 @@ export function ProjectMediaCarousel({
             type="button"
             onClick={prevSlide}
             aria-label="Previous slide"
-            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-8 sm:h-8 bg-zinc-950/80 hover:bg-sky-500 text-zinc-300 hover:text-white rounded-none border border-zinc-800/80 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-all duration-200"
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-8 sm:h-8 bg-zinc-950/80 hover:bg-sky-500 text-zinc-300 hover:text-white rounded-none border border-zinc-800/80 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-all duration-200 cursor-pointer"
           >
             <FiChevronLeft className="w-4 h-4" />
           </button>
@@ -276,7 +387,7 @@ export function ProjectMediaCarousel({
             type="button"
             onClick={nextSlide}
             aria-label="Next slide"
-            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-8 sm:h-8 bg-zinc-950/80 hover:bg-sky-500 text-zinc-300 hover:text-white rounded-none border border-zinc-800/80 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-all duration-200"
+            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-8 sm:h-8 bg-zinc-950/80 hover:bg-sky-500 text-zinc-300 hover:text-white rounded-none border border-zinc-800/80 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-all duration-200 cursor-pointer"
           >
             <FiChevronRight className="w-4 h-4" />
           </button>

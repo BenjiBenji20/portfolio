@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { getContactData, getProfile } from '@/sanity/lib/client';
+import { getContactData, getProfile } from '@/data/fallbackData';
 import { HeaderNav } from './HeaderNav';
 import { ProfileSidebar } from './ProfileSidebar';
 import { SidebarContainer } from './SidebarContainer';

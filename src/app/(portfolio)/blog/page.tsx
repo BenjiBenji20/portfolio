@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { getBlog, getAllProjects } from '@/sanity/lib/client';
+import { getBlog, getAllProjects } from '@/data/fallbackData';
 import { BlogContentClient } from '@/components/blog/BlogContentClient';
 import { BlogSkeleton } from '@/components/blog/BlogSkeleton';
 

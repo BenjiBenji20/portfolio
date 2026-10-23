@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getAllProjects } from '@/sanity/lib/client';
+import { getAllProjects } from '@/data/fallbackData';
 import { ProjectsExplorer } from '@/components/projects/ProjectsExplorer';
 
 export const metadata: Metadata = {

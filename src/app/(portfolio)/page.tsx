@@ -5,7 +5,7 @@ import {
   getFeaturedProjects,
   getFocusPillars,
   getSummaryOverview,
-} from '@/sanity/lib/client';
+} from '@/data/fallbackData';
 import { FocusPillars } from '@/components/home/FocusPillars';
 import { ExperienceTimeline } from '@/components/home/ExperienceTimeline';
 import { FeaturedProjectsGrid } from '@/components/home/FeaturedProjectsGrid';

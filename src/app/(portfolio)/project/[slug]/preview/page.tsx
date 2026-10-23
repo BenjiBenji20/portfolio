@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { FiArrowLeft, FiGithub, FiGlobe } from 'react-icons/fi';
-import { getProjectBySlug, getAllProjects } from '@/sanity/lib/client';
+import { getProjectBySlug, getAllProjects } from '@/data/fallbackData';
 import { ProjectMediaCarousel } from '@/components/projects/ProjectMediaCarousel';
 
 interface ProjectPreviewPageProps {

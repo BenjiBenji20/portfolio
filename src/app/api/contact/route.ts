@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Resend } from 'resend';
 import { verifyRecaptchaToken } from '@/lib/recaptcha';
 import { generateContactEmailContent } from '@/lib/email/userContactInquiryTemplate';
-import { getEmailContactInquiryTemplate } from '@/sanity/lib/client';
+import { getEmailContactInquiryTemplate } from '@/data/fallbackData';
 
 const contactFormSchema = z.object({
   name: z.string().trim().max(100).optional(),

@@ -67,7 +67,7 @@ export function AppShell({ children }: AppShellProps) {
       <HeaderNav />
 
       {/* Main Grid Wrapper */}
-      <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-10 space-y-16">
+      <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-10 space-y-16">
         <div className="flex flex-col md:flex-row md:items-start gap-8 lg:gap-12">
           {/* Persistent Profile Sidebar with Suspense */}
           <Suspense fallback={<SidebarSkeleton />}>

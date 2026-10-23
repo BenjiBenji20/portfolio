@@ -223,7 +223,7 @@ export function ContactSection({ contactData }: ContactSectionProps) {
             rel={channel.link.startsWith('http') ? 'noopener noreferrer' : undefined}
             className="group flex items-center gap-3 text-sm text-zinc-300 hover:text-sky-400 transition-colors"
           >
-            <div className="h-10 w-10 shrink-0 rounded-lg border border-zinc-700/80 bg-zinc-900/60 flex items-center justify-center group-hover:border-sky-500/50 group-hover:bg-zinc-800/80 transition-all shadow-sm">
+            <div className="h-10 w-10 shrink-0 rounded-none border border-zinc-700/80 bg-zinc-900/60 flex items-center justify-center group-hover:border-sky-500/50 group-hover:bg-zinc-800/80 transition-all shadow-sm">
               <PlatformIcon channel={channel} />
             </div>
             <span className="font-medium truncate">{channel.handle}</span>
@@ -273,7 +273,7 @@ export function ContactSection({ contactData }: ContactSectionProps) {
                       type="button"
                       disabled={status === 'submitting'}
                       onClick={() => handleSubjectClick(subj)}
-                      className={`px-4 py-1.5 rounded-full text-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`px-4 py-1.5 rounded-none text-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                         isActive
                           ? 'bg-sky-400 text-zinc-950 font-semibold shadow-sm border border-sky-300'
                           : 'border border-zinc-700/90 text-zinc-300 hover:border-zinc-500 bg-transparent font-medium'
@@ -289,7 +289,7 @@ export function ContactSection({ contactData }: ContactSectionProps) {
                   type="button"
                   disabled={status === 'submitting'}
                   onClick={handleOtherClick}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                  className={`px-4 py-1.5 rounded-none text-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                     isOther
                       ? 'bg-sky-400 text-zinc-950 font-semibold shadow-sm border border-sky-300'
                       : 'border border-zinc-700/90 text-zinc-300 hover:border-zinc-500 bg-transparent font-medium'
@@ -308,7 +308,7 @@ export function ContactSection({ contactData }: ContactSectionProps) {
                     value={customSubject}
                     onChange={(e) => setCustomSubject(e.target.value)}
                     placeholder="Write custom subject..."
-                    className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2 text-xs sm:text-sm outline-none transition-colors disabled:opacity-60"
+                    className="w-full rounded-none bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2 text-xs sm:text-sm outline-none transition-colors disabled:opacity-60"
                     autoFocus
                   />
                 </div>
@@ -326,7 +326,7 @@ export function ContactSection({ contactData }: ContactSectionProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="John Doe"
-                className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors disabled:opacity-60"
+                className="w-full rounded-none bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors disabled:opacity-60"
               />
             </div>
 
@@ -342,7 +342,7 @@ export function ContactSection({ contactData }: ContactSectionProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="john@example.com"
-                className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors disabled:opacity-60"
+                className="w-full rounded-none bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors disabled:opacity-60"
               />
             </div>
 
@@ -357,7 +357,7 @@ export function ContactSection({ contactData }: ContactSectionProps) {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+1 (555) 000-0000"
-                className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors disabled:opacity-60"
+                className="w-full rounded-none bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors disabled:opacity-60"
               />
             </div>
 
@@ -373,13 +373,13 @@ export function ContactSection({ contactData }: ContactSectionProps) {
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Compose email..."
-                className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors resize-y disabled:opacity-60"
+                className="w-full rounded-none bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors resize-y disabled:opacity-60"
               />
             </div>
 
             {/* Error Notification */}
             {status === 'error' && errorMessage && (
-              <div className="flex items-start gap-2 p-3 rounded-lg border border-rose-500/30 bg-rose-950/20 text-rose-400 text-xs">
+              <div className="flex items-start gap-2 p-3 rounded-none border border-rose-500/30 bg-rose-950/20 text-rose-400 text-xs">
                 <FiAlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span className="leading-relaxed">{errorMessage}</span>
               </div>
@@ -398,7 +398,7 @@ export function ContactSection({ contactData }: ContactSectionProps) {
               <button
                 type="submit"
                 disabled={status === 'submitting'}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700/80 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 px-5 py-2.5 text-xs sm:text-sm font-medium shadow-sm transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center gap-2 rounded-none border border-zinc-700/80 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 px-5 py-2.5 text-xs sm:text-sm font-medium shadow-sm transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {status === 'submitting' ? (
                   <>

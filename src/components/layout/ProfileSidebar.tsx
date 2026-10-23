@@ -280,7 +280,7 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
                 {profile.featuredSkills.map((skill) => (
                   <span
                     key={skill}
-                    className="font-mono text-[11px] px-2 py-0.5 rounded bg-zinc-900 text-zinc-300 border border-zinc-800/80"
+                    className="font-mono text-[11px] px-2 py-0.5 rounded-none bg-zinc-900 text-zinc-300 border border-zinc-800/80"
                   >
                     {skill}
                   </span>

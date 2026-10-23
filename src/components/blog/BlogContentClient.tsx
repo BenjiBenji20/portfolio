@@ -6,7 +6,7 @@ import { FiCalendar, FiClock } from 'react-icons/fi';
 import type { BlogData, ProjectData, ProjectMediaItem } from '@/types/sanity';
 import { PortableTextRenderer } from './PortableTextRenderer';
 import { BlogTableOfContents } from './BlogTableOfContents';
-import { MediaLightboxModal } from './MediaLightboxModal';
+import { MediaLightboxModal } from '@/components/ui/MediaLightboxModal';
 
 interface BlogContentClientProps {
   blog: BlogData;

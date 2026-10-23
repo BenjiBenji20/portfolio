@@ -16,7 +16,7 @@ import {
 import type { ProjectMediaItem } from '@/types/sanity';
 import { urlForImage } from '@/sanity/lib/image';
 
-interface MediaLightboxModalProps {
+export interface MediaLightboxModalProps {
   mediaItems: ProjectMediaItem[];
   activeKey: string | null;
   onClose: () => void;
@@ -229,7 +229,7 @@ function LightboxContent({
           type="button"
           onClick={onClose}
           aria-label="Close Lightbox"
-          className="absolute top-4 right-4 z-40 w-6 h-6 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer"
+          className="absolute top-4 right-4 z-40 w-10 h-10 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer"
         >
           <FiX className="w-5 h-5" />
         </button>
@@ -486,7 +486,7 @@ function LightboxContent({
                 </div>
               )}
 
-              {/* Detailed Description */}
+              {/* Detailed Description with Read more... */}
               {description && (
                 <div className="space-y-2 pt-2 border-t border-zinc-800/60">
                   {!isDesktopLongDesc ? (

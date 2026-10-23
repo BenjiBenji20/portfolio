@@ -19,6 +19,22 @@ async function AsyncContactSection() {
   return <ContactSection contactData={contactData} />;
 }
 
+function HeaderNavSkeleton() {
+  return (
+    <header className="sticky top-0 z-40 w-full border-b border-zinc-800/60 bg-zinc-950/80 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 md:px-8">
+        <div className="h-5 w-28 rounded bg-zinc-800 animate-pulse" />
+        <div className="flex items-center gap-2">
+          <div className="h-5 w-14 rounded bg-zinc-800/60 animate-pulse" />
+          <div className="h-5 w-16 rounded bg-zinc-800/60 animate-pulse" />
+          <div className="h-5 w-10 rounded bg-zinc-800/60 animate-pulse" />
+        </div>
+        <div className="h-8 w-8 rounded-md bg-zinc-800/60 animate-pulse" />
+      </div>
+    </header>
+  );
+}
+
 function SidebarSkeleton() {
   return (
     <aside className="w-full md:w-64 lg:w-72 shrink-0 animate-pulse">
@@ -65,17 +81,21 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-sky-500/20 selection:text-sky-400">
       {/* Top Navigation */}
-      <HeaderNav />
+      <Suspense fallback={<HeaderNavSkeleton />}>
+        <HeaderNav />
+      </Suspense>
 
       {/* Main Grid Wrapper */}
       <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-10 space-y-16">
         <div className="flex flex-col md:flex-row md:items-start gap-8 lg:gap-12">
           {/* Persistent Profile Sidebar with Suspense */}
-          <SidebarContainer>
-            <Suspense fallback={<SidebarSkeleton />}>
-              <AsyncSidebar />
-            </Suspense>
-          </SidebarContainer>
+          <Suspense fallback={<SidebarSkeleton />}>
+            <SidebarContainer>
+              <Suspense fallback={<SidebarSkeleton />}>
+                <AsyncSidebar />
+              </Suspense>
+            </SidebarContainer>
+          </Suspense>
 
           {/* Dynamic Page Content Slot */}
           <main className="flex-1 min-w-0">{children}</main>

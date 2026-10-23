@@ -9,7 +9,7 @@ import type { NavRoute } from '@/types/sanity';
 const NAV_ROUTES: NavRoute[] = [
   { label: 'Home', href: '/' },
   { label: 'Projects', href: '/projects' },
-  { label: 'Blogs', href: '/blogs' },
+  { label: 'Blog', href: '/blog' },
 ];
 
 export function HeaderNav() {

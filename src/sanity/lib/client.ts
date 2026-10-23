@@ -1,6 +1,7 @@
 import { createClient } from 'next-sanity';
 import { cacheTag } from 'next/cache';
 import type {
+  BlogData,
   ContactData,
   EmailContactInquiryTemplateData,
   Experience,
@@ -11,12 +12,14 @@ import type {
 } from '@/types/sanity';
 import {
   allProjectsQuery,
+  blogQuery,
   contactQuery,
   emailContactInquiryTemplateQuery,
   experiencesQuery,
   featuredProjectsQuery,
   focusPillarsQuery,
   profileQuery,
+  projectBySlugQuery,
   summaryOverviewQuery,
 } from './queries';
 
@@ -464,4 +467,205 @@ export async function getEmailContactInquiryTemplate(): Promise<EmailContactInqu
     return FALLBACK_EMAIL_INQUIRY_TEMPLATE;
   }
 }
+
+export const FALLBACK_BLOG: BlogData = {
+  title: 'Software Engineering Background & Works',
+  publishedAt: '2026-10-23T00:00:00.000Z',
+  readTime: '8 min read',
+  content: [
+    {
+      _key: 'b1',
+      _type: 'block',
+      style: 'normal',
+      children: [
+        {
+          _key: 'b1c1',
+          _type: 'span',
+          text: 'This workspace documents my engineering background, core architectural patterns, and production systems as a Software Engineer. Here you will find deep technical walkthroughs of how I design scalable backends, multi-tenant vector databases, resilient RAG pipelines, and automated security evaluation gates.',
+        },
+      ],
+    },
+    {
+      _key: 'b2',
+      _type: 'block',
+      style: 'h2',
+      children: [
+        {
+          _key: 'b2c1',
+          _type: 'span',
+          text: 'Casamento Events RAG Architecture',
+        },
+      ],
+    },
+    {
+      _key: 'b3',
+      _type: 'block',
+      style: 'normal',
+      children: [
+        {
+          _key: 'b3c1',
+          _type: 'span',
+          text: 'Casamento Events Management required a high-reliability customer inquiry and automated booking assistant capable of grounded contextual responses. I architected a hybrid retrieval pipeline pairing FastAPI services with Qdrant vector storage and Gemini Flash embedding models.',
+        },
+      ],
+    },
+    {
+      _key: 'b4',
+      _type: 'projectMediaImage',
+      alt: 'Casamento Events Platform Architecture',
+      title: 'Casamento Events Multi-Tenant System Architecture',
+      description: 'End-to-end topology diagram displaying user inquiry dispatch, Google reCAPTCHA v3 bot verification, FastAPI routing, and asynchronous Qdrant vector lookups.',
+      publishedAt: '2026-10-20T00:00:00.000Z',
+      readTime: '2 min read',
+      backlinks: [
+        {
+          _key: 'l1',
+          platform: 'Live Website',
+          url: 'https://casamento.vercel.app',
+        },
+        {
+          _key: 'l2',
+          platform: 'GitHub',
+          url: 'https://github.com/BenjiBenji20',
+        },
+      ],
+      asset: {
+        url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1600&q=80',
+      },
+    },
+    {
+      _key: 'b5',
+      _type: 'block',
+      style: 'h2',
+      children: [
+        {
+          _key: 'b5c1',
+          _type: 'span',
+          text: 'Multi-Tenant Vector Isolation in Qdrant',
+        },
+      ],
+    },
+    {
+      _key: 'b6',
+      _type: 'block',
+      style: 'normal',
+      children: [
+        {
+          _key: 'b6c1',
+          _type: 'span',
+          text: 'To avoid vector cross-contamination and ensure microsecond query execution across distinct operational scopes, I partitioned Qdrant vector collections using payload filtering schemas rather than creating dynamic collections per tenant. This eliminated resource spikes and streamlined index optimization.',
+        },
+      ],
+    },
+    {
+      _key: 'b7',
+      _type: 'block',
+      style: 'h2',
+      children: [
+        {
+          _key: 'b7c1',
+          _type: 'span',
+          text: 'Serverless Ingestion & HMAC Webhook Pipelines',
+        },
+      ],
+    },
+    {
+      _key: 'b8',
+      _type: 'block',
+      style: 'normal',
+      children: [
+        {
+          _key: 'b8c1',
+          _type: 'span',
+          text: 'Implementing on-demand content revalidation and git-driven ingestion required rigorous security barriers. Using cryptographic HMAC SHA-256 verification, our ingestion handlers filter out non-essential commits, detect bot activity, and perform synchronous tiered evaluation before initiating heavier generation or cache invalidation routines.',
+        },
+      ],
+    },
+    {
+      _key: 'b9',
+      _type: 'projectMediaYoutube',
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      title: 'Real-time Ingestion & Revalidation Pipeline Demo',
+      description: 'Walkthrough demonstration of instantaneous cache purging across Next.js ISR route handlers triggered by Sanity content webhooks.',
+      publishedAt: '2026-10-22T00:00:00.000Z',
+      readTime: '4 min demo',
+      backlinks: [
+        {
+          _key: 'yt-l1',
+          platform: 'Repository',
+          url: 'https://github.com/BenjiBenji20',
+        },
+      ],
+    },
+    {
+      _key: 'b10',
+      _type: 'block',
+      style: 'h2',
+      children: [
+        {
+          _key: 'b10c1',
+          _type: 'span',
+          text: 'Technical Security Assessments & Penetration Audits',
+        },
+      ],
+    },
+    {
+      _key: 'b11',
+      _type: 'block',
+      style: 'normal',
+      children: [
+        {
+          _key: 'b11c1',
+          _type: 'span',
+          text: 'Beyond software creation, I conduct black-box and white-box assessments across web endpoints and enterprise software workflows. This involves identifying insecure session parameters, analyzing cross-origin request policies, hardening API route handlers against bot floods via Google reCAPTCHA v3, and validating cryptographic secrets integrity.',
+        },
+      ],
+    },
+  ],
+};
+
+export async function getBlog(): Promise<BlogData> {
+  'use cache';
+  cacheTag('sanity:blog', 'sanity');
+  if (!client) {
+    return FALLBACK_BLOG;
+  }
+  try {
+    const data = await client.fetch<BlogData | null>(blogQuery);
+    return data || FALLBACK_BLOG;
+  } catch (error) {
+    console.warn('[Sanity Client] Fetch failed for blog, falling back to local defaults:', error);
+    return FALLBACK_BLOG;
+  }
+}
+
+export async function getProjectBySlug(slug: string): Promise<ProjectData | null> {
+  'use cache';
+  cacheTag('sanity:project', `sanity:project:${slug}`);
+  if (!client) {
+    return (
+      FALLBACK_FEATURED_PROJECTS.find(
+        (p) => (typeof p.slug === 'string' ? p.slug : p.slug?.current) === slug
+      ) || null
+    );
+  }
+  try {
+    const data = await client.fetch<ProjectData | null>(projectBySlugQuery, { slug });
+    return (
+      data ||
+      FALLBACK_FEATURED_PROJECTS.find(
+        (p) => (typeof p.slug === 'string' ? p.slug : p.slug?.current) === slug
+      ) ||
+      null
+    );
+  } catch (error) {
+    console.warn(`[Sanity Client] Fetch failed for project ${slug}:`, error);
+    return (
+      FALLBACK_FEATURED_PROJECTS.find(
+        (p) => (typeof p.slug === 'string' ? p.slug : p.slug?.current) === slug
+      ) || null
+    );
+  }
+}
+
 

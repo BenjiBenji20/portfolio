@@ -31,6 +31,7 @@
 - **Bottom Thumbnail Filmstrip:**
   - Render a clean horizontal strip of thumbnail previews at the bottom of the modal.
   - Allow visitors to jump between adjacent images, highlighting the active image with an accent border.
+  - **Right-Side Details Panel:** Display a fixed, independently scrollable sidebar on the right containing the active image's title, category, and detailed project description, updating dynamically as visitors navigate between gallery images.
 
 ---
 

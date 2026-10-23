@@ -81,6 +81,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (docType === 'blog') {
+      revalidatePath('/blog', 'page');
+    }
+
     return NextResponse.json({
       success: true,
       revalidated: true,

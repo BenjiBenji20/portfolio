@@ -5,6 +5,7 @@ import { experienceType } from './experience';
 import { projectType } from './project';
 import { contactType } from './contact';
 import { emailContactInquiryTemplateType } from './emailContactInquiryTemplate';
+import { blogType, backlinkItem } from './blog';
 
 export const schemaTypes = [
   profileType,
@@ -14,4 +15,6 @@ export const schemaTypes = [
   projectType,
   contactType,
   emailContactInquiryTemplateType,
+  blogType,
+  backlinkItem,
 ];

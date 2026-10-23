@@ -202,3 +202,125 @@ export const emailContactInquiryTemplateQuery = `*[_type == "emailContactInquiry
   headline,
   footerNote
 }`;
+
+export const blogQuery = `*[_type == "blog"][0]{
+  _id,
+  title,
+  publishedAt,
+  lastUpdated,
+  readTime,
+  content[] {
+    ...,
+    _type == "projectMediaImage" => {
+      ...,
+      asset->{
+        _id,
+        url
+      },
+      backlinks[] {
+        _key,
+        platform,
+        url,
+        icon {
+          asset->{ _id, url }
+        }
+      }
+    },
+    _type == "projectMediaSanityVideo" => {
+      ...,
+      asset->{
+        _id,
+        url,
+        mimeType,
+        size
+      },
+      poster {
+        asset->{ _id, url }
+      },
+      backlinks[] {
+        _key,
+        platform,
+        url,
+        icon {
+          asset->{ _id, url }
+        }
+      }
+    },
+    _type == "projectMediaYoutube" => {
+      ...,
+      poster {
+        asset->{ _id, url }
+      },
+      backlinks[] {
+        _key,
+        platform,
+        url,
+        icon {
+          asset->{ _id, url }
+        }
+      }
+    },
+    _type == "projectMediaVimeo" => {
+      ...,
+      poster {
+        asset->{ _id, url }
+      },
+      backlinks[] {
+        _key,
+        platform,
+        url,
+        icon {
+          asset->{ _id, url }
+        }
+      }
+    }
+  }
+}`;
+
+export const projectBySlugQuery = `*[_type == "project" && slug.current == $slug][0]{
+  _id,
+  title,
+  slug,
+  shortDescription,
+  projectType,
+  employer,
+  collaborators[] {
+    name,
+    role,
+    url
+  },
+  logo {
+    asset->{ _id, url },
+    alt,
+    hotspot
+  },
+  media[] {
+    _key,
+    _type,
+    alt,
+    title,
+    caption,
+    url,
+    hotspot,
+    asset->{
+      _id,
+      url,
+      mimeType,
+      size
+    },
+    poster {
+      asset->{ _id, url },
+      alt,
+      hotspot
+    }
+  },
+  website,
+  repository,
+  techStacks,
+  status,
+  dateStarted,
+  dateFinished,
+  featured,
+  hidden,
+  priorityValue
+}`;

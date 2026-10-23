@@ -70,6 +70,19 @@ export default defineConfig({
 
             // Projects
             S.documentTypeListItem('project').title('Projects'),
+
+            // Horizontal line separator
+            S.divider(),
+
+            // Blog Preview
+            S.listItem()
+              .title('Blog Preview')
+              .id('blog')
+              .child(
+                S.document()
+                  .schemaType('blog')
+                  .documentId('blog')
+              ),
           ]),
     }),
   ],

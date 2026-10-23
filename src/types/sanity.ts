@@ -123,14 +123,24 @@ export interface ProjectCollaborator {
   url?: string;
 }
 
-export type ProjectMediaType =
-  | 'projectMediaImage'
-  | 'projectMediaSanityVideo'
-  | 'projectMediaYoutube'
-  | 'projectMediaVimeo';
+export interface MediaBacklink {
+  _key?: string;
+  platform: string;
+  url: string;
+  icon?: SanityImageReference;
+}
 
-export interface ProjectMediaImageItem {
+export interface BaseMediaItem {
   _key: string;
+  _type: string;
+  title?: string;
+  description?: string;
+  backlinks?: MediaBacklink[];
+  readTime?: string;
+  publishedAt?: string;
+}
+
+export interface ProjectMediaImageItem extends BaseMediaItem {
   _type: 'projectMediaImage';
   asset?: {
     _ref?: string;
@@ -147,8 +157,7 @@ export interface ProjectMediaImageItem {
   };
 }
 
-export interface ProjectMediaSanityVideoItem {
-  _key: string;
+export interface ProjectMediaSanityVideoItem extends BaseMediaItem {
   _type: 'projectMediaSanityVideo';
   asset?: {
     _ref?: string;
@@ -157,25 +166,20 @@ export interface ProjectMediaSanityVideoItem {
     mimeType?: string;
     size?: number;
   };
-  title?: string;
   poster?: SanityImageReference;
   caption?: string;
 }
 
-export interface ProjectMediaYouTubeItem {
-  _key: string;
+export interface ProjectMediaYouTubeItem extends BaseMediaItem {
   _type: 'projectMediaYoutube';
   url: string;
-  title?: string;
   poster?: SanityImageReference;
   caption?: string;
 }
 
-export interface ProjectMediaVimeoItem {
-  _key: string;
+export interface ProjectMediaVimeoItem extends BaseMediaItem {
   _type: 'projectMediaVimeo';
   url: string;
-  title?: string;
   poster?: SanityImageReference;
   caption?: string;
 }
@@ -185,6 +189,16 @@ export type ProjectMediaItem =
   | ProjectMediaSanityVideoItem
   | ProjectMediaYouTubeItem
   | ProjectMediaVimeoItem;
+
+export interface BlogData {
+  _id?: string;
+  title: string;
+  publishedAt?: string;
+  lastUpdated?: string;
+  readTime?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  content?: any[];
+}
 
 export interface ProjectData {
   _id?: string;

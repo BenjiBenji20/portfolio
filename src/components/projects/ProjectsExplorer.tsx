@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import type { ProjectData } from '@/types/sanity';
 import { ProjectFilterBar } from './ProjectFilterBar';
-import { ProjectMasonryGrid } from './ProjectMasonryGrid';
+import { ProjectGrid } from './ProjectGrid';
 
 interface ProjectsExplorerProps {
   initialProjects: ProjectData[];
@@ -104,8 +104,8 @@ export function ProjectsExplorer({ initialProjects }: ProjectsExplorerProps) {
         totalResults={filteredProjects.length}
       />
 
-      {/* 2-Column Masonry Grid */}
-      <ProjectMasonryGrid
+      {/* 2-Column Grid */}
+      <ProjectGrid
         projects={filteredProjects}
       />
     </div>

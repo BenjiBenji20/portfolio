@@ -1,14 +1,14 @@
 'use client';
 
 import type { ProjectData } from '@/types/sanity';
-import { ProjectMasonryCard } from './ProjectMasonryCard';
+import { ProjectCard } from './ProjectCard';
 import { FiFolder } from 'react-icons/fi';
 
-interface ProjectMasonryGridProps {
+interface ProjectGridProps {
   projects: ProjectData[];
 }
 
-export function ProjectMasonryGrid({ projects }: ProjectMasonryGridProps) {
+export function ProjectGrid({ projects }: ProjectGridProps) {
   if (projects.length === 0) {
     return (
       <div className="w-full py-16 px-4 border border-zinc-800/80 rounded-none bg-zinc-950/60 text-center flex flex-col items-center justify-center space-y-3">
@@ -29,15 +29,16 @@ export function ProjectMasonryGrid({ projects }: ProjectMasonryGridProps) {
 
   return (
     /* Desktop & iPad: 2x2 layout (md:grid-cols-2) | Mobile: 1x1 layout (grid-cols-1) */
-    <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6 items-stretch">
+    <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6 items-start">
       {projects.map((project) => (
-        <ProjectMasonryCard
+        <ProjectCard
           key={
             project._id ||
             (typeof project.slug === 'string' ? project.slug : project.slug?.current)
           }
           project={project}
           aspectClass="aspect-[16/10]"
+          showMedia={true}
         />
       ))}
     </div>

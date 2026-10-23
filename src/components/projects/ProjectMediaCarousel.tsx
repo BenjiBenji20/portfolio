@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -10,6 +9,7 @@ import {
 } from 'react-icons/fi';
 import type { ProjectMediaItem } from '@/types/sanity';
 import { urlForImage } from '@/sanity/lib/image';
+import { AmbientImage } from '@/components/ui/AmbientImage';
 
 interface ProjectMediaCarouselProps {
   media?: ProjectMediaItem[];
@@ -41,6 +41,17 @@ export function ProjectMediaCarousel({
 
   const hasMedia = media && media.length > 0;
   const currentItem = hasMedia ? media[currentIndex] : null;
+
+  // Auto-swipe carousel every 5 seconds when multiple items exist and no video embed is playing
+  useEffect(() => {
+    if (media.length <= 1 || playingEmbedKey !== null) return;
+
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % media.length);
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [media.length, playingEmbedKey, currentIndex]);
 
   const nextSlide = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -93,12 +104,10 @@ export function ProjectMediaCarousel({
         }
 
         return (
-          <Image
+          <AmbientImage
             src={imageUrl}
             alt={currentItem.alt || `${title} preview`}
-            fill
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 50vw, 600px"
-            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
             unoptimized
           />
         );
@@ -148,16 +157,14 @@ export function ProjectMediaCarousel({
           );
         }
 
-        // Lazy Facade
+        // Lazy Facade with Ambient Image
         return (
           <div className="relative w-full h-full bg-zinc-900 flex items-center justify-center group/yt">
             {posterUrl ? (
-              <Image
+              <AmbientImage
                 src={posterUrl}
                 alt={currentItem.title || 'YouTube thumbnail'}
-                fill
-                sizes="(max-width: 768px) 50vw, 600px"
-                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 800px"
                 unoptimized
               />
             ) : (
@@ -170,7 +177,7 @@ export function ProjectMediaCarousel({
                 e.stopPropagation();
                 setPlayingEmbedKey(currentItem._key);
               }}
-              className="relative z-10 w-11 h-11 bg-zinc-950/80 hover:bg-sky-500 text-white rounded-none border border-zinc-700/80 flex items-center justify-center transition-colors shadow-lg"
+              className="relative z-20 w-11 h-11 bg-zinc-950/80 hover:bg-sky-500 text-white rounded-none border border-zinc-700/80 flex items-center justify-center transition-colors shadow-lg"
               title="Play YouTube Video"
             >
               <FiPlay className="w-5 h-5 ml-0.5 fill-current" />
@@ -196,16 +203,14 @@ export function ProjectMediaCarousel({
           );
         }
 
-        // Lazy Facade
+        // Lazy Facade with Ambient Image
         return (
           <div className="relative w-full h-full bg-zinc-900 flex items-center justify-center group/vim">
             {posterUrl ? (
-              <Image
+              <AmbientImage
                 src={posterUrl}
                 alt={currentItem.title || 'Vimeo thumbnail'}
-                fill
-                sizes="(max-width: 768px) 50vw, 600px"
-                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 800px"
                 unoptimized
               />
             ) : (
@@ -218,7 +223,7 @@ export function ProjectMediaCarousel({
                 e.stopPropagation();
                 setPlayingEmbedKey(currentItem._key);
               }}
-              className="relative z-10 w-11 h-11 bg-zinc-950/80 hover:bg-sky-500 text-white rounded-none border border-zinc-700/80 flex items-center justify-center transition-colors shadow-lg"
+              className="relative z-20 w-11 h-11 bg-zinc-950/80 hover:bg-sky-500 text-white rounded-none border border-zinc-700/80 flex items-center justify-center transition-colors shadow-lg"
               title="Play Vimeo Video"
             >
               <FiPlay className="w-5 h-5 ml-0.5 fill-current" />

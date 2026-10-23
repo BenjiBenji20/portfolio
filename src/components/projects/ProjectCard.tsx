@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { FiArrowRight, FiGithub, FiGlobe } from 'react-icons/fi';
@@ -7,37 +8,51 @@ import type { ProjectData } from '@/types/sanity';
 import { urlForImage } from '@/sanity/lib/image';
 import { ProjectMediaCarousel } from './ProjectMediaCarousel';
 
-interface ProjectMasonryCardProps {
+interface ProjectCardProps {
   project: ProjectData;
   aspectClass?: string;
+  showMedia?: boolean;
+  className?: string;
 }
 
-export function ProjectMasonryCard({
+const DESCRIPTION_THRESHOLD = 110;
+
+export function ProjectCard({
   project,
   aspectClass = 'aspect-[16/10]',
-}: ProjectMasonryCardProps) {
+  showMedia = true,
+  className = '',
+}: ProjectCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const slug =
     typeof project.slug === 'string'
       ? project.slug
       : project.slug?.current || project._id || '';
 
   const logoUrl = urlForImage(project.logo);
+  const description = project.shortDescription || '';
+  const isLongDescription = description.length > DESCRIPTION_THRESHOLD;
 
   return (
-    <article className="group relative w-full rounded-none overflow-hidden bg-zinc-900/40 border border-zinc-800/60 hover:border-zinc-700/80 transition-all shadow-sm flex flex-col justify-between">
-      {/* Background Media / Carousel */}
-      <div className="relative w-full border-b border-zinc-800/60">
-        <ProjectMediaCarousel
-          media={project.media}
-          title={project.title}
-          aspectClass={aspectClass}
-        />
-      </div>
+    <article
+      className={`group relative w-full rounded-none overflow-hidden bg-zinc-900/40 border border-zinc-800/60 hover:border-zinc-700/80 transition-all shadow-sm flex flex-col justify-between ${className}`}
+    >
+      {/* 1. Landscape Media Carousel on Top (Excluded when showMedia is false) */}
+      {showMedia && (
+        <div className="relative w-full border-b border-zinc-800/60 shrink-0">
+          <ProjectMediaCarousel
+            media={project.media}
+            title={project.title}
+            aspectClass={aspectClass}
+          />
+        </div>
+      )}
 
-      {/* Content Box - Clean flush card body without nested floating box or double padding */}
-      <div className="p-4 sm:p-5 flex flex-col justify-between flex-1">
+      {/* 2. Increased Card Content Body with Fixed Description Height (No card expansion) */}
+      <div className="p-5 sm:p-6 flex flex-col justify-between flex-1 min-h-[220px] sm:min-h-[235px]">
         <div>
-          {/* Header: Logo (if available) Beside Title */}
+          {/* Header: Logo Beside Title */}
           <div className="flex items-start gap-2.5">
             {logoUrl && (
               <div className="relative w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full bg-zinc-800 border border-zinc-700/80 overflow-hidden flex items-center justify-center p-0.5 mt-0.5">
@@ -61,16 +76,54 @@ export function ProjectMasonryCard({
             </Link>
           </div>
 
-          {/* Short Description */}
-          {project.shortDescription && (
-            <p className="text-[11px] sm:text-xs text-zinc-400 mt-1.5 leading-relaxed line-clamp-2">
-              {project.shortDescription}
-            </p>
+          {/* Short Description with Strictly Locked Height (Zero card resize on Read more) */}
+          {description && (
+            <div
+              className={`mt-2.5 h-16 text-xs leading-relaxed ${
+                isExpanded
+                  ? 'overflow-y-auto pr-1 text-zinc-300 scrollbar-thin scrollbar-thumb-zinc-700'
+                  : 'overflow-hidden text-zinc-400'
+              }`}
+            >
+              {!isLongDescription ? (
+                <p>{description}</p>
+              ) : !isExpanded ? (
+                <p>
+                  <span>{description.slice(0, DESCRIPTION_THRESHOLD)}... </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsExpanded(true);
+                    }}
+                    className="text-sky-400 hover:text-sky-300 font-medium cursor-pointer transition-colors inline"
+                  >
+                    Read more...
+                  </button>
+                </p>
+              ) : (
+                <div>
+                  <span>{description} </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsExpanded(false);
+                    }}
+                    className="text-zinc-500 hover:text-zinc-300 text-[11px] font-medium cursor-pointer inline transition-colors"
+                  >
+                    (less)
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Website and/or Repository Badges */}
           {(project.website || project.repository) && (
-            <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pt-2 border-t border-zinc-800/60">
+            <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-2.5 border-t border-zinc-800/60">
               {project.website && (
                 <a
                   href={project.website}
@@ -101,8 +154,8 @@ export function ProjectMasonryCard({
           )}
         </div>
 
-        {/* Action Link: View Project -> */}
-        <div className="mt-3 pt-2 flex items-center justify-between border-t border-zinc-800/40">
+        {/* Action Footer: View Project -> */}
+        <div className="mt-4 pt-2.5 flex items-center justify-between border-t border-zinc-800/40">
           <Link
             href={`/blogs/${slug}`}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-300 hover:text-sky-400 transition-all group/cta"

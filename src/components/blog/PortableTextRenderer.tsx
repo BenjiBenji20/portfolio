@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { PortableText, type PortableTextComponents } from 'next-sanity';
-import { FiPlay, FiMaximize2, FiExternalLink, FiClock, FiCalendar } from 'react-icons/fi';
+import { FiPlay, FiMaximize2 } from 'react-icons/fi';
 import type {
   ProjectMediaImageItem,
   ProjectMediaSanityVideoItem,

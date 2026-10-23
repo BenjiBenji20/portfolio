@@ -157,7 +157,7 @@ export function ProjectCard({
         {/* Action Footer: View Project -> */}
         <div className="mt-4 pt-2.5 flex items-center justify-between border-t border-zinc-800/40">
           <Link
-            href={`/blogs/${slug}`}
+            href={`/project/${slug}/overview`}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-300 hover:text-sky-400 transition-all group/cta"
           >
             <span>View Project</span>

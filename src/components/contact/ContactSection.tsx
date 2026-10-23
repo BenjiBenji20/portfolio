@@ -189,7 +189,7 @@ export function ContactSection({ contactData }: ContactSectionProps) {
   };
 
   // Reusable Left-side Header block
-  const HeaderBlock = () => (
+  const headerBlock = (
     <div>
       <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-100">
         {contactData.header || "Let's connect!"}
@@ -202,7 +202,7 @@ export function ContactSection({ contactData }: ContactSectionProps) {
   );
 
   // Reusable Socials & Divider block
-  const SocialsBlock = () => (
+  const socialsBlock = (
     <div className="w-full space-y-6">
       {/* Divider with follow-up text */}
       <div className="flex items-center gap-3">
@@ -246,13 +246,13 @@ export function ContactSection({ contactData }: ContactSectionProps) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
         {/* DESKTOP LEFT COLUMN: Natural cohesive vertical spacing (Header + Socials) */}
         <div className="hidden lg:flex lg:col-span-5 flex-col space-y-8">
-          <HeaderBlock />
-          <SocialsBlock />
+          {headerBlock}
+          {socialsBlock}
         </div>
 
         {/* MOBILE / IPAD HEADER: Top block */}
         <div className="lg:hidden">
-          <HeaderBlock />
+          {headerBlock}
         </div>
 
         {/* RIGHT COLUMN: Contact Form */}
@@ -441,7 +441,7 @@ export function ContactSection({ contactData }: ContactSectionProps) {
 
         {/* MOBILE / IPAD SOCIALS: Positioned BELOW the contact form */}
         <div className="lg:hidden pt-2">
-          <SocialsBlock />
+          {socialsBlock}
         </div>
       </div>
     </section>

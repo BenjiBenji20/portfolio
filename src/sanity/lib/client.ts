@@ -9,6 +9,7 @@ import type {
   SummaryOverviewData,
 } from '@/types/sanity';
 import {
+  allProjectsQuery,
   contactQuery,
   emailContactInquiryTemplateQuery,
   experiencesQuery,
@@ -188,6 +189,25 @@ export const FALLBACK_FEATURED_PROJECTS: ProjectData[] = [
     featured: true,
     hidden: false,
     priorityValue: 10,
+    media: [
+      {
+        _key: 'm1-1',
+        _type: 'projectMediaImage',
+        asset: {
+          url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
+        },
+        alt: 'IntelliChat Infrastructure and Vector Database',
+        caption: 'Distributed document ingestion pipelines',
+      },
+      {
+        _key: 'm1-2',
+        _type: 'projectMediaImage',
+        asset: {
+          url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
+        },
+        alt: 'Vector Embeddings and Semantic Indexing',
+      },
+    ],
   },
   {
     _id: 'proj-2',
@@ -203,6 +223,22 @@ export const FALLBACK_FEATURED_PROJECTS: ProjectData[] = [
     featured: true,
     hidden: false,
     priorityValue: 9,
+    media: [
+      {
+        _key: 'm2-1',
+        _type: 'projectMediaImage',
+        asset: {
+          url: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1200&q=80',
+        },
+        alt: 'Urban Traffic Sensor Deployment and Edge AI',
+      },
+      {
+        _key: 'm2-2',
+        _type: 'projectMediaYoutube',
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        title: 'Edge AI Detection Demonstration',
+      },
+    ],
   },
   {
     _id: 'proj-3',
@@ -218,6 +254,24 @@ export const FALLBACK_FEATURED_PROJECTS: ProjectData[] = [
     featured: true,
     hidden: false,
     priorityValue: 8,
+    media: [
+      {
+        _key: 'm3-1',
+        _type: 'projectMediaImage',
+        asset: {
+          url: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&q=80',
+        },
+        alt: 'Casamento Booking Experience & Calendar',
+      },
+      {
+        _key: 'm3-2',
+        _type: 'projectMediaImage',
+        asset: {
+          url: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?auto=format&fit=crop&w=1200&q=80',
+        },
+        alt: 'Event Management Dashboard',
+      },
+    ],
   },
   {
     _id: 'proj-4',
@@ -232,6 +286,16 @@ export const FALLBACK_FEATURED_PROJECTS: ProjectData[] = [
     featured: true,
     hidden: false,
     priorityValue: 7,
+    media: [
+      {
+        _key: 'm4-1',
+        _type: 'projectMediaImage',
+        asset: {
+          url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+        },
+        alt: 'Agentic Graph Topology and State Machine',
+      },
+    ],
   },
 ];
 
@@ -301,6 +365,20 @@ export async function getFeaturedProjects(): Promise<ProjectData[]> {
     return data && data.length > 0 ? data : FALLBACK_FEATURED_PROJECTS;
   } catch (error) {
     console.warn('[Sanity Client] Fetch failed for featured projects, falling back to local defaults:', error);
+    return FALLBACK_FEATURED_PROJECTS;
+  }
+}
+
+export async function getAllProjects(): Promise<ProjectData[]> {
+  'use cache';
+  if (!client) {
+    return FALLBACK_FEATURED_PROJECTS;
+  }
+  try {
+    const data = await client.fetch<ProjectData[]>(allProjectsQuery);
+    return data && data.length > 0 ? data : FALLBACK_FEATURED_PROJECTS;
+  } catch (error) {
+    console.warn('[Sanity Client] Fetch failed for all projects, falling back to local defaults:', error);
     return FALLBACK_FEATURED_PROJECTS;
   }
 }

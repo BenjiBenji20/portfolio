@@ -1,4 +1,4 @@
-import { defineField, defineType } from 'sanity';
+import { defineArrayMember, defineField, defineType } from 'sanity';
 
 export const projectType = defineType({
   name: 'project',
@@ -92,6 +92,193 @@ export const projectType = defineType({
           title: 'Alt Text',
           type: 'string',
           initialValue: 'Project logo',
+        }),
+      ],
+    }),
+    defineField({
+      name: 'media',
+      title: 'Media & Gallery Assets',
+      description: 'Images and videos used as project card backgrounds and full-bleed carousels',
+      type: 'array',
+      of: [
+        // 1. Image Asset
+        defineArrayMember({
+          name: 'projectMediaImage',
+          title: 'Image',
+          type: 'image',
+          options: { hotspot: true },
+          fields: [
+            defineField({
+              name: 'alt',
+              title: 'Alt Text',
+              type: 'string',
+              description: 'Accessible description of the image',
+            }),
+            defineField({
+              name: 'caption',
+              title: 'Caption',
+              type: 'string',
+            }),
+          ],
+          preview: {
+            select: {
+              title: 'alt',
+              subtitle: 'caption',
+              media: 'asset',
+            },
+            prepare({ title, subtitle, media }) {
+              return {
+                title: title || 'Project Image',
+                subtitle: subtitle || 'Image asset',
+                media,
+              };
+            },
+          },
+        }),
+
+        // 2. Native Sanity CDN Video
+        defineArrayMember({
+          name: 'projectMediaSanityVideo',
+          title: 'Native Sanity Video',
+          type: 'file',
+          options: {
+            accept: 'video/mp4,video/webm,video/quicktime',
+          },
+          fields: [
+            defineField({
+              name: 'title',
+              title: 'Video Title / Label',
+              type: 'string',
+            }),
+            defineField({
+              name: 'poster',
+              title: 'Video Poster / Cover Image',
+              type: 'image',
+              description: 'Thumbnail displayed prior to playback or in low-power modes',
+              options: { hotspot: true },
+            }),
+            defineField({
+              name: 'caption',
+              title: 'Caption',
+              type: 'string',
+            }),
+          ],
+          preview: {
+            select: {
+              title: 'title',
+              subtitle: 'caption',
+              media: 'poster',
+            },
+            prepare({ title, subtitle, media }) {
+              return {
+                title: title || 'Native Video Asset',
+                subtitle: subtitle || 'Uploaded to Sanity CDN',
+                media,
+              };
+            },
+          },
+        }),
+
+        // 3. YouTube Embed
+        defineArrayMember({
+          name: 'projectMediaYoutube',
+          title: 'YouTube Embed',
+          type: 'object',
+          fields: [
+            defineField({
+              name: 'url',
+              title: 'YouTube URL',
+              type: 'url',
+              description: 'Standard watch link (e.g. https://www.youtube.com/watch?v=...) or short link',
+              validation: (Rule) =>
+                Rule.required().custom((url) => {
+                  if (!url) return true;
+                  const isYouTube = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)/.test(url);
+                  return isYouTube ? true : 'Must be a valid YouTube URL';
+                }),
+            }),
+            defineField({
+              name: 'title',
+              title: 'Video Title',
+              type: 'string',
+            }),
+            defineField({
+              name: 'poster',
+              title: 'Custom Thumbnail / Poster',
+              type: 'image',
+              description: 'Optional custom cover image override',
+            }),
+            defineField({
+              name: 'caption',
+              title: 'Caption',
+              type: 'string',
+            }),
+          ],
+          preview: {
+            select: {
+              title: 'title',
+              subtitle: 'url',
+              media: 'poster',
+            },
+            prepare({ title, subtitle, media }) {
+              return {
+                title: title || 'YouTube Video',
+                subtitle: subtitle || 'YouTube Embed',
+                media,
+              };
+            },
+          },
+        }),
+
+        // 4. Vimeo Embed
+        defineArrayMember({
+          name: 'projectMediaVimeo',
+          title: 'Vimeo Embed',
+          type: 'object',
+          fields: [
+            defineField({
+              name: 'url',
+              title: 'Vimeo URL',
+              type: 'url',
+              description: 'Vimeo video URL (e.g. https://vimeo.com/123456789)',
+              validation: (Rule) =>
+                Rule.required().custom((url) => {
+                  if (!url) return true;
+                  const isVimeo = /vimeo\.com\/\d+/.test(url);
+                  return isVimeo ? true : 'Must be a valid Vimeo video URL';
+                }),
+            }),
+            defineField({
+              name: 'title',
+              title: 'Video Title',
+              type: 'string',
+            }),
+            defineField({
+              name: 'poster',
+              title: 'Custom Thumbnail / Poster',
+              type: 'image',
+              description: 'Optional custom cover image override',
+            }),
+            defineField({
+              name: 'caption',
+              title: 'Caption',
+              type: 'string',
+            }),
+          ],
+          preview: {
+            select: {
+              title: 'title',
+              subtitle: 'url',
+              media: 'poster',
+            },
+            prepare({ title, subtitle, media }) {
+              return {
+                title: title || 'Vimeo Video',
+                subtitle: subtitle || 'Vimeo Embed',
+                media,
+              };
+            },
+          },
         }),
       ],
     }),

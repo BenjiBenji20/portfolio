@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { getContactData, getProfile } from '@/sanity/lib/client';
 import { HeaderNav } from './HeaderNav';
 import { ProfileSidebar } from './ProfileSidebar';
+import { SidebarContainer } from './SidebarContainer';
 import { ContactSection } from '@/components/contact/ContactSection';
 
 interface AppShellProps {
@@ -70,9 +71,11 @@ export function AppShell({ children }: AppShellProps) {
       <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-10 space-y-16">
         <div className="flex flex-col md:flex-row md:items-start gap-8 lg:gap-12">
           {/* Persistent Profile Sidebar with Suspense */}
-          <Suspense fallback={<SidebarSkeleton />}>
-            <AsyncSidebar />
-          </Suspense>
+          <SidebarContainer>
+            <Suspense fallback={<SidebarSkeleton />}>
+              <AsyncSidebar />
+            </Suspense>
+          </SidebarContainer>
 
           {/* Dynamic Page Content Slot */}
           <main className="flex-1 min-w-0">{children}</main>

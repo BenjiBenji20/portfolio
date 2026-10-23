@@ -94,6 +94,74 @@ export const featuredProjectsQuery = `*[_type == "project" && featured == true &
     alt,
     hotspot
   },
+  media[] {
+    _key,
+    _type,
+    alt,
+    title,
+    caption,
+    url,
+    hotspot,
+    asset->{
+      _id,
+      url,
+      mimeType,
+      size
+    },
+    poster {
+      asset->{ _id, url },
+      alt,
+      hotspot
+    }
+  },
+  website,
+  repository,
+  techStacks,
+  status,
+  dateStarted,
+  dateFinished,
+  featured,
+  hidden,
+  priorityValue
+}`;
+
+export const allProjectsQuery = `*[_type == "project" && hidden != true] | order(priorityValue desc, dateStarted desc, _createdAt desc){
+  _id,
+  title,
+  slug,
+  shortDescription,
+  projectType,
+  employer,
+  collaborators[] {
+    name,
+    role,
+    url
+  },
+  logo {
+    asset->{ _id, url },
+    alt,
+    hotspot
+  },
+  media[] {
+    _key,
+    _type,
+    alt,
+    title,
+    caption,
+    url,
+    hotspot,
+    asset->{
+      _id,
+      url,
+      mimeType,
+      size
+    },
+    poster {
+      asset->{ _id, url },
+      alt,
+      hotspot
+    }
+  },
   website,
   repository,
   techStacks,

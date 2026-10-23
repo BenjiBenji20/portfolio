@@ -123,15 +123,79 @@ export interface ProjectCollaborator {
   url?: string;
 }
 
+export type ProjectMediaType =
+  | 'projectMediaImage'
+  | 'projectMediaSanityVideo'
+  | 'projectMediaYoutube'
+  | 'projectMediaVimeo';
+
+export interface ProjectMediaImageItem {
+  _key: string;
+  _type: 'projectMediaImage';
+  asset?: {
+    _ref?: string;
+    _id?: string;
+    url?: string;
+  };
+  alt?: string;
+  caption?: string;
+  hotspot?: {
+    x: number;
+    y: number;
+    height: number;
+    width: number;
+  };
+}
+
+export interface ProjectMediaSanityVideoItem {
+  _key: string;
+  _type: 'projectMediaSanityVideo';
+  asset?: {
+    _ref?: string;
+    _id?: string;
+    url?: string;
+    mimeType?: string;
+    size?: number;
+  };
+  title?: string;
+  poster?: SanityImageReference;
+  caption?: string;
+}
+
+export interface ProjectMediaYouTubeItem {
+  _key: string;
+  _type: 'projectMediaYoutube';
+  url: string;
+  title?: string;
+  poster?: SanityImageReference;
+  caption?: string;
+}
+
+export interface ProjectMediaVimeoItem {
+  _key: string;
+  _type: 'projectMediaVimeo';
+  url: string;
+  title?: string;
+  poster?: SanityImageReference;
+  caption?: string;
+}
+
+export type ProjectMediaItem =
+  | ProjectMediaImageItem
+  | ProjectMediaSanityVideoItem
+  | ProjectMediaYouTubeItem
+  | ProjectMediaVimeoItem;
+
 export interface ProjectData {
   _id?: string;
   title: string;
-  slug: { current: string };
+  slug: { current: string } | string;
   shortDescription: string;
   projectType?: string; // RAG, Public Site, AI, Automation, SaaS
   employer?: string;
   collaborators?: ProjectCollaborator[];
   logo?: SanityImageReference;
+  media?: ProjectMediaItem[];
   website?: string;
   repository?: string;
   techStacks?: string[];

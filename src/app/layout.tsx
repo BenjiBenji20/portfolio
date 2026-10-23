@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Benji I. Cañones | Junior Backend Developer',
+  title: 'BENJINEER | Benji I. Cañones',
   description:
     'Portfolio and engineering blog of Benji I. Cañones, Junior Backend Developer specializing in RAG systems, scalable architectures, and AI integrations.',
 };

@@ -27,7 +27,7 @@ export const client = projectId
     projectId,
     dataset,
     apiVersion,
-    useCdn: true,
+    useCdn: process.env.NEXT_PUBLIC_ENVIRONMENT === 'development' ? true : false,
   })
   : null;
 

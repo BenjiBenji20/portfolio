@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { FiArrowUpRight, FiGithub, FiGlobe } from 'react-icons/fi';
 import type { ProjectData } from '@/types/sanity';
+import { urlForImage } from '@/sanity/lib/image';
 
 interface FeaturedProjectsGridProps {
   projects: ProjectData[];
@@ -17,6 +19,7 @@ export function FeaturedProjectsGrid({ projects }: FeaturedProjectsGridProps) {
             ? project.slug
             : project.slug?.current || project._id;
         const isHiddenOnMobile = idx >= 2;
+        const logoUrl = urlForImage(project.logo);
 
         return (
           <article
@@ -26,12 +29,24 @@ export function FeaturedProjectsGrid({ projects }: FeaturedProjectsGridProps) {
             }`}
           >
             <div>
-              {/* Header: Title */}
+              {/* Header: Title & Optional Logo */}
               <div className="flex items-start justify-between gap-2">
                 <Link
                   href={`/blogs/${slug}`}
-                  className="group inline-flex items-center gap-1 text-sm font-semibold text-zinc-100 hover:text-sky-400 transition-colors"
+                  className="group inline-flex items-center gap-2 text-sm font-semibold text-zinc-100 hover:text-sky-400 transition-colors"
                 >
+                  {logoUrl && (
+                    <div className="relative w-8 h-8 shrink-0 overflow-hidden rounded-full bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center">
+                      <Image
+                        src={logoUrl}
+                        alt={project.logo?.alt || `${project.title} logo`}
+                        fill
+                        sizes="20px"
+                        className="object-contain p-0.5 rounded-full"
+                        unoptimized
+                      />
+                    </div>
+                  )}
                   <span className="line-clamp-1">{project.title}</span>
                   <FiArrowUpRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-sky-400 transition-colors shrink-0" />
                 </Link>

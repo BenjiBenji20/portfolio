@@ -27,7 +27,7 @@ export const client = projectId
     projectId,
     dataset,
     apiVersion,
-    useCdn: false,
+    useCdn: true,
   })
   : null;
 

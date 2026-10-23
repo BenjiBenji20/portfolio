@@ -181,14 +181,17 @@ export const projectType = defineType({
       media: 'logo',
       featured: 'featured',
       hidden: 'hidden',
+      priorityValue: 'priorityValue',
     },
-    prepare({ title, subtitle, media, featured, hidden }) {
+    prepare({ title, subtitle, media, featured, hidden, priorityValue }) {
       const tags = [];
       if (featured) tags.push('★ Featured');
       if (hidden) tags.push('🚫 Hidden');
+      const priorityLabel = `Priority: ${priorityValue ?? 0}`;
+      const meta = [priorityLabel, subtitle || 'Project', ...tags].filter(Boolean);
       return {
         title,
-        subtitle: `${subtitle || 'Project'}${tags.length ? ` · ${tags.join(' ')}` : ''}`,
+        subtitle: meta.join(' · '),
         media,
       };
     },

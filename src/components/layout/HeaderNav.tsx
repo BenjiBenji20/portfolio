@@ -35,7 +35,7 @@ export function HeaderNav() {
             alt="App logo"
             width={20}
             height={20}
-            className="h-5 w-5 rounded object-contain"
+            className="h-5 w-5 rounded-full object-contain"
           />
           <span className="uppercase">{process.env.NEXT_PUBLIC_APP_NAME}</span>
         </Link>

@@ -58,4 +58,10 @@
   - Store the resulting asset reference (`_type: 'reference', _ref: asset._id`) within the target document patch.
 - **Structured Portable Text Generation:**
   - When transforming raw markdown or AI narrative into rich text fields, convert the payload into valid Sanity Block format (`_type: 'block'`, `children: [{ _type: 'span', text: '...' }]`) rather than dumping raw markdown strings into untyped text fields.
+
+---
+
+## 6. Display Priority Value Field
+- **ALWAYS DISPLAY Priority Value Field:**
+  - Display the priority value field in Sanity studio's schema item.
   

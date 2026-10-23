@@ -66,11 +66,14 @@ export const experienceType = defineType({
       title: 'position',
       subtitle: 'employer',
       isCurrent: 'isCurrent',
+      order: 'order',
     },
-    prepare({ title, subtitle, isCurrent }) {
+    prepare({ title, subtitle, isCurrent, order }) {
+      const orderLabel = `Order: ${order ?? 1}`;
+      const meta = [orderLabel, subtitle, isCurrent ? '(Current)' : null].filter(Boolean);
       return {
         title,
-        subtitle: `${subtitle || ''}${isCurrent ? ' (Current)' : ''}`,
+        subtitle: meta.join(' · '),
       };
     },
   },

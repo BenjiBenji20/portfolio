@@ -56,6 +56,14 @@ export const focusPillarType = defineType({
       title: 'title',
       subtitle: 'description',
       media: 'icon',
+      order: 'order',
+    },
+    prepare({ title, subtitle, media, order }) {
+      return {
+        title,
+        subtitle: `Order: ${order ?? 1} · ${subtitle || ''}`,
+        media,
+      };
     },
   },
 });

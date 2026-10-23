@@ -40,7 +40,7 @@ export default function ProjectsPage() {
           </p>
         </div>
         <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
-          {projects.length} Repositories
+          {projects.length} Projects
         </span>
       </div>
 

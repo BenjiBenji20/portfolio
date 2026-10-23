@@ -17,3 +17,8 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+/* Hide Google reCAPTCHA v3 floating badge while preserving branding in contact form */
+.grecaptcha-badge {
+  visibility: hidden !important;
+}

@@ -122,3 +122,15 @@ export const contactQuery = `*[_type == "contact"][0]{
   },
   subjects
 }`;
+
+export const emailContactInquiryTemplateQuery = `*[_type == "emailContactInquiryTemplate"][0]{
+  _id,
+  dispatchType,
+  icon {
+    asset->{ _id, url },
+    alt
+  },
+  subjectPrefix,
+  headline,
+  footerNote
+}`;

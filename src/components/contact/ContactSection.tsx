@@ -2,10 +2,30 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { FiMail, FiGithub, FiLinkedin, FiPhone, FiSend, FiCheck, FiMessageSquare } from 'react-icons/fi';
+import Script from 'next/script';
+import {
+  FiMail,
+  FiGithub,
+  FiLinkedin,
+  FiPhone,
+  FiSend,
+  FiCheck,
+  FiMessageSquare,
+  FiAlertCircle,
+  FiLoader,
+} from 'react-icons/fi';
 import { SiViber } from 'react-icons/si';
 import type { ContactChannel, ContactData } from '@/types/sanity';
 import { urlForImage } from '@/sanity/lib/image';
+
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (callback: () => void) => void;
+      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+    };
+  }
+}
 
 interface ContactSectionProps {
   contactData: ContactData;
@@ -55,7 +75,12 @@ export function ContactSection({ contactData }: ContactSectionProps) {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [content, setContent] = useState('');
-  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  // Status & feedback
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
   // Sanity subjects excluding native 'Other concern'
   const sanitySubjects = (
@@ -76,21 +101,91 @@ export function ContactSection({ contactData }: ContactSectionProps) {
     setSelectedSubject('Other concern');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !content) return;
+    if (status === 'submitting') return;
 
-    // Temporary handler (Resend & reCaptcha v3 to be connected via /api/contact)
-    setIsSubmitted(true);
-    setTimeout(() => {
+    setStatus('submitting');
+    setErrorMessage('');
+
+    try {
+      // 1. Generate Google reCAPTCHA v3 token just-in-time
+      let recaptchaToken = '';
+      if (siteKey && typeof window !== 'undefined' && window.grecaptcha) {
+        try {
+          await new Promise<void>((resolve) => {
+            if (window.grecaptcha?.ready) {
+              window.grecaptcha.ready(resolve);
+            } else {
+              resolve();
+            }
+          });
+          recaptchaToken = await window.grecaptcha.execute(siteKey, {
+            action: 'contact_submit',
+          });
+        } catch (recaptchaErr) {
+          console.error('[Contact Form] reCAPTCHA generation error:', recaptchaErr);
+        }
+      }
+
+      // If siteKey is present but token wasn't generated (e.g. adblocker blocking google scripts)
+      if (siteKey && !recaptchaToken) {
+        setStatus('error');
+        setErrorMessage(
+          'Security check could not load. Please disable ad-blockers or refresh and try again.'
+        );
+        return;
+      }
+
+      const effectiveSubject = isOther
+        ? customSubject.trim() || 'Other concern'
+        : selectedSubject;
+
+      // 2. Dispatch payload to consolidated /api/contact endpoint
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: name.trim() || undefined,
+          email: email.trim(),
+          phone: phone.trim() || undefined,
+          subject: effectiveSubject,
+          content: content.trim(),
+          recaptchaToken,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        setStatus('error');
+        setErrorMessage(
+          result.error || 'Failed to dispatch email. Please try again in a moment.'
+        );
+        return;
+      }
+
+      // 3. Success state: clear fields & show feedback
+      setStatus('success');
       setName('');
       setEmail('');
       setPhone('');
       setContent('');
       setCustomSubject('');
       setIsOther(false);
-      setIsSubmitted(false);
-    }, 4000);
+
+      // Auto-revert success message after 6 seconds
+      setTimeout(() => {
+        setStatus((current) => (current === 'success' ? 'idle' : current));
+      }, 6000);
+    } catch (err) {
+      console.error('[Contact Form] Submit exception:', err);
+      setStatus('error');
+      setErrorMessage('Network error occurred. Please check your connection and retry.');
+    }
   };
 
   // Reusable Left-side Header block
@@ -140,6 +235,14 @@ export function ContactSection({ contactData }: ContactSectionProps) {
 
   return (
     <section id="contact" className="w-full pt-10 border-t border-zinc-800/80">
+      {/* Load Google reCAPTCHA v3 script non-blockingly */}
+      {siteKey && (
+        <Script
+          src={`https://www.google.com/recaptcha/api.js?render=${siteKey}`}
+          strategy="lazyOnload"
+        />
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
         {/* DESKTOP LEFT COLUMN: Natural cohesive vertical spacing (Header + Socials) */}
         <div className="hidden lg:flex lg:col-span-5 flex-col space-y-8">
@@ -168,8 +271,9 @@ export function ContactSection({ contactData }: ContactSectionProps) {
                     <button
                       key={subj}
                       type="button"
+                      disabled={status === 'submitting'}
                       onClick={() => handleSubjectClick(subj)}
-                      className={`px-4 py-1.5 rounded-full text-xs transition-all cursor-pointer ${
+                      className={`px-4 py-1.5 rounded-full text-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                         isActive
                           ? 'bg-sky-400 text-zinc-950 font-semibold shadow-sm border border-sky-300'
                           : 'border border-zinc-700/90 text-zinc-300 hover:border-zinc-500 bg-transparent font-medium'
@@ -183,8 +287,9 @@ export function ContactSection({ contactData }: ContactSectionProps) {
                 {/* Native 'Other concern' option */}
                 <button
                   type="button"
+                  disabled={status === 'submitting'}
                   onClick={handleOtherClick}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all cursor-pointer ${
+                  className={`px-4 py-1.5 rounded-full text-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                     isOther
                       ? 'bg-sky-400 text-zinc-950 font-semibold shadow-sm border border-sky-300'
                       : 'border border-zinc-700/90 text-zinc-300 hover:border-zinc-500 bg-transparent font-medium'
@@ -199,10 +304,11 @@ export function ContactSection({ contactData }: ContactSectionProps) {
                 <div className="mt-3">
                   <input
                     type="text"
+                    disabled={status === 'submitting'}
                     value={customSubject}
                     onChange={(e) => setCustomSubject(e.target.value)}
                     placeholder="Write custom subject..."
-                    className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2 text-xs sm:text-sm outline-none transition-colors"
+                    className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2 text-xs sm:text-sm outline-none transition-colors disabled:opacity-60"
                     autoFocus
                   />
                 </div>
@@ -216,10 +322,11 @@ export function ContactSection({ contactData }: ContactSectionProps) {
               </label>
               <input
                 type="text"
+                disabled={status === 'submitting'}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="John Doe"
-                className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors"
+                className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors disabled:opacity-60"
               />
             </div>
 
@@ -231,10 +338,11 @@ export function ContactSection({ contactData }: ContactSectionProps) {
               <input
                 type="email"
                 required
+                disabled={status === 'submitting'}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="john@example.com"
-                className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors"
+                className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors disabled:opacity-60"
               />
             </div>
 
@@ -245,10 +353,11 @@ export function ContactSection({ contactData }: ContactSectionProps) {
               </label>
               <input
                 type="tel"
+                disabled={status === 'submitting'}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+1 (555) 000-0000"
-                className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors"
+                className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors disabled:opacity-60"
               />
             </div>
 
@@ -260,31 +369,73 @@ export function ContactSection({ contactData }: ContactSectionProps) {
               <textarea
                 required
                 rows={5}
+                disabled={status === 'submitting'}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Compose email..."
-                className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors resize-y"
+                className="w-full rounded-lg bg-zinc-900/60 border border-zinc-800/90 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-zinc-100 placeholder:text-zinc-600 px-3.5 py-2.5 text-xs sm:text-sm outline-none transition-colors resize-y disabled:opacity-60"
               />
             </div>
 
+            {/* Error Notification */}
+            {status === 'error' && errorMessage && (
+              <div className="flex items-start gap-2 p-3 rounded-lg border border-rose-500/30 bg-rose-950/20 text-rose-400 text-xs">
+                <FiAlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span className="leading-relaxed">{errorMessage}</span>
+              </div>
+            )}
+
             {/* Submit Button & Notification */}
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
               <div>
-                {isSubmitted && (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-sky-400 font-medium">
-                    <FiCheck className="w-3.5 h-3.5" />
-                    <span>Message received! Will get back to you shortly.</span>
+                {status === 'success' && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
+                    <FiCheck className="w-4 h-4 shrink-0" />
+                    <span>Message received! I will get back to you shortly.</span>
                   </span>
                 )}
               </div>
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-lg border border-zinc-700/80 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 px-5 py-2.5 text-xs sm:text-sm font-medium shadow-sm transition-colors cursor-pointer"
+                disabled={status === 'submitting'}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700/80 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 px-5 py-2.5 text-xs sm:text-sm font-medium shadow-sm transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <FiSend className="w-3.5 h-3.5" />
-                <span>Send Email</span>
+                {status === 'submitting' ? (
+                  <>
+                    <FiLoader className="w-3.5 h-3.5 animate-spin text-sky-400" />
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <FiSend className="w-3.5 h-3.5" />
+                    <span>Send Email</span>
+                  </>
+                )}
               </button>
             </div>
+
+            {/* Google reCAPTCHA Terms Attribution (Allows hiding floating badge compliant with Google TOS) */}
+            <p className="text-[11px] text-zinc-500 text-center sm:text-right pt-1 leading-relaxed">
+              This site is protected by reCAPTCHA and the Google{' '}
+              <a
+                href="https://policies.google.com/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-zinc-400 transition-colors"
+              >
+                Privacy Policy
+              </a>{' '}
+              and{' '}
+              <a
+                href="https://policies.google.com/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-zinc-400 transition-colors"
+              >
+                Terms of Service
+              </a>{' '}
+              apply.
+            </p>
           </form>
         </div>
 

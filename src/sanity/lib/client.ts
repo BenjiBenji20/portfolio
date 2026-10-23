@@ -1,6 +1,7 @@
 import { createClient } from 'next-sanity';
 import type {
   ContactData,
+  EmailContactInquiryTemplateData,
   Experience,
   FocusPillar,
   ProfileData,
@@ -9,6 +10,7 @@ import type {
 } from '@/types/sanity';
 import {
   contactQuery,
+  emailContactInquiryTemplateQuery,
   experiencesQuery,
   featuredProjectsQuery,
   focusPillarsQuery,
@@ -22,11 +24,11 @@ const apiVersion = process.env.NEXT_PUBLIC_SANITY_API_VERSION || '2024-01-01';
 
 export const client = projectId
   ? createClient({
-      projectId,
-      dataset,
-      apiVersion,
-      useCdn: false,
-    })
+    projectId,
+    dataset,
+    apiVersion,
+    useCdn: false,
+  })
   : null;
 
 // Defensive fallback seeded directly from Benji's resume
@@ -346,6 +348,32 @@ export async function getContactData(): Promise<ContactData> {
   } catch (error) {
     console.warn('[Sanity Client] Fetch failed for contact data, falling back to local defaults:', error);
     return FALLBACK_CONTACT;
+  }
+}
+
+export const FALLBACK_EMAIL_INQUIRY_TEMPLATE: EmailContactInquiryTemplateData = {
+  dispatchType: 'Visitor Contact Email',
+  subjectPrefix: '[Portfolio Contact]',
+  headline: 'New Inquiry from Portfolio Contact Form',
+  footerNote:
+    'Dispatched securely via Benjineer Portfolio. Reply directly to this email to respond.',
+};
+
+export async function getEmailContactInquiryTemplate(): Promise<EmailContactInquiryTemplateData> {
+  if (!client) {
+    return FALLBACK_EMAIL_INQUIRY_TEMPLATE;
+  }
+  try {
+    const data = await client.fetch<EmailContactInquiryTemplateData | null>(
+      emailContactInquiryTemplateQuery
+    );
+    return data || FALLBACK_EMAIL_INQUIRY_TEMPLATE;
+  } catch (error) {
+    console.warn(
+      '[Sanity Client] Fetch failed for email inquiry template, falling back to local defaults:',
+      error
+    );
+    return FALLBACK_EMAIL_INQUIRY_TEMPLATE;
   }
 }
 

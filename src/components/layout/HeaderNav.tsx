@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from "next/image";
 import { usePathname } from 'next/navigation';
 import { FiGithub } from 'react-icons/fi';
 import type { NavRoute } from '@/types/sanity';
@@ -29,10 +30,14 @@ export function HeaderNav() {
           href="/"
           className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100 hover:text-white transition-colors"
         >
-          <span className="flex h-5 w-5 items-center justify-center rounded bg-sky-500/10 text-sky-400 text-xs font-mono font-bold border border-sky-500/20">
-            B
-          </span>
-          <span className="uppercase">Benjineer</span>
+          <Image
+            src="/portfolio-logo.png"
+            alt="App logo"
+            width={20}
+            height={20}
+            className="h-5 w-5 rounded object-contain"
+          />
+          <span className="uppercase">{process.env.NEXT_PUBLIC_APP_NAME}</span>
         </Link>
 
         {/* Canonical Navigation Links: Home, Projects, Blogs */}
@@ -43,11 +48,10 @@ export function HeaderNav() {
               <Link
                 key={route.href}
                 href={route.href}
-                className={`relative px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors ${
-                  active
-                    ? 'text-zinc-100'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
+                className={`relative px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors ${active
+                  ? 'text-zinc-100'
+                  : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
               >
                 {route.label}
                 {active && (

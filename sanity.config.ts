@@ -27,6 +27,16 @@ export default defineConfig({
                   .documentId('contact')
               ),
 
+            // Singleton Email Contact Inquiry Template Document
+            S.listItem()
+              .title('Email Contact Inquiry Template')
+              .id('emailContactInquiryTemplate')
+              .child(
+                S.document()
+                  .schemaType('emailContactInquiryTemplate')
+                  .documentId('emailContactInquiryTemplate')
+              ),
+
             // Horizontal line separator
             S.divider(),
 

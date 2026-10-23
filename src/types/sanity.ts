@@ -151,6 +151,18 @@ export interface ContactChannel {
   icon?: SanityImageReference;
 }
 
+export interface EmailContactInquiryTemplateData {
+  _id?: string;
+  dispatchType?: string;
+  icon?: SanityImageReference;
+  subjectPrefix?: string;
+  headline?: string;
+  footerNote?: string;
+}
+
+// Deprecated alias for backwards compatibility
+export type EmailTemplateConfig = EmailContactInquiryTemplateData;
+
 export interface ContactData {
   _id?: string;
   header: string;
@@ -159,3 +171,4 @@ export interface ContactData {
   contacts: ContactChannel[];
   subjects: string[];
 }
+

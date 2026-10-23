@@ -354,9 +354,6 @@ function LightboxContent({
           <div className="space-y-5">
             {/* Category & Status Badges */}
             <div className="flex items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-sky-400 bg-sky-950/60 border border-sky-800/60 px-2.5 py-1">
-                {getCategoryLabel()}
-              </span>
               <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400">
                 {currentItem.readTime && (
                   <span className="flex items-center gap-1">
@@ -384,7 +381,7 @@ function LightboxContent({
             {currentItem.backlinks && currentItem.backlinks.length > 0 && (
               <div className="space-y-2">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                  Associated Links
+                  Also read in
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {currentItem.backlinks.map((link, idx) => (
@@ -406,9 +403,6 @@ function LightboxContent({
             {/* Detailed Description */}
             {description && (
               <div className="space-y-2 pt-2 border-t border-zinc-800/60">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                  Technical Context
-                </span>
                 <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-line">
                   {description}
                 </p>
@@ -420,7 +414,7 @@ function LightboxContent({
           {mediaItems.length > 1 && (
             <div className="pt-6 border-t border-zinc-800/80 mt-6 space-y-2">
               <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                Gallery Assets ({mediaItems.length})
+                Medias ({mediaItems.length})
               </span>
               <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-zinc-800">
                 {mediaItems.map((item, idx) => {

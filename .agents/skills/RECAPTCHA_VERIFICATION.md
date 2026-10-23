@@ -36,7 +36,7 @@
   - Evaluate the numeric risk score (ranging from 0.0 for automated bots to 1.0 for genuine human interaction).
   - Apply an initial threshold of 0.5 for general interactions. Adjust dynamically based on traffic analysis:
     - High-Value / Expensive Actions (e.g., streaming chat requests to Gemini): Require a score of 0.6 or higher to conserve model quota.
-    - Low-Frequency Actions (e.g., sending an email inquiry via EmailJS): Require a score of 0.5 or higher.
+    - Low-Frequency Actions (e.g., sending an email inquiry via Resend): Require a score of 0.5 or higher.
 - **Rejection Handling:**
   - Reject requests scoring below the configured threshold with an HTTP 403 Forbidden status and an explicit, sanitized bot-detection error code.
   - Log low-scoring anomalies with associated action names, timestamps, and score metrics for operational auditing without leaking personally identifiable information (PII).

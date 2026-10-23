@@ -80,7 +80,7 @@ export function ContactSection({ contactData }: ContactSectionProps) {
     e.preventDefault();
     if (!email || !content) return;
 
-    // Temporary handler (emailJS & reCaptcha v3 to be implemented tomorrow)
+    // Temporary handler (Resend & reCaptcha v3 to be connected via /api/contact)
     setIsSubmitted(true);
     setTimeout(() => {
       setName('');

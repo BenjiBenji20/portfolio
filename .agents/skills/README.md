@@ -15,7 +15,7 @@
 | `STREAMING_CHAT_RAG.md` | Conversational portfolio assistant, real-time GROQ grounding projections, citation deep linking, and low-latency token streaming handlers. |
 | `MERMAID_SYNTAX_VALIDATOR.md` | Generation prompts for top-down flowcharts and sequence diagrams, server-side syntax sanitization, and client-side safe SVG rendering with error fallbacks. |
 | `SANITY_GROQ_MUTATIONS.md` | Parameterized GROQ queries, descending `priority` field ordering, `useCdn: false` real-time ingestion, on-demand Next.js cache revalidation, and idempotent patches. |
-| `EMAILJS_DISPATCHER.md` | Contact form submission via EmailJS, input validation with Zod, bot score verification, environment variable isolation, and interactive submission feedback states. |
+| `RESEND_DISPATCHER.md` | Outbound email dispatching via Resend backend (portfolio contact form + agentic AI notifications), sandbox sender tweak (`onboarding@resend.dev`), Zod sanitization, and bot verification. |
 | `VERCEL_SERVERLESS_RUNTIME.md` | Vercel Hobby tier limits (10s timeouts), consolidated unified action gateway (`/api/gateway`), region pinning, cold start reduction, and cache headers. |
 
 ---
@@ -25,5 +25,5 @@
 - **AI Synthesis & Diagramming:** Load `GEMINI_STRUCTURED_GENERATOR.md` and `MERMAID_SYNTAX_VALIDATOR.md` when building devlog generation tasks, prompt templates, or diagram components.
 - **Interactive Assistant:** Load `STREAMING_CHAT_RAG.md` when building the chat drawer, prompt grounding, or streaming token endpoints.
 - **Data Layer & CMS:** Load `SANITY_GROQ_MUTATIONS.md` whenever querying data, mutating records, or configuring cache tags in Next.js.
-- **Outbound Messaging:** Load `EMAILJS_DISPATCHER.md` when constructing the contact section, handling email triggers, or verifying contact form payloads.
+- **Outbound Messaging:** Load `RESEND_DISPATCHER.md` when constructing the contact section, handling email triggers, configuring AI alerts, or verifying contact form payloads.
 - **Serverless & Performance:** Load `VERCEL_SERVERLESS_RUNTIME.md` before adding new API routes to ensure functions remain consolidated and well within Hobby tier constraints.

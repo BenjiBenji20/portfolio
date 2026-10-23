@@ -21,7 +21,7 @@
 ## 2. Execution Timeout Budgets & Payload Limits
 - **The 10-Second Budget Enforcement:**
   - Every incoming request must resolve well within the 10-second ceiling to prevent Vercel Gateway 504 Gateway Timeout errors.
-  - Measure round-trip latencies of external dependencies (Sanity client writes, Gemini generation, Google siteverify, EmailJS API) and allocate strict sub-budgets (e.g., reCAPTCHA: < 1s, Gemini: < 6s, Sanity: < 2s).
+  - Measure round-trip latencies of external dependencies (Sanity client writes, Gemini generation, Google siteverify, Resend API) and allocate strict sub-budgets (e.g., reCAPTCHA: < 1s, Gemini: < 6s, Sanity: < 2s).
 - **Graceful Timeout Degradation:**
   - If a generative task or upstream payload fetch nears the 8-second mark, abort the long-running operation gracefully using `AbortController` signals and return a clean HTTP 504 or fallback response rather than allowing the platform to forcefully terminate the runtime.
 - **Payload & Body Size Caps:**

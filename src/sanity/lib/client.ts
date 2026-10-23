@@ -1,4 +1,5 @@
 import { createClient } from 'next-sanity';
+import { cacheTag } from 'next/cache';
 import type {
   ContactData,
   EmailContactInquiryTemplateData,
@@ -301,6 +302,7 @@ export const FALLBACK_FEATURED_PROJECTS: ProjectData[] = [
 
 export async function getProfile(): Promise<ProfileData> {
   'use cache';
+  cacheTag('sanity:profile', 'sanity');
   if (!client) {
     return FALLBACK_PROFILE;
   }
@@ -315,6 +317,7 @@ export async function getProfile(): Promise<ProfileData> {
 
 export async function getSummaryOverview(): Promise<SummaryOverviewData> {
   'use cache';
+  cacheTag('sanity:summaryOverview', 'sanity');
   if (!client) {
     return FALLBACK_SUMMARY_OVERVIEW;
   }
@@ -329,6 +332,7 @@ export async function getSummaryOverview(): Promise<SummaryOverviewData> {
 
 export async function getFocusPillars(): Promise<FocusPillar[]> {
   'use cache';
+  cacheTag('sanity:focusPillar', 'sanity');
   if (!client) {
     return FALLBACK_FOCUS_PILLARS;
   }
@@ -343,6 +347,7 @@ export async function getFocusPillars(): Promise<FocusPillar[]> {
 
 export async function getExperiences(): Promise<Experience[]> {
   'use cache';
+  cacheTag('sanity:experience', 'sanity');
   if (!client) {
     return FALLBACK_EXPERIENCES;
   }
@@ -357,6 +362,7 @@ export async function getExperiences(): Promise<Experience[]> {
 
 export async function getFeaturedProjects(): Promise<ProjectData[]> {
   'use cache';
+  cacheTag('sanity:project', 'sanity');
   if (!client) {
     return FALLBACK_FEATURED_PROJECTS;
   }
@@ -371,6 +377,7 @@ export async function getFeaturedProjects(): Promise<ProjectData[]> {
 
 export async function getAllProjects(): Promise<ProjectData[]> {
   'use cache';
+  cacheTag('sanity:project', 'sanity');
   if (!client) {
     return FALLBACK_FEATURED_PROJECTS;
   }
@@ -417,6 +424,7 @@ export const FALLBACK_CONTACT: ContactData = {
 
 export async function getContactData(): Promise<ContactData> {
   'use cache';
+  cacheTag('sanity:contact', 'sanity');
   if (!client) {
     return FALLBACK_CONTACT;
   }
@@ -438,6 +446,8 @@ export const FALLBACK_EMAIL_INQUIRY_TEMPLATE: EmailContactInquiryTemplateData = 
 };
 
 export async function getEmailContactInquiryTemplate(): Promise<EmailContactInquiryTemplateData> {
+  'use cache';
+  cacheTag('sanity:emailContactInquiryTemplate', 'sanity');
   if (!client) {
     return FALLBACK_EMAIL_INQUIRY_TEMPLATE;
   }

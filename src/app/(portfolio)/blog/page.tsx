@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { getBlog, getAllProjects } from '@/sanity/lib/client';
 import { BlogContentClient } from '@/components/blog/BlogContentClient';
+import { BlogSkeleton } from '@/components/blog/BlogSkeleton';
 
 export const metadata: Metadata = {
   title: 'Blog | Software Engineering Works',
@@ -16,16 +17,9 @@ export default async function BlogPage() {
   ]);
 
   return (
-    <Suspense
-      fallback={
-        <div className="w-full space-y-6 animate-pulse">
-          <div className="h-8 w-64 bg-zinc-900 rounded-none" />
-          <div className="h-4 w-96 bg-zinc-900/60 rounded-none" />
-          <div className="h-64 w-full bg-zinc-900/40 rounded-none mt-8" />
-        </div>
-      }
-    >
+    <Suspense fallback={<BlogSkeleton />}>
       <BlogContentClient blog={blog} projects={projects} />
     </Suspense>
   );
 }
+

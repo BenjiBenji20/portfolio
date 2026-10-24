@@ -10,6 +10,11 @@ interface SanityWebhookPayload {
         current?: string;
       }
     | string;
+  projectSlug?: string;
+  project?: {
+    _ref?: string;
+    slug?: { current?: string } | string;
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -74,15 +79,59 @@ export async function POST(req: NextRequest) {
 
     if (docType === 'project') {
       revalidatePath('/projects', 'page');
+      revalidatePath('/blog', 'page');
       const slugVal =
         typeof body.slug === 'string' ? body.slug : body.slug?.current;
       if (slugVal) {
         revalidatePath(`/projects/${slugVal}`, 'page');
+        revalidatePath(`/blog/${slugVal}`, 'page');
       }
     }
 
     if (docType === 'blog') {
       revalidatePath('/blog', 'page');
+    }
+
+    if (docType === 'article') {
+      revalidatePath('/blog', 'page');
+      revalidatePath('/blog', 'layout');
+
+      const projectSlug =
+        typeof body.projectSlug === 'string'
+          ? body.projectSlug
+          : typeof body.project === 'object' && body.project !== null && 'slug' in body.project
+            ? (typeof body.project.slug === 'string'
+                ? body.project.slug
+                : body.project.slug?.current)
+            : undefined;
+
+      const articleSlug =
+        typeof body.slug === 'string' ? body.slug : body.slug?.current;
+
+      if (projectSlug) {
+        revalidatePath(`/blog/${projectSlug}`, 'page');
+        revalidatePath(`/blog/${projectSlug}/article`, 'page');
+        if (articleSlug) {
+          revalidatePath(`/blog/${projectSlug}/article/${articleSlug}`, 'page');
+        }
+      }
+    }
+
+    if (docType === 'workLog') {
+      revalidatePath('/blog', 'page');
+
+      const projectSlug =
+        typeof body.projectSlug === 'string'
+          ? body.projectSlug
+          : typeof body.project === 'object' && body.project !== null && 'slug' in body.project
+            ? (typeof body.project.slug === 'string'
+                ? body.project.slug
+                : body.project.slug?.current)
+            : undefined;
+
+      if (projectSlug) {
+        revalidatePath(`/blog/${projectSlug}`, 'page');
+      }
     }
 
     return NextResponse.json({

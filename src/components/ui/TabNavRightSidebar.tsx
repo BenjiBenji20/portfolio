@@ -5,38 +5,86 @@ import Link from 'next/link';
 import { FiMenu, FiX, FiFolder } from 'react-icons/fi';
 import type { ProjectData } from '@/types/sanity';
 
-interface BlogTableOfContentsProps {
-  projects: ProjectData[];
+export interface TabNavItem {
+  id?: string;
+  label: string;
+  href: string;
+  icon?: React.ReactNode;
 }
 
-export function BlogTableOfContents({ projects }: BlogTableOfContentsProps) {
+export interface TabNavRightSidebarProps {
+  title?: string;
+  items?: TabNavItem[];
+  projects?: ProjectData[];
+  emptyText?: string;
+}
+
+export function TabNavRightSidebar({
+  title = 'Projects',
+  items,
+  projects,
+  emptyText = 'No content found',
+}: TabNavRightSidebarProps) {
   const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
 
-  const renderProjectList = (onItemClick?: () => void) => {
-    if (projects.length === 0) {
+  const resolvedItems: TabNavItem[] = items
+    ? items
+    : projects
+      ? projects.map((project) => {
+          const slug =
+            typeof project.slug === 'string'
+              ? project.slug
+              : project.slug?.current || project._id;
+          return {
+            id: project._id,
+            label: project.title,
+            href: `/project/${slug}`,
+            icon: (
+              <FiFolder className="w-3.5 h-3.5 shrink-0 text-zinc-500 group-hover:text-sky-400 transition-colors" />
+            ),
+          };
+        })
+      : [];
+
+  const renderNavList = (onItemClick?: () => void) => {
+    if (resolvedItems.length === 0) {
       return (
-        <p className="font-mono text-xs text-zinc-500 py-2">No projects found</p>
+        <p className="font-mono text-xs text-zinc-500 py-2">{emptyText}</p>
       );
     }
 
     return (
       <ul className="space-y-1.5 font-mono text-xs">
-        {projects.map((project) => {
-          const slug =
-            typeof project.slug === 'string'
-              ? project.slug
-              : project.slug?.current || project._id;
-          const href = `/project/${slug}`;
+        {resolvedItems.map((item, idx) => {
+          const key = item.id || item.href || idx;
+          const isSectionAnchor = item.href.startsWith('#');
+
+          const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+            if (isSectionAnchor) {
+              const targetId = item.href.slice(1);
+              const targetElement = document.getElementById(targetId);
+              if (targetElement) {
+                e.preventDefault();
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                window.history.pushState(null, '', item.href);
+              }
+            }
+            if (onItemClick) {
+              onItemClick();
+            }
+          };
 
           return (
-            <li key={project._id}>
+            <li key={key}>
               <Link
-                href={href}
-                onClick={onItemClick}
+                href={item.href}
+                onClick={handleClick}
                 className="w-full text-left py-1.5 px-2 rounded-none transition-colors flex items-center gap-2 cursor-pointer text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/40 group"
               >
-                <FiFolder className="w-3.5 h-3.5 shrink-0 text-zinc-500 group-hover:text-sky-400 transition-colors" />
-                {project.title}
+                {item.icon ?? (
+                  <FiFolder className="w-3.5 h-3.5 shrink-0 text-zinc-500 group-hover:text-sky-400 transition-colors" />
+                )}
+                <span>{item.label}</span>
               </Link>
             </li>
           );
@@ -52,16 +100,16 @@ export function BlogTableOfContents({ projects }: BlogTableOfContentsProps) {
       {/* ========================================================= */}
       <aside className="hidden md:block w-56 lg:w-64 shrink-0 sticky top-24 self-start">
         <div className="max-h-[calc(100vh-8rem)] flex flex-col rounded-none bg-zinc-950/60 backdrop-blur-sm p-4">
-          {/* Header strictly named "Projects" */}
+          {/* Header */}
           <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5 mb-3">
             <h3 className="font-mono text-xs uppercase tracking-widest text-zinc-200 font-bold flex items-center gap-2">
-              Projects
+              {title}
             </h3>
           </div>
 
           {/* Scrollable List */}
           <div className="overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-800 flex-1">
-            {renderProjectList()}
+            {renderNavList()}
           </div>
         </div>
       </aside>
@@ -73,7 +121,7 @@ export function BlogTableOfContents({ projects }: BlogTableOfContentsProps) {
         <button
           type="button"
           onClick={() => setIsMobileModalOpen(true)}
-          aria-label="Open Table of Contents"
+          aria-label={`Open ${title}`}
           className="fixed top-16 right-4 z-50 w-11 h-11 bg-zinc-900/95 text-sky-400 border border-zinc-700/90 shadow-2xl flex items-center justify-center cursor-pointer transition-transform active:scale-95 backdrop-blur-md"
         >
           <FiMenu className="w-5 h-5" />
@@ -94,13 +142,13 @@ export function BlogTableOfContents({ projects }: BlogTableOfContentsProps) {
               {/* Modal Header */}
               <div className="flex items-center justify-between border-b border-zinc-800 pb-3 mb-3">
                 <h3 className="font-mono text-xs uppercase tracking-widest text-zinc-200 font-bold flex items-center gap-2">
-                  Projects
+                  {title}
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsMobileModalOpen(false)}
                   className="p-1 text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  aria-label="Close Projects Menu"
+                  aria-label={`Close ${title} Menu`}
                 >
                   <FiX className="w-4 h-4" />
                 </button>
@@ -108,7 +156,7 @@ export function BlogTableOfContents({ projects }: BlogTableOfContentsProps) {
 
               {/* Scrollable Items */}
               <div className="overflow-y-auto pr-1 flex-1 scrollbar-thin scrollbar-thumb-zinc-800">
-                {renderProjectList(() => setIsMobileModalOpen(false))}
+                {renderNavList(() => setIsMobileModalOpen(false))}
               </div>
             </div>
           </div>

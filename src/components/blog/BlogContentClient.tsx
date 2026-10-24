@@ -5,7 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { FiCalendar, FiClock } from 'react-icons/fi';
 import type { BlogData, ProjectData, ProjectMediaItem } from '@/types/sanity';
 import { PortableTextRenderer } from './PortableTextRenderer';
-import { BlogTableOfContents } from './BlogTableOfContents';
+import { TabNavRightSidebar } from '@/components/ui/TabNavRightSidebar';
 import { MediaLightboxModal } from '@/components/ui/MediaLightboxModal';
 
 interface BlogContentClientProps {
@@ -21,6 +21,7 @@ export function BlogContentClient({ blog, projects = [] }: BlogContentClientProp
   // URL progressive state: ?media=<key> and ?play=<key> directly derived
   const activeMediaKey = searchParams.get('media');
   const activePlayKey = searchParams.get('play');
+
 
   // Extract all media items from the content for the Lightbox gallery
   const allMediaItems = useMemo<ProjectMediaItem[]>(() => {
@@ -111,7 +112,7 @@ export function BlogContentClient({ blog, projects = [] }: BlogContentClientProp
       {/* ========================================================= */}
       {/* RIGHT SIDE: Floating Table of Contents ("Projects")       */}
       {/* ========================================================= */}
-      <BlogTableOfContents projects={projects} />
+      <TabNavRightSidebar projects={projects} />
 
       {/* ========================================================= */}
       {/* MODAL LIGHTBOX: Progressive Media Viewer                  */}

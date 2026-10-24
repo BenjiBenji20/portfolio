@@ -39,7 +39,10 @@ export default function RootLayout({
         <link rel="icon" href="/portfolio-logo.png?v=2" type="image/png" sizes="any" />
         <link rel="apple-touch-icon" href="/portfolio-logo.png?v=2" />
       </head>
-      <body className="min-h-screen bg-zinc-950 text-zinc-100 font-sans">
+      <body
+        className="min-h-screen bg-zinc-950 text-zinc-100 font-sans"
+        suppressHydrationWarning
+      >
         {children}
       </body>
     </html>

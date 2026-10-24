@@ -116,6 +116,7 @@ export function BlogContentClient({ blog, projects = [] }: BlogContentClientProp
         projects={projects}
         title="Project Blogs"
         emptyText="No Project Blogs Found"
+        route="/blog"
       />
 
       {/* ========================================================= */}

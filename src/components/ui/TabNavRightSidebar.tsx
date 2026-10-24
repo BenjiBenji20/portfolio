@@ -14,6 +14,7 @@ export interface TabNavItem {
 
 export interface TabNavRightSidebarProps {
   title?: string;
+  route?: string;
   items?: TabNavItem[];
   projects?: ProjectData[];
   emptyText?: string;
@@ -21,6 +22,7 @@ export interface TabNavRightSidebarProps {
 
 export function TabNavRightSidebar({
   title = 'Projects',
+  route = '/project',
   items,
   projects,
   emptyText = 'No content found',
@@ -38,7 +40,7 @@ export function TabNavRightSidebar({
           return {
             id: project._id,
             label: project.title,
-            href: `/project/${slug}`,
+            href: `${route}/${slug}`,
             icon: (
               <FiFolder className="w-3.5 h-3.5 shrink-0 text-zinc-500 group-hover:text-sky-400 transition-colors" />
             ),

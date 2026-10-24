@@ -53,27 +53,27 @@ export default async function BlogArticlePage({
   const articleSections: TabNavItem[] = [
     {
       id: 'sec-overview',
-      label: '1. Executive Overview',
+      label: 'Executive Overview',
       href: '#sec-overview',
     },
     {
       id: 'sec-architecture',
-      label: '2. Topology & System Design',
+      label: 'Topology & System Design',
       href: '#sec-architecture',
     },
     {
       id: 'sec-vector-isolation',
-      label: '3. Vector Ingestion Pipeline',
+      label: 'Vector Ingestion Pipeline',
       href: '#sec-vector-isolation',
     },
     {
       id: 'sec-benchmarks',
-      label: '4. Benchmarks & Latency',
+      label: 'Benchmarks & Latency',
       href: '#sec-benchmarks',
     },
     {
       id: 'sec-takeaways',
-      label: '5. Key Engineering Takeaways',
+      label: 'Key Engineering Takeaways',
       href: '#sec-takeaways',
     },
   ];
@@ -103,9 +103,6 @@ export default async function BlogArticlePage({
               <FiClock className="w-3.5 h-3.5 text-zinc-500" />
               6 min read
             </span>
-            <span className="text-sky-400 bg-sky-950/40 px-2 py-0.5 border border-sky-800/40 text-[10px] uppercase font-mono">
-              Deep Dive
-            </span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-zinc-100">
@@ -123,7 +120,6 @@ export default async function BlogArticlePage({
           {/* Section 1 */}
           <section id="sec-overview" className="scroll-mt-24 space-y-3">
             <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 tracking-tight flex items-center gap-2">
-              <span className="text-sky-400 font-mono text-base">01.</span>
               <span>Executive Overview</span>
             </h2>
             <p>
@@ -140,7 +136,6 @@ export default async function BlogArticlePage({
           {/* Section 2 */}
           <section id="sec-architecture" className="scroll-mt-24 space-y-3">
             <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 tracking-tight flex items-center gap-2">
-              <span className="text-sky-400 font-mono text-base">02.</span>
               <span>Topology & System Design</span>
             </h2>
             <p>
@@ -157,7 +152,6 @@ export default async function BlogArticlePage({
           {/* Section 3 */}
           <section id="sec-vector-isolation" className="scroll-mt-24 space-y-3">
             <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 tracking-tight flex items-center gap-2">
-              <span className="text-sky-400 font-mono text-base">03.</span>
               <span>Vector Ingestion Pipeline</span>
             </h2>
             <p>
@@ -182,7 +176,6 @@ export default async function BlogArticlePage({
           {/* Section 4 */}
           <section id="sec-benchmarks" className="scroll-mt-24 space-y-3">
             <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 tracking-tight flex items-center gap-2">
-              <span className="text-sky-400 font-mono text-base">04.</span>
               <span>Benchmarks & Latency</span>
             </h2>
             <p>
@@ -194,7 +187,6 @@ export default async function BlogArticlePage({
           {/* Section 5 */}
           <section id="sec-takeaways" className="scroll-mt-24 space-y-3">
             <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 tracking-tight flex items-center gap-2">
-              <span className="text-sky-400 font-mono text-base">05.</span>
               <span>Key Engineering Takeaways</span>
             </h2>
             <p>

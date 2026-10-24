@@ -24,19 +24,36 @@ export const projectType = defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'projectType',
+      title: 'Project Type / Category',
+      type: 'string',
+      placeholder: 'e.g. RAG, Edge AI, Public Site, AI, Automation',
+      description: 'Domain classification (e.g. RAG, Edge AI, SaaS Portal, Computer Vision, Automation)',
+    }),
+    defineField({
+      name: 'logo',
+      title: 'Project Logo / Icon',
+      type: 'image',
+      description: 'Optional square/circular logo or icon for the project',
+      options: {
+        hotspot: true,
+      },
+      fields: [
+        defineField({
+          name: 'alt',
+          title: 'Alt Text',
+          type: 'string',
+          initialValue: 'Project logo',
+        }),
+      ],
+    }),
+    defineField({
       name: 'shortDescription',
       title: 'Short Description',
       type: 'text',
       rows: 3,
       description: 'Concise summary displayed on project and home cards',
       validation: (Rule) => Rule.required().max(280),
-    }),
-    defineField({
-      name: 'projectType',
-      title: 'Project Type / Category',
-      type: 'string',
-      placeholder: 'e.g. RAG, Edge AI, Public Site, AI, Automation',
-      description: 'Domain classification (e.g. RAG, Edge AI, SaaS Portal, Computer Vision, Automation)',
     }),
     defineField({
       name: 'employer',
@@ -84,23 +101,6 @@ export const projectType = defineType({
             },
           },
         },
-      ],
-    }),
-    defineField({
-      name: 'logo',
-      title: 'Project Logo / Icon',
-      type: 'image',
-      description: 'Optional square/circular logo or icon for the project',
-      options: {
-        hotspot: true,
-      },
-      fields: [
-        defineField({
-          name: 'alt',
-          title: 'Alt Text',
-          type: 'string',
-          initialValue: 'Project logo',
-        }),
       ],
     }),
     defineField({

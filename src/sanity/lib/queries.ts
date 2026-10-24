@@ -84,6 +84,7 @@ export const featuredProjectsQuery = `*[_type == "project" && featured == true &
   shortDescription,
   projectType,
   employer,
+  organization,
   collaborators[] {
     name,
     role,
@@ -132,6 +133,7 @@ export const allProjectsQuery = `*[_type == "project" && hidden != true] | order
   shortDescription,
   projectType,
   employer,
+  organization,
   collaborators[] {
     name,
     role,
@@ -284,6 +286,7 @@ export const projectBySlugQuery = `*[_type == "project" && slug.current == $slug
   shortDescription,
   projectType,
   employer,
+  organization,
   collaborators[] {
     name,
     role,
@@ -339,7 +342,8 @@ export const articlesByProjectSlugQuery = `*[_type == "article" && (project->slu
   publishedAt,
   readTime,
   priorityValue,
-  author
+  author,
+  developers
 }`;
 
 export const workLogsByProjectSlugQuery = `*[_type == "workLog" && (project->slug.current == $projectSlug || projectSlug == $projectSlug)] | order(date desc, _createdAt desc){
@@ -350,6 +354,7 @@ export const workLogsByProjectSlugQuery = `*[_type == "workLog" && (project->slu
   date,
   description,
   commitSha,
+  developers,
   backlinks[] {
     _key,
     platform,
@@ -377,6 +382,7 @@ export const articleBySlugsQuery = `*[_type == "article" && (project->slug.curre
   readTime,
   priorityValue,
   author,
+  developers,
   content
 }`;
 

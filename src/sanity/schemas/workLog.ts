@@ -69,6 +69,17 @@ export const workLogType = defineType({
       of: [defineArrayMember({ type: 'backlinkItem' })],
     }),
     authorField,
+    defineField({
+      name: 'developers',
+      title: 'Contributing Developers',
+      type: 'array',
+      description:
+        'Names of developer(s) who created or collaborated on the associated commit or Pull Request',
+      of: [{ type: 'string' }],
+      options: {
+        layout: 'tags',
+      },
+    }),
   ],
   orderings: [
     {

@@ -77,6 +77,17 @@ export const articleType = defineType({
     }),
     authorField,
     defineField({
+      name: 'developers',
+      title: 'Contributing Developers',
+      type: 'array',
+      description:
+        'Names of developer(s) who contributed to, authored, or collaborated on this article or feature',
+      of: [{ type: 'string' }],
+      options: {
+        layout: 'tags',
+      },
+    }),
+    defineField({
       name: 'hidden',
       title: 'Hidden from Portfolio',
       type: 'boolean',

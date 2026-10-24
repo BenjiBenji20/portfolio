@@ -45,6 +45,13 @@ export const projectType = defineType({
       description: 'Optional company or client associated with this project',
     }),
     defineField({
+      name: 'organization',
+      title: 'Organization',
+      type: 'string',
+      description:
+        'Optional organization, research group, lab, or GitHub org affiliated with this project (e.g. Cañones Labs, DeepMind)',
+    }),
+    defineField({
       name: 'collaborators',
       title: 'Collaborators',
       type: 'array',

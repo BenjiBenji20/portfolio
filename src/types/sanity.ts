@@ -1,8 +1,10 @@
 export interface SanityImageReference {
   _type?: 'image';
   asset?: {
-    _ref: string;
-    _type: 'reference';
+    _ref?: string;
+    _type?: string;
+    _id?: string;
+    url?: string;
   };
   alt?: string;
   hotspot?: {
@@ -208,10 +210,12 @@ export interface ArticleData {
   projectSlug: string;
   excerpt: string;
   coverImage?: SanityImageReference;
+  imageUrl?: string;
   publishedAt: string;
   readTime?: string;
   priorityValue: number;
   author: 'Agentic Writer' | 'Human';
+  developers?: string[];
   hidden: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   content?: any[];
@@ -226,6 +230,7 @@ export interface WorkLogData {
   date: string;
   description: string;
   commitSha?: string;
+  developers?: string[];
   backlinks?: MediaBacklink[];
   author?: 'Agentic Writer' | 'Human';
 }
@@ -237,6 +242,7 @@ export interface ProjectData {
   shortDescription: string;
   projectType?: string; // RAG, Public Site, AI, Automation, SaaS
   employer?: string;
+  organization?: string;
   collaborators?: ProjectCollaborator[];
   logo?: SanityImageReference;
   media?: ProjectMediaItem[];

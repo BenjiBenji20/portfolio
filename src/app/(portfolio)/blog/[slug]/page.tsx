@@ -2,7 +2,12 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { FiGithub, FiGlobe } from 'react-icons/fi';
-import { getProjectBySlug, getAllProjects } from '@/data/fallbackData';
+import {
+  getProjectBySlug,
+  getAllProjects,
+  getArticlesByProjectSlug,
+  getWorkLogsByProjectSlug,
+} from '@/data/fallbackData';
 import { ProjectMediaCarousel } from '@/components/projects/ProjectMediaCarousel';
 import { BackButton } from '@/components/ui/BackButton';
 import { ProjectBlogTabs } from '@/components/blog/ProjectBlogTabs';
@@ -109,9 +114,11 @@ async function BlogDetailContent({
   params,
 }: BlogDetailPageProps) {
   const { slug } = await params;
-  const [project, allProjects] = await Promise.all([
+  const [project, allProjects, articles, workLogs] = await Promise.all([
     getProjectBySlug(slug),
     getAllProjects(),
+    getArticlesByProjectSlug(slug),
+    getWorkLogsByProjectSlug(slug),
   ]);
 
   if (!project) {
@@ -217,6 +224,9 @@ async function BlogDetailContent({
           <ProjectBlogTabs
             projectSlug={slug}
             projectTitle={project.title}
+            articles={articles}
+            workLogs={workLogs}
+            repositoryUrl={project.repository}
           />
         </div>
       </div>

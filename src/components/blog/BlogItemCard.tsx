@@ -15,7 +15,7 @@ export interface BlogItem {
   imageUrl?: string;
 }
 
-const DESCRIPTION_THRESHOLD = 110;
+const DESCRIPTION_THRESHOLD = 65;
 
 export function BlogItemCard({
   item,
@@ -25,7 +25,9 @@ export function BlogItemCard({
   projectSlug: string;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const articleHref = `/blog/${projectSlug}/article`;
+  const articleHref = item.slug
+    ? `/blog/${projectSlug}/article?article=${item.slug}`
+    : `/blog/${projectSlug}/article`;
   const description = item.excerpt || '';
   const isLongDescription = description.length > DESCRIPTION_THRESHOLD;
 
@@ -37,7 +39,6 @@ export function BlogItemCard({
             src={item.imageUrl}
             alt={item.title}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
-            imageClassName="group-hover:scale-105 transition-transform duration-300"
           />
         </div>
       )}
@@ -65,7 +66,7 @@ export function BlogItemCard({
             <Link href={articleHref}>{item.title}</Link>
           </h3>
 
-          {/* Excerpt with Strictly Locked Height & Read more (No card resize) */}
+          {/* Excerpt with strictly locked height - card NEVER expands, scrolls instead */}
           {description && (
             <div
               className={`mt-2 h-16 text-xs leading-relaxed ${
@@ -78,7 +79,7 @@ export function BlogItemCard({
                 <p>{description}</p>
               ) : !isExpanded ? (
                 <p>
-                  <span>{description.slice(0, DESCRIPTION_THRESHOLD)}... </span>
+                  <span>{description.slice(0, DESCRIPTION_THRESHOLD).trim()}... </span>
                   <button
                     type="button"
                     onClick={(e) => {

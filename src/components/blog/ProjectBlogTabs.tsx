@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { FiBookOpen, FiActivity, FiCheckCircle, FiClock } from 'react-icons/fi';
+import { Suspense } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { FiBookOpen, FiActivity, FiClock } from 'react-icons/fi';
 import { BlogItemCard, type BlogItem } from './BlogItemCard';
 
 interface ProjectBlogTabsProps {
@@ -9,12 +10,24 @@ interface ProjectBlogTabsProps {
   projectTitle: string;
 }
 
-export function ProjectBlogTabs({
+function ProjectBlogTabsContent({
   projectSlug,
   projectTitle,
 }: ProjectBlogTabsProps) {
-  // Tab state: 'articles' (default) or 'worklog' (Dev Log)
-  const [activeTab, setActiveTab] = useState<'articles' | 'worklog'>('articles');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // URL progressive state: ?tab=articles (default) vs ?tab=worklog
+  const tabParam = searchParams.get('tab');
+  const activeTab: 'articles' | 'worklog' =
+    tabParam === 'worklog' || tabParam === 'work-log' ? 'worklog' : 'articles';
+
+  const handleTabChange = (newTab: 'articles' | 'worklog') => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', newTab);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   // Sample blog items for the 2x2 grid
   const sampleBlogItems: BlogItem[] = [
@@ -99,7 +112,7 @@ export function ProjectBlogTabs({
         <div className="flex items-center gap-1 sm:gap-2">
           <button
             type="button"
-            onClick={() => setActiveTab('articles')}
+            onClick={() => handleTabChange('articles')}
             className={`flex items-center gap-2 px-3 sm:px-4 py-2 text-xs font-mono uppercase tracking-wider transition-all cursor-pointer ${
               activeTab === 'articles'
                 ? 'text-sky-400 font-bold border-b-2 border-sky-400 bg-sky-950/20'
@@ -112,7 +125,7 @@ export function ProjectBlogTabs({
 
           <button
             type="button"
-            onClick={() => setActiveTab('worklog')}
+            onClick={() => handleTabChange('worklog')}
             className={`flex items-center gap-2 px-3 sm:px-4 py-2 text-xs font-mono uppercase tracking-wider transition-all cursor-pointer ${
               activeTab === 'worklog'
                 ? 'text-sky-400 font-bold border-b-2 border-sky-400 bg-sky-950/20'
@@ -169,3 +182,12 @@ export function ProjectBlogTabs({
     </div>
   );
 }
+
+export function ProjectBlogTabs(props: ProjectBlogTabsProps) {
+  return (
+    <Suspense fallback={null}>
+      <ProjectBlogTabsContent {...props} />
+    </Suspense>
+  );
+}
+

@@ -27,15 +27,23 @@ function resolveNavInfo(
   }
 
   if (cleanPath === '/blog' || cleanPath.startsWith('/blog/')) {
-    return { href: path, label: 'Back to Blog' };
+    const label =
+      fallbackLabel && fallbackLabel !== 'Back to Projects'
+        ? fallbackLabel
+        : 'Back to Blog';
+    return { href: path, label };
   }
 
   if (cleanPath === '/projects' || cleanPath.startsWith('/projects/')) {
-    return { href: path, label: 'Back to Projects' };
+    const label =
+      fallbackLabel && fallbackLabel !== 'Back to Blog'
+        ? fallbackLabel
+        : 'Back to Projects';
+    return { href: path, label };
   }
 
   if (cleanPath.startsWith('/project/')) {
-    return { href: path, label: 'Back to Projects' };
+    return { href: path, label: fallbackLabel || 'Back to Projects' };
   }
 
   const segments = cleanPath.split('/').filter(Boolean);
@@ -59,21 +67,23 @@ export function BackButton({
     href: fallbackHref,
     label: fallbackLabel,
   });
-  const [hasHistory, setHasHistory] = useState<boolean>(false);
 
   useEffect(() => {
     try {
       let sourcePath: string | null = null;
       const currentPathname = window.location.pathname;
+      const getCleanPath = (p: string | null) => (p ? p.split('?')[0].split('#')[0] : null);
 
       const storedCurrent = sessionStorage.getItem('portfolio_current_route');
-      if (storedCurrent && storedCurrent !== currentPathname) {
+      const cleanCurrent = getCleanPath(storedCurrent);
+
+      const storedPrev = sessionStorage.getItem('portfolio_previous_route');
+      const cleanPrev = getCleanPath(storedPrev);
+
+      if (storedCurrent && cleanCurrent !== currentPathname) {
         sourcePath = storedCurrent;
-      } else {
-        const storedPrev = sessionStorage.getItem('portfolio_previous_route');
-        if (storedPrev && storedPrev !== currentPathname) {
-          sourcePath = storedPrev;
-        }
+      } else if (storedPrev && cleanPrev !== currentPathname) {
+        sourcePath = storedPrev;
       }
 
       if (!sourcePath && typeof document !== 'undefined' && document.referrer) {
@@ -83,7 +93,7 @@ export function BackButton({
             refUrl.origin === window.location.origin &&
             refUrl.pathname !== currentPathname
           ) {
-            sourcePath = refUrl.pathname + refUrl.search + refUrl.hash;
+            sourcePath = refUrl.pathname + refUrl.search;
           }
         } catch {
           // Ignore invalid URL
@@ -93,7 +103,6 @@ export function BackButton({
       if (sourcePath) {
         const resolved = resolveNavInfo(sourcePath, fallbackHref, fallbackLabel);
         setNavInfo(resolved);
-        setHasHistory(true);
       }
     } catch {
       // Ignore if sessionStorage is not accessible
@@ -106,12 +115,17 @@ export function BackButton({
       return;
     }
 
-    if (hasHistory) {
-      e.preventDefault();
-      startTransition(() => {
-        router.back();
-      });
+    e.preventDefault();
+
+    // Ensure the viewport is scrolled to top on navigation
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     }
+
+    startTransition(() => {
+      router.push(navInfo.href, { scroll: true });
+    });
   };
 
   return (
@@ -125,3 +139,4 @@ export function BackButton({
     </Link>
   );
 }
+

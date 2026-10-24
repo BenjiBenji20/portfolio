@@ -68,7 +68,7 @@ export function TabNavRightSidebar({
               if (targetElement) {
                 e.preventDefault();
                 targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                window.history.pushState(null, '', item.href);
+                window.history.replaceState(null, '', item.href);
               }
             }
             if (onItemClick) {

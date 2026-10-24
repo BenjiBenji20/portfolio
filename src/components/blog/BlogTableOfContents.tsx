@@ -26,7 +26,7 @@ export function BlogTableOfContents({ projects }: BlogTableOfContentsProps) {
             typeof project.slug === 'string'
               ? project.slug
               : project.slug?.current || project._id;
-          const href = `/project/${slug}/preview`;
+          const href = `/project/${slug}`;
 
           return (
             <li key={project._id}>

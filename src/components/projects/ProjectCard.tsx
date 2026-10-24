@@ -79,11 +79,10 @@ export function ProjectCard({
           {/* Short Description with Strictly Locked Height (Zero card resize on Read more) */}
           {description && (
             <div
-              className={`mt-2.5 h-16 text-xs leading-relaxed ${
-                isExpanded
+              className={`mt-2.5 h-16 text-xs leading-relaxed ${isExpanded
                   ? 'overflow-y-auto pr-1 text-zinc-300 scrollbar-thin scrollbar-thumb-zinc-700'
                   : 'overflow-hidden text-zinc-400'
-              }`}
+                }`}
             >
               {!isLongDescription ? (
                 <p>{description}</p>
@@ -157,7 +156,7 @@ export function ProjectCard({
         {/* Action Footer: View Project -> */}
         <div className="mt-4 pt-2.5 flex items-center justify-between border-t border-zinc-800/40">
           <Link
-            href={`/project/${slug}/overview`}
+            href={`/project/${slug}`}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-300 hover:text-sky-400 transition-all group/cta"
           >
             <span>View Project</span>

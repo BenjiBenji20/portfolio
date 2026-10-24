@@ -1,11 +1,12 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import type { Metadata } from 'next';
-import { FiArrowLeft, FiGithub, FiGlobe } from 'react-icons/fi';
+import { FiGithub, FiGlobe } from 'react-icons/fi';
 import { getProjectBySlug, getAllProjects } from '@/data/fallbackData';
 import { ProjectMediaCarousel } from '@/components/projects/ProjectMediaCarousel';
+import { BackButton } from '@/components/ui/BackButton';
 
-interface ProjectPreviewPageProps {
+interface ProjectDetailPageProps {
   params: Promise<{
     slug: string;
   }>;
@@ -13,7 +14,7 @@ interface ProjectPreviewPageProps {
 
 export async function generateMetadata({
   params,
-}: ProjectPreviewPageProps): Promise<Metadata> {
+}: ProjectDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
   const project = await getProjectBySlug(slug);
 
@@ -24,8 +25,8 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${project.title} - Preview | Benjineer Portfolio`,
-    description: project.shortDescription || `Preview of ${project.title}`,
+    title: `${project.title} | Benjineer Portfolio`,
+    description: project.shortDescription || `Project details for ${project.title}`,
   };
 }
 
@@ -39,9 +40,48 @@ export async function generateStaticParams() {
   }));
 }
 
-export default async function ProjectPreviewPage({
+function ProjectDetailSkeleton() {
+  return (
+    <div className="w-full space-y-8 animate-pulse">
+      {/* Top back navigation skeleton */}
+      <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
+        <BackButton fallbackHref="/projects" fallbackLabel="Back to Projects" />
+        <div className="h-5 w-24 bg-zinc-900 border border-zinc-800 rounded" />
+      </div>
+
+      {/* Main Container Skeleton */}
+      <div className="space-y-6">
+        <div className="w-full aspect-[16/9] border border-zinc-800/80 bg-zinc-900/60 rounded" />
+
+        <div className="space-y-4">
+          <div className="h-8 w-64 bg-zinc-800 rounded" />
+          <div className="space-y-2 max-w-3xl">
+            <div className="h-4 w-full bg-zinc-900 rounded" />
+            <div className="h-4 w-5/6 bg-zinc-900 rounded" />
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <div className="h-8 w-28 bg-zinc-900 border border-zinc-800 rounded" />
+            <div className="h-8 w-36 bg-zinc-900 border border-zinc-800 rounded" />
+          </div>
+
+          <div className="pt-4 border-t border-zinc-800/60 space-y-2">
+            <div className="h-3 w-20 bg-zinc-900 rounded" />
+            <div className="flex gap-2">
+              <div className="h-6 w-16 bg-zinc-900 border border-zinc-800 rounded" />
+              <div className="h-6 w-20 bg-zinc-900 border border-zinc-800 rounded" />
+              <div className="h-6 w-14 bg-zinc-900 border border-zinc-800 rounded" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function ProjectDetailContent({
   params,
-}: ProjectPreviewPageProps) {
+}: ProjectDetailPageProps) {
   const { slug } = await params;
   const project = await getProjectBySlug(slug);
 
@@ -53,18 +93,20 @@ export default async function ProjectPreviewPage({
     <div className="w-full space-y-8 animate-in fade-in duration-200">
       {/* Top back navigation */}
       <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
-        <Link
-          href="/blog"
-          className="inline-flex items-center gap-2 text-xs font-mono text-zinc-400 hover:text-sky-400 transition-colors"
-        >
-          <FiArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Blog</span>
-        </Link>
-        {project.projectType && (
-          <span className="font-mono text-[10px] uppercase tracking-wider text-sky-400 bg-sky-950/40 px-2 py-0.5 border border-sky-800/40">
-            {project.projectType}
-          </span>
-        )}
+        <BackButton fallbackHref="/projects" fallbackLabel="Back to Projects" />
+        <div className="flex items-center gap-2">
+          {project.projectType && (
+            <span className="font-mono text-[10px] uppercase tracking-wider text-sky-400 bg-sky-950/40 px-2 py-0.5 border border-sky-800/40">
+              {project.projectType}
+            </span>
+          )}
+
+          {project.status && (
+            <span className="font-mono text-[10px] uppercase tracking-wider text-sky-400 bg-sky-950/40 px-2 py-0.5 border border-sky-800/40">
+              {project.status}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Main Preview Container */}
@@ -139,5 +181,15 @@ export default async function ProjectPreviewPage({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProjectDetailPage({
+  params,
+}: ProjectDetailPageProps) {
+  return (
+    <Suspense fallback={<ProjectDetailSkeleton />}>
+      <ProjectDetailContent params={params} />
+    </Suspense>
   );
 }

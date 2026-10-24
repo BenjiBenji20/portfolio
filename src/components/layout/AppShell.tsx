@@ -4,6 +4,7 @@ import { HeaderNav } from './HeaderNav';
 import { ProfileSidebar } from './ProfileSidebar';
 import { SidebarContainer } from './SidebarContainer';
 import { ContactSection } from '@/components/contact/ContactSection';
+import { NavigationTracker } from './NavigationTracker';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -83,6 +84,11 @@ export function AppShell({ children }: AppShellProps) {
       {/* Top Navigation */}
       <Suspense fallback={<HeaderNavSkeleton />}>
         <HeaderNav />
+      </Suspense>
+
+      {/* Navigation history tracker for dynamic BackButton behavior */}
+      <Suspense fallback={null}>
+        <NavigationTracker />
       </Suspense>
 
       {/* Main Grid Wrapper */}

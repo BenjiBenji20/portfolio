@@ -128,19 +128,6 @@ export function ArticleContentClient({
               {article.readTime}
             </span>
           )}
-          {article.author && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-300">
-              <FiUser className="w-3 h-3 text-sky-400" />
-              <span>{article.author}</span>
-            </span>
-          )}
-          {article.developers && article.developers.length > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400">
-              <FiUsers className="w-3 h-3 text-zinc-500" />
-              <span>By: {article.developers.join(', ')}</span>
-            </span>
-          )}
-
           {/* Cover Image Banner */}
           {coverImageUrl && (
             <div className="relative w-full aspect-[16/9] border border-zinc-800/80 bg-zinc-950/60 overflow-hidden shadow-xl">
@@ -154,18 +141,25 @@ export function ArticleContentClient({
           )}
         </div>
 
-
         <header className="space-y-4 pb-6 border-b border-zinc-800/80">
           <h1 className="text-2xl sm:text-3xl md:text-3xl font-extrabold tracking-tight text-zinc-100">
             {article.title}
           </h1>
+          <div className="flex items-center gap-3 text-xs font-mono text-zinc-400 flex-wrap">
+            {article.developers && article.developers.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400">
+                <FiUsers className="w-3 h-3 text-zinc-500" />
+                <span>By: {article.developers.join(', ')}</span>
+              </span>
+            )}
+          </div>
+
           {article.excerpt && (
             <p className="text-sm sm:text-base text-zinc-300 leading-relaxed max-w-3xl">
               {article.excerpt}
             </p>
           )}
         </header>
-
         {/* PortableText Narrative Body */}
         {article.content && article.content.length > 0 ? (
           <div className="space-y-4">

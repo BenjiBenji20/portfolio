@@ -123,7 +123,8 @@ export const featuredProjectsQuery = `*[_type == "project" && featured == true &
   dateFinished,
   featured,
   hidden,
-  priorityValue
+  priorityValue,
+  author
 }`;
 
 export const allProjectsQuery = `*[_type == "project" && hidden != true] | order(priorityValue desc, dateStarted desc, _createdAt desc){
@@ -172,7 +173,8 @@ export const allProjectsQuery = `*[_type == "project" && hidden != true] | order
   dateFinished,
   featured,
   hidden,
-  priorityValue
+  priorityValue,
+  author
 }`;
 
 export const contactQuery = `*[_type == "contact"][0]{
@@ -325,7 +327,8 @@ export const projectBySlugQuery = `*[_type == "project" && slug.current == $slug
   dateFinished,
   featured,
   hidden,
-  priorityValue
+  priorityValue,
+  author
 }`;
 
 export const articlesByProjectSlugQuery = `*[_type == "article" && (project->slug.current == $projectSlug || projectSlug == $projectSlug) && hidden != true] | order(priorityValue desc, publishedAt desc, _createdAt desc){

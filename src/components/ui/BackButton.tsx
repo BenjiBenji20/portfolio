@@ -72,26 +72,56 @@ export function BackButton({
     try {
       let sourcePath: string | null = null;
       const currentPathname = window.location.pathname;
-      const getCleanPath = (p: string | null) => (p ? p.split('?')[0].split('#')[0] : null);
+      const currentClean = currentPathname.split('?')[0].split('#')[0];
 
-      const storedCurrent = sessionStorage.getItem('portfolio_current_route');
-      const cleanCurrent = getCleanPath(storedCurrent);
-
-      const storedPrev = sessionStorage.getItem('portfolio_previous_route');
-      const cleanPrev = getCleanPath(storedPrev);
-
-      if (storedCurrent && cleanCurrent !== currentPathname) {
-        sourcePath = storedCurrent;
-      } else if (storedPrev && cleanPrev !== currentPathname) {
-        sourcePath = storedPrev;
+      let queue: string[] = [];
+      const stored = sessionStorage.getItem('portfolio_history_queue');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            queue = parsed;
+          }
+        } catch {
+          queue = [];
+        }
       }
 
+      // Find current page's index in the queue (searching backwards)
+      let currentIndex = -1;
+      for (let i = queue.length - 1; i >= 0; i--) {
+        const itemClean = queue[i].split('?')[0].split('#')[0];
+        if (itemClean === currentClean) {
+          currentIndex = i;
+          break;
+        }
+      }
+
+      // Search backwards before currentIndex for the nearest ancestor route
+      // Exclude:
+      // 1. Same page (clean path matches)
+      // 2. Any descendant / child route of current page (e.g. /blog/slug never backs to /blog/slug/article)
+      const searchStartIndex = currentIndex !== -1 ? currentIndex - 1 : queue.length - 1;
+      for (let i = searchStartIndex; i >= 0; i--) {
+        const candidate = queue[i];
+        const candidateClean = candidate.split('?')[0].split('#')[0];
+
+        if (candidateClean === currentClean) continue;
+        if (candidateClean.startsWith(currentClean + '/')) continue;
+
+        sourcePath = candidate;
+        break;
+      }
+
+      // External referrer fallback
       if (!sourcePath && typeof document !== 'undefined' && document.referrer) {
         try {
           const refUrl = new URL(document.referrer);
+          const refClean = refUrl.pathname.split('?')[0].split('#')[0];
           if (
             refUrl.origin === window.location.origin &&
-            refUrl.pathname !== currentPathname
+            refClean !== currentClean &&
+            !refClean.startsWith(currentClean + '/')
           ) {
             sourcePath = refUrl.pathname + refUrl.search;
           }
@@ -103,6 +133,8 @@ export function BackButton({
       if (sourcePath) {
         const resolved = resolveNavInfo(sourcePath, fallbackHref, fallbackLabel);
         setNavInfo(resolved);
+      } else {
+        setNavInfo({ href: fallbackHref, label: fallbackLabel });
       }
     } catch {
       // Ignore if sessionStorage is not accessible

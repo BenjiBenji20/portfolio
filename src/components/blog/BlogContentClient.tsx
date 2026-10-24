@@ -112,7 +112,11 @@ export function BlogContentClient({ blog, projects = [] }: BlogContentClientProp
       {/* ========================================================= */}
       {/* RIGHT SIDE: Floating Table of Contents ("Projects")       */}
       {/* ========================================================= */}
-      <TabNavRightSidebar projects={projects} />
+      <TabNavRightSidebar
+        projects={projects}
+        title="Project Blogs"
+        emptyText="No Project Blogs Found"
+      />
 
       {/* ========================================================= */}
       {/* MODAL LIGHTBOX: Progressive Media Viewer                  */}

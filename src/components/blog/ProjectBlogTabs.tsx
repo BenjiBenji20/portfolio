@@ -108,9 +108,6 @@ export function ProjectBlogTabs({
           >
             <FiBookOpen className="w-3.5 h-3.5" />
             <span>Articles</span>
-            <span className="text-[10px] px-1.5 py-0.2 bg-zinc-800 text-zinc-300 rounded-none ml-0.5">
-              {sampleBlogItems.length}
-            </span>
           </button>
 
           <button
@@ -124,9 +121,6 @@ export function ProjectBlogTabs({
           >
             <FiActivity className="w-3.5 h-3.5" />
             <span>Work Log</span>
-            <span className="text-[10px] px-1.5 py-0.2 bg-zinc-800 text-zinc-300 rounded-none ml-0.5">
-              {sampleWorkLogs.length}
-            </span>
           </button>
         </div>
 

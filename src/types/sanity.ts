@@ -219,6 +219,7 @@ export interface ProjectData {
   featured: boolean;
   hidden: boolean;
   priorityValue: number;
+  author?: 'Agentic Writer' | 'Human';
 }
 
 export interface ContactChannel {

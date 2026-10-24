@@ -1,4 +1,5 @@
 import { defineArrayMember, defineField, defineType } from 'sanity';
+import { authorField } from './fields/author';
 
 export const projectType = defineType({
   name: 'project',
@@ -350,6 +351,7 @@ export const projectType = defineType({
       initialValue: 0,
       validation: (Rule) => Rule.integer(),
     }),
+    authorField,
   ],
   orderings: [
     {
@@ -369,13 +371,15 @@ export const projectType = defineType({
       featured: 'featured',
       hidden: 'hidden',
       priorityValue: 'priorityValue',
+      author: 'author',
     },
-    prepare({ title, subtitle, media, featured, hidden, priorityValue }) {
+    prepare({ title, subtitle, media, featured, hidden, priorityValue, author }) {
       const tags = [];
       if (featured) tags.push('★ Featured');
       if (hidden) tags.push('🚫 Hidden');
       const priorityLabel = `Priority: ${priorityValue ?? 0}`;
-      const meta = [priorityLabel, subtitle || 'Project', ...tags].filter(Boolean);
+      const authorLabel = `Author: ${author || 'Human'}`;
+      const meta = [priorityLabel, authorLabel, subtitle || 'Project', ...tags].filter(Boolean);
       return {
         title,
         subtitle: meta.join(' · '),

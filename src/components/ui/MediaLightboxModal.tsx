@@ -408,11 +408,11 @@ function LightboxContent({
 
                 {/* Mobile Description with Read more... */}
                 {description && (
-                  <div className="text-xs text-zinc-300 leading-relaxed">
+                  <div className="text-xs text-zinc-300 leading-relaxed min-w-0 w-full break-words [overflow-wrap:anywhere]">
                     {!isLongDescription ? (
-                      <p>{description}</p>
+                      <p className="whitespace-pre-line break-words [overflow-wrap:anywhere]">{description}</p>
                     ) : !isMobileExpanded ? (
-                      <p>
+                      <p className="break-words [overflow-wrap:anywhere]">
                         <span>{description.slice(0, 110)}... </span>
                         <button
                           type="button"
@@ -423,8 +423,8 @@ function LightboxContent({
                         </button>
                       </p>
                     ) : (
-                      <div className="max-h-36 overflow-y-auto pr-1 text-zinc-200 scrollbar-thin scrollbar-thumb-zinc-700">
-                        <p>{description}</p>
+                      <div className="max-h-36 overflow-y-auto overflow-x-hidden pr-1 text-zinc-200 scrollbar-thin scrollbar-thumb-zinc-700 min-w-0 w-full break-words [overflow-wrap:anywhere]">
+                        <p className="whitespace-pre-line break-words [overflow-wrap:anywhere]">{description}</p>
                       </div>
                     )}
                   </div>
@@ -436,8 +436,8 @@ function LightboxContent({
           {/* ========================================================= */}
           {/* DESKTOP & IPAD ONLY: Right-Side Details Panel (Fixed)      */}
           {/* ========================================================= */}
-          <aside className="hidden md:flex w-80 lg:w-96 shrink-0 h-full flex-col justify-between border-l border-zinc-800 bg-zinc-950/95 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-800">
-            <div className="space-y-5">
+          <aside className="hidden md:flex w-80 lg:w-96 shrink-0 h-full flex-col justify-between border-l border-zinc-800 bg-zinc-950/95 p-6 overflow-y-auto overflow-x-hidden min-w-0 scrollbar-thin scrollbar-thumb-zinc-800">
+            <div className="space-y-5 min-w-0 w-full">
               {/* Read Time */}
               {currentItem.readTime && (
                 <div className="flex items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
@@ -488,13 +488,13 @@ function LightboxContent({
 
               {/* Detailed Description with Read more... */}
               {description && (
-                <div className="space-y-2 pt-2 border-t border-zinc-800/60">
+                <div className="space-y-2 pt-2 border-t border-zinc-800/60 min-w-0 w-full break-words [overflow-wrap:anywhere]">
                   {!isDesktopLongDesc ? (
-                    <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-line">
+                    <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">
                       {description}
                     </p>
                   ) : !isDesktopExpanded ? (
-                    <p className="text-xs text-zinc-300 leading-relaxed">
+                    <p className="text-xs text-zinc-300 leading-relaxed break-words [overflow-wrap:anywhere]">
                       <span>{description.slice(0, DESKTOP_DESC_THRESHOLD)}... </span>
                       <button
                         type="button"
@@ -505,9 +505,9 @@ function LightboxContent({
                       </button>
                     </p>
                   ) : (
-                    <div className="space-y-1">
-                      <div className="max-h-48 overflow-y-auto pr-1 text-xs text-zinc-300 leading-relaxed whitespace-pre-line scrollbar-thin scrollbar-thumb-zinc-700">
-                        <p>{description}</p>
+                    <div className="space-y-1 min-w-0 w-full">
+                      <div className="max-h-48 overflow-y-auto overflow-x-hidden pr-1 text-xs text-zinc-300 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere] scrollbar-thin scrollbar-thumb-zinc-700 min-w-0 w-full">
+                        <p className="break-words [overflow-wrap:anywhere]">{description}</p>
                       </div>
                       <button
                         type="button"

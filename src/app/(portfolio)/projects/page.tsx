@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { getAllProjects } from '@/data/fallbackData';
 import { ProjectsExplorer } from '@/components/projects/ProjectsExplorer';
+import { ProjectsSkeleton } from '@/components/projects/ProjectsSkeleton';
 
 export const metadata: Metadata = {
   title: 'Projects | Benjineer Portfolio',
@@ -8,7 +10,7 @@ export const metadata: Metadata = {
     'Tracked engineering repositories, architecture case studies, and systems built by Benji I. Cañones.',
 };
 
-export default async function ProjectsPage() {
+async function ProjectsContent() {
   const projects = await getAllProjects();
 
   return (
@@ -31,5 +33,13 @@ export default async function ProjectsPage() {
       {/* Interactive Explorer: Search, Icon Filters & 2-Column Masonry */}
       <ProjectsExplorer initialProjects={projects} />
     </div>
+  );
+}
+
+export default function ProjectsPage() {
+  return (
+    <Suspense fallback={<ProjectsSkeleton />}>
+      <ProjectsContent />
+    </Suspense>
   );
 }

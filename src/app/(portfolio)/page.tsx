@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { FiArrowUpRight } from 'react-icons/fi';
 import {
@@ -9,6 +10,7 @@ import {
 import { FocusPillars } from '@/components/home/FocusPillars';
 import { ExperienceTimeline } from '@/components/home/ExperienceTimeline';
 import { FeaturedProjectsGrid } from '@/components/home/FeaturedProjectsGrid';
+import { HomeSkeleton } from '@/components/home/HomeSkeleton';
 import type { PortableTextParagraph } from '@/types/sanity';
 
 function SummaryRenderer({ blocks }: { blocks?: PortableTextParagraph[] }) {
@@ -42,7 +44,7 @@ function SummaryRenderer({ blocks }: { blocks?: PortableTextParagraph[] }) {
   );
 }
 
-export default async function HomePage() {
+async function HomeContent() {
   const [summaryOverview, focusPillars, experiences, featuredProjects] =
     await Promise.all([
       getSummaryOverview(),
@@ -98,5 +100,13 @@ export default async function HomePage() {
         <FeaturedProjectsGrid projects={featuredProjects} />
       </section>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<HomeSkeleton />}>
+      <HomeContent />
+    </Suspense>
   );
 }

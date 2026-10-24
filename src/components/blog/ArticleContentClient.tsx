@@ -156,7 +156,7 @@ export function ArticleContentClient({
 
 
         <header className="space-y-4 pb-6 border-b border-zinc-800/80">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-zinc-100">
+          <h1 className="text-2xl sm:text-3xl md:text-3xl font-extrabold tracking-tight text-zinc-100">
             {article.title}
           </h1>
           {article.excerpt && (

@@ -91,7 +91,7 @@ export function BlogContentClient({ blog, projects = [] }: BlogContentClientProp
             )}
           </div>
 
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-zinc-100">
+          <h1 className="text-2xl sm:text-3xl md:text-3xl font-extrabold tracking-tight text-zinc-100">
             {blog.title}
           </h1>
         </header>

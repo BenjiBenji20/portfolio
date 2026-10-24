@@ -324,3 +324,59 @@ export const projectBySlugQuery = `*[_type == "project" && slug.current == $slug
   hidden,
   priorityValue
 }`;
+
+export const articlesByProjectSlugQuery = `*[_type == "article" && (project->slug.current == $projectSlug || projectSlug == $projectSlug) && hidden != true] | order(priorityValue desc, publishedAt desc, _createdAt desc){
+  _id,
+  title,
+  slug,
+  "projectSlug": coalesce(project->slug.current, projectSlug),
+  excerpt,
+  coverImage {
+    asset->{ _id, url },
+    alt,
+    hotspot
+  },
+  publishedAt,
+  readTime,
+  priorityValue,
+  author
+}`;
+
+export const workLogsByProjectSlugQuery = `*[_type == "workLog" && (project->slug.current == $projectSlug || projectSlug == $projectSlug)] | order(date desc, _createdAt desc){
+  _id,
+  title,
+  "projectSlug": coalesce(project->slug.current, projectSlug),
+  badge,
+  date,
+  description,
+  commitSha,
+  backlinks[] {
+    _key,
+    platform,
+    url,
+    icon {
+      asset->{ _id, url },
+      alt
+    }
+  },
+  author
+}`;
+
+export const articleBySlugsQuery = `*[_type == "article" && (project->slug.current == $projectSlug || projectSlug == $projectSlug) && slug.current == $articleSlug && hidden != true][0]{
+  _id,
+  title,
+  slug,
+  "projectSlug": coalesce(project->slug.current, projectSlug),
+  excerpt,
+  coverImage {
+    asset->{ _id, url },
+    alt,
+    hotspot
+  },
+  publishedAt,
+  readTime,
+  priorityValue,
+  author,
+  content
+}`;
+

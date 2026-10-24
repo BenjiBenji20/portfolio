@@ -6,6 +6,8 @@ import { projectType } from './project';
 import { contactType } from './contact';
 import { emailContactInquiryTemplateType } from './emailContactInquiryTemplate';
 import { blogType, backlinkItem } from './blog';
+import { articleType } from './article';
+import { workLogType } from './workLog';
 
 export const schemaTypes = [
   profileType,
@@ -17,4 +19,6 @@ export const schemaTypes = [
   emailContactInquiryTemplateType,
   blogType,
   backlinkItem,
+  articleType,
+  workLogType,
 ];

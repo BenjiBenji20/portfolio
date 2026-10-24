@@ -74,7 +74,7 @@ export default defineConfig({
             // Horizontal line separator
             S.divider(),
 
-            // Blog Preview
+            // Blog & Case Studies
             S.listItem()
               .title('Blog Preview')
               .id('blog')
@@ -83,6 +83,8 @@ export default defineConfig({
                   .schemaType('blog')
                   .documentId('blog')
               ),
+            S.documentTypeListItem('article').title('Articles'),
+            S.documentTypeListItem('workLog').title('Work Logs'),
           ]),
     }),
   ],

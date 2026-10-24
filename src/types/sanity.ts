@@ -200,6 +200,36 @@ export interface BlogData {
   content?: any[];
 }
 
+export interface ArticleData {
+  _id?: string;
+  title: string;
+  slug: { current: string } | string;
+  project?: { _ref: string; _type?: 'reference' };
+  projectSlug: string;
+  excerpt: string;
+  coverImage?: SanityImageReference;
+  publishedAt: string;
+  readTime?: string;
+  priorityValue: number;
+  author: 'Agentic Writer' | 'Human';
+  hidden: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  content?: any[];
+}
+
+export interface WorkLogData {
+  _id?: string;
+  title: string;
+  project?: { _ref: string; _type?: 'reference' };
+  projectSlug: string;
+  badge: string;
+  date: string;
+  description: string;
+  commitSha?: string;
+  backlinks?: MediaBacklink[];
+  author?: 'Agentic Writer' | 'Human';
+}
+
 export interface ProjectData {
   _id?: string;
   title: string;

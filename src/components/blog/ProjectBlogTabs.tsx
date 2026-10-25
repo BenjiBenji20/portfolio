@@ -57,10 +57,7 @@ function WorkLogRow({
     : '';
 
   return (
-    <div className="relative space-y-2 group">
-      {/* Timeline indicator dot */}
-      <span className="absolute -left-[21px] sm:-left-[29px] top-1.5 h-2.5 w-2.5 rounded-full bg-sky-500 ring-4 ring-zinc-950" />
-
+    <div className="relative group">
       {/* Header: Title, Badge, Date */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
         <h4 className="text-sm font-semibold text-zinc-100 flex items-center gap-2 flex-wrap">
@@ -297,7 +294,7 @@ function ProjectBlogTabsContent({
       ) : (
         /* Work Log / Dev Log Timeline with Collapsible Footer */
         workLogs.length > 0 ? (
-          <div className="space-y-6 border-l border-zinc-800/80 pl-4 sm:pl-6 ml-2 py-2">
+          <div className="space-y-6">
             {workLogs.map((log) => (
               <WorkLogRow
                 key={log._id || log.title}

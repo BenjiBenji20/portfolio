@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getProjectBySlug, getAllProjects } from '@/data/fallbackData';
 import { BackButton } from '@/components/ui/BackButton';
-import { ProjectPreview } from '@/components/ui/ProjectPreview';
+import { ProjectDetailClient } from '@/components/projects/ProjectDetailClient';
 
 interface ProjectDetailPageProps {
   params: Promise<{
@@ -88,15 +88,7 @@ async function ProjectDetailContent({
     notFound();
   }
 
-  return (
-    <div className="w-full space-y-8 animate-in fade-in duration-200">
-      <ProjectPreview
-        project={project}
-        backHref="/projects"
-        backLabel="Back to Projects"
-      />
-    </div>
-  );
+  return <ProjectDetailClient project={project} />;
 }
 
 export default function ProjectDetailPage({

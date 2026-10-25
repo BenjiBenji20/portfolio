@@ -328,7 +328,73 @@ export const projectBySlugQuery = `*[_type == "project" && slug.current == $slug
   featured,
   hidden,
   priorityValue,
-  author
+  author,
+  content[] {
+    ...,
+    _type == "projectMediaImage" => {
+      ...,
+      asset->{
+        _id,
+        url
+      },
+      backlinks[] {
+        _key,
+        platform,
+        url,
+        icon {
+          asset->{ _id, url }
+        }
+      }
+    },
+    _type == "projectMediaSanityVideo" => {
+      ...,
+      asset->{
+        _id,
+        url,
+        mimeType,
+        size
+      },
+      poster {
+        asset->{ _id, url }
+      },
+      backlinks[] {
+        _key,
+        platform,
+        url,
+        icon {
+          asset->{ _id, url }
+        }
+      }
+    },
+    _type == "projectMediaYoutube" => {
+      ...,
+      poster {
+        asset->{ _id, url }
+      },
+      backlinks[] {
+        _key,
+        platform,
+        url,
+        icon {
+          asset->{ _id, url }
+        }
+      }
+    },
+    _type == "projectMediaVimeo" => {
+      ...,
+      poster {
+        asset->{ _id, url }
+      },
+      backlinks[] {
+        _key,
+        platform,
+        url,
+        icon {
+          asset->{ _id, url }
+        }
+      }
+    }
+  }
 }`;
 
 export const articlesByProjectSlugQuery = `*[_type == "article" && (project->slug.current == $projectSlug || projectSlug == $projectSlug) && hidden != true] | order(priorityValue desc, publishedAt desc, _createdAt desc){

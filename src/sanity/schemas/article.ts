@@ -1,5 +1,6 @@
 import { defineArrayMember, defineField, defineType } from 'sanity';
 import { authorField } from './fields/author';
+import { StudioBlockQuote } from './components/StudioBlockQuote';
 
 export const articleType = defineType({
   name: 'article',
@@ -107,7 +108,7 @@ export const articleType = defineType({
             { title: 'Heading 1', value: 'h1' },
             { title: 'Heading 2', value: 'h2' },
             { title: 'Heading 3', value: 'h3' },
-            { title: 'Quote', value: 'blockquote' },
+            { title: 'Quote', value: 'blockquote', component: StudioBlockQuote },
           ],
           marks: {
             decorators: [

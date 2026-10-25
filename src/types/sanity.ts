@@ -264,6 +264,8 @@ export interface ProjectData {
   hidden: boolean;
   priorityValue: number;
   author?: 'Agentic Writer' | 'Human';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  content?: any[];
 }
 
 export interface ContactChannel {

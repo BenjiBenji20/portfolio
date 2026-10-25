@@ -209,6 +209,68 @@ export const FALLBACK_FEATURED_PROJECTS: ProjectData[] = [
                 alt: 'Vector Embeddings and Semantic Indexing',
             },
         ],
+        content: [
+            {
+                _key: 'pb-h2-1',
+                _type: 'block',
+                style: 'h2',
+                children: [{ _key: 'c1', _type: 'span', text: 'System Architecture & Data Flow' }],
+            },
+            {
+                _key: 'pb-p-1',
+                _type: 'block',
+                style: 'normal',
+                children: [
+                    {
+                        _key: 'c2',
+                        _type: 'span',
+                        text: 'IntelliChat operates as an enterprise RAG system built on FastAPI, Qdrant vector storage, and Google Cloud Tasks. When an enterprise tenant uploads proprietary datasets, background workers partition documents into semantic chunks with adaptive overlap before generating dense embeddings.',
+                    },
+                ],
+            },
+            {
+                _key: 'pb-mm-1',
+                _type: 'code',
+                language: 'mermaid',
+                code: 'flowchart TD\n  Client[Web Client] -->|Inquiry| Gateway[API Gateway]\n  Gateway -->|Token Budget Check| Engine[Orchestration Engine]\n  Engine -->|Vector Search| Qdrant[(Qdrant Vector DB)]\n  Engine -->|Context + Prompt| LLM[Gemini 1.5 Pro]\n  LLM -->|Streamed Response| Client',
+            },
+            {
+                _key: 'pb-h2-2',
+                _type: 'block',
+                style: 'h2',
+                children: [{ _key: 'c3', _type: 'span', text: 'Multi-Tenant Vector Isolation' }],
+            },
+            {
+                _key: 'pb-p-2',
+                _type: 'block',
+                style: 'normal',
+                children: [
+                    {
+                        _key: 'c4',
+                        _type: 'span',
+                        text: 'Tenant isolation is maintained cryptographically and at the collection filter level. Each vector search payload query strictly enforces organization-scoped metadata filters, preventing cross-tenant information leakage while operating over shared vector hardware.',
+                    },
+                ],
+            },
+            {
+                _key: 'pb-h2-3',
+                _type: 'block',
+                style: 'h2',
+                children: [{ _key: 'c5', _type: 'span', text: 'Production Reliability & Token Budgeting' }],
+            },
+            {
+                _key: 'pb-p-3',
+                _type: 'block',
+                style: 'normal',
+                children: [
+                    {
+                        _key: 'c6',
+                        _type: 'span',
+                        text: 'To avoid token exhaustion and unexpected billing spikes, dynamically sliding context windows evaluate prompt lengths against strict latency and token budgets. Non-essential historic conversation turns are compressed before dispatch.',
+                    },
+                ],
+            },
+        ],
     },
     {
         _id: 'proj-2',

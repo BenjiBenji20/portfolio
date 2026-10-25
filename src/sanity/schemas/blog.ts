@@ -1,5 +1,6 @@
 import { defineArrayMember, defineField, defineType } from 'sanity';
 import { backlinkItem, commonMediaFields } from './objects/media';
+import { StudioBlockQuote } from './components/StudioBlockQuote';
 
 export { backlinkItem, commonMediaFields };
 
@@ -46,7 +47,7 @@ export const blogType = defineType({
             { title: 'Heading 1', value: 'h1' },
             { title: 'Heading 2', value: 'h2' },
             { title: 'Heading 3', value: 'h3' },
-            { title: 'Quote', value: 'blockquote' },
+            { title: 'Quote', value: 'blockquote', component: StudioBlockQuote },
           ],
           marks: {
             decorators: [

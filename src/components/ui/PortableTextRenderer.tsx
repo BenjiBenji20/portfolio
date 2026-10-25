@@ -78,6 +78,87 @@ export interface PortableTextRendererProps {
   className?: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeMermaidBlocks(blocks: any[]): any[] {
+  if (!Array.isArray(blocks) || blocks.length === 0) return blocks;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result: any[] = [];
+  let i = 0;
+
+  while (i < blocks.length) {
+    const block = blocks[i];
+
+    if (block?._type === 'block' && (block?.style === 'normal' || !block?.style)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawText = block.children?.map((c: any) => c.text || '').join('').trim() || '';
+      const text = rawText.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').trim();
+
+      const isStart =
+        /^(?:graph\s+(?:TD|TB|BT|RL|LR)|flowchart\s+(?:TD|TB|BT|RL|LR)|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|gitGraph|mindmap|timeline|C4Context)/i.test(
+          text
+        ) || text.startsWith('```mermaid');
+
+      if (isStart) {
+        const diagramLines: string[] = [text];
+        let j = i + 1;
+
+        while (j < blocks.length) {
+          const nextBlock = blocks[j];
+          if (nextBlock?._type === 'block' && (nextBlock?.style === 'normal' || !nextBlock?.style)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const nextText = nextBlock.children?.map((c: any) => c.text || '').join('').trim() || '';
+            if (!nextText) break;
+            if (
+              /^(?:graph\s+|flowchart\s+|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|gitGraph|mindmap|timeline|C4Context)/i.test(
+                nextText
+              )
+            ) {
+              break;
+            }
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const isDiagramLine =
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              nextBlock.children?.some((c: any) => c.marks?.includes('code')) ||
+              /[-\\|=><\[\]\(\)\{\}]|subgraph|end|participant|actor|class\s+|style\s+/i.test(
+                nextText
+              );
+
+            if (isDiagramLine) {
+              diagramLines.push(nextText);
+              j++;
+            } else {
+              break;
+            }
+          } else {
+            break;
+          }
+        }
+
+        let chart = diagramLines.join('\n');
+        if (chart.startsWith('```mermaid')) {
+          chart = chart.replace(/^```mermaid\s*/i, '').replace(/\s*```$/, '');
+        }
+
+        result.push({
+          _key: block._key || `mermaid-${i}`,
+          _type: 'mermaid',
+          chart,
+        });
+
+        i = j;
+        continue;
+      }
+    }
+
+    result.push(block);
+    i++;
+  }
+
+  return result;
+}
+
 export function PortableTextRenderer({
   value,
   activePlayKey,
@@ -86,6 +167,8 @@ export function PortableTextRenderer({
   className = '',
 }: PortableTextRendererProps) {
   const [localPlayingKey, setLocalPlayingKey] = useState<string | null>(null);
+  const normalizedValue = normalizeMermaidBlocks(value);
+
 
   const isVideoPlaying = (key: string) => {
     return activePlayKey === key || localPlayingKey === key;
@@ -98,17 +181,36 @@ export function PortableTextRenderer({
 
   const components: PortableTextComponents = {
     block: {
-      normal: ({ children }) => {
-        // Handle inline markdown fenced mermaid block if author typed ```mermaid in a standard block
-        const textContent = Array.isArray(children)
-          ? children.map((c) => (typeof c === 'string' ? c : '')).join('')
-          : typeof children === 'string'
-          ? children
-          : '';
+      normal: ({ value, children }) => {
+        // Extract raw text directly from Sanity block spans (handles plain text, code decorators, and marks)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rawText =
+          (value as any)?.children
+            ?.map((span: { text?: string }) => span.text || '')
+            .join('') ||
+          (Array.isArray(children)
+            ? children.map((c) => (typeof c === 'string' ? c : '')).join('')
+            : typeof children === 'string'
+            ? children
+            : '');
 
-        const mermaidMatch = textContent.trim().match(/^```mermaid\s*([\s\S]*?)\s*```$/i);
-        if (mermaidMatch && mermaidMatch[1]) {
-          return <MermaidRenderer chart={mermaidMatch[1].trim()} />;
+        // Unescape literal '\n' characters if authored as an escaped string or single line
+        const unescaped = rawText.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').trim();
+
+        // Clean markdown code block fences (handles ```, ````, ```mermaid, ````text ```mermaid, etc.)
+        const strippedFences = unescaped
+          .replace(/^`{3,4}(?:text)?\s*/i, '')
+          .replace(/^`{3,4}(?:mermaid)?\s*/i, '')
+          .replace(/`{3,4}$/i, '')
+          .trim();
+
+        const isRawMermaid =
+          /^(?:graph\s+(?:TD|TB|BT|RL|LR)|flowchart\s+(?:TD|TB|BT|RL|LR)|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|gitGraph|mindmap|timeline|C4Context)/i.test(
+            strippedFences
+          );
+
+        if (isRawMermaid) {
+          return <MermaidRenderer chart={strippedFences} />;
         }
 
         return (
@@ -439,7 +541,8 @@ export function PortableTextRenderer({
 
   return (
     <div className={`portable-text-container ${className}`}>
-      <PortableText value={value} components={components} />
+      <PortableText value={normalizedValue} components={components} />
     </div>
   );
 }
+

@@ -7,6 +7,43 @@ interface MermaidRendererProps {
   className?: string;
 }
 
+function autoFormatMermaid(input: string): string {
+  let s = input
+    .replace(/^`{3,4}(?:text)?\s*/i, '')
+    .replace(/^`{3,4}(?:mermaid)?\s*/i, '')
+    .replace(/`{3,4}$/i, '')
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '  ')
+    .trim();
+
+  // If already multiline, return directly
+  if (s.includes('\n')) return s;
+
+  // 1. Flowchart / Graph single line:
+  if (/^(?:graph|flowchart)\s+(?:TD|TB|BT|RL|LR)/i.test(s)) {
+    s = s.replace(/^((?:graph|flowchart)\s+(?:TD|TB|BT|RL|LR))\s+/i, '$1\n  ');
+    s = s.replace(/(\]|[\)\}])\s+([A-Za-z0-9_]+(?:\s*\[|\s*\(|\s*\{|\s*-->|\s*-.->|\s*==>))/g, '$1\n  $2');
+    return s;
+  }
+
+  // 2. Sequence diagram single line:
+  if (/^sequenceDiagram/i.test(s)) {
+    s = s.replace(/^(sequenceDiagram)\s+/i, '$1\n  ');
+    s = s.replace(/\s+(autonumber|actor\s+|participant\s+|loop\s+|alt\s+|opt\s+|end\b|[A-Za-z0-9_]+->>|[A-Za-z0-9_]+-->>|[A-Za-z0-9_]+->)/g, '\n  $1');
+    return s;
+  }
+
+  // 3. State diagram single line:
+  if (/^stateDiagram(?:-v2)?/i.test(s)) {
+    s = s.replace(/^(stateDiagram(?:-v2)?)\s+/i, '$1\n  ');
+    s = s.replace(/\s+(\[\*\]|[A-Za-z0-9_]+)\s*-->/g, '\n  $1 -->');
+    return s;
+  }
+
+  return s;
+}
+
 export function MermaidRenderer({ chart, className = '' }: MermaidRendererProps) {
   const uniqueId = useId().replace(/[:]/g, '_');
   const [svgContent, setSvgContent] = useState<string | null>(null);
@@ -37,8 +74,11 @@ export function MermaidRenderer({ chart, className = '' }: MermaidRendererProps)
           securityLevel: 'loose',
         });
 
+        const sanitized = autoFormatMermaid(chart);
+        if (!sanitized) return;
+
         const id = `mermaid_${uniqueId}_${Math.random().toString(36).substring(2, 9)}`;
-        const { svg } = await mermaid.render(id, chart.trim());
+        const { svg } = await mermaid.render(id, sanitized);
 
         if (isMounted) {
           setSvgContent(svg);

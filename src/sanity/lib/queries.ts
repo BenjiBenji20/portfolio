@@ -77,7 +77,7 @@ export const experiencesQuery = `*[_type == "experience"] | order(order asc, _cr
   order
 }`;
 
-export const featuredProjectsQuery = `*[_type == "project" && featured == true && hidden != true] | order(priorityValue desc, _createdAt desc)[0...4]{
+export const featuredProjectsQuery = `*[_type == "project" && featured == true && hidden != true] | order(priorityValue desc, _createdAt desc){
   _id,
   title,
   slug,

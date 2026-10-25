@@ -9,7 +9,7 @@ import {
 } from '@/data/fallbackData';
 import { FocusPillars } from '@/components/home/FocusPillars';
 import { ExperienceTimeline } from '@/components/home/ExperienceTimeline';
-import { FeaturedProjectsGrid } from '@/components/home/FeaturedProjectsGrid';
+import { FeaturedProjectsCarousel } from '@/components/home/FeaturedProjectsCarousel';
 import { HomeSkeleton } from '@/components/home/HomeSkeleton';
 import type { PortableTextParagraph } from '@/types/sanity';
 
@@ -96,8 +96,8 @@ async function HomeContent() {
           </Link>
         </div>
 
-        {/* 2x2 on Desktop/iPad, 1x1 on Mobile (showing 2 items) */}
-        <FeaturedProjectsGrid projects={featuredProjects} />
+        {/* 1x1 Swipeable Featured Projects Carousel across all screen sizes */}
+        <FeaturedProjectsCarousel projects={featuredProjects} />
       </section>
     </div>
   );

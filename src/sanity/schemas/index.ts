@@ -8,6 +8,12 @@ import { emailContactInquiryTemplateType } from './emailContactInquiryTemplate';
 import { blogType, backlinkItem } from './blog';
 import { articleType } from './article';
 import { workLogType } from './workLog';
+import {
+  projectMediaImageType,
+  projectMediaSanityVideoType,
+  projectMediaYoutubeType,
+  projectMediaVimeoType,
+} from './objects/media';
 
 export const schemaTypes = [
   profileType,
@@ -21,4 +27,8 @@ export const schemaTypes = [
   backlinkItem,
   articleType,
   workLogType,
+  projectMediaImageType,
+  projectMediaSanityVideoType,
+  projectMediaYoutubeType,
+  projectMediaVimeoType,
 ];

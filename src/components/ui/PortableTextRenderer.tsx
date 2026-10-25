@@ -79,7 +79,7 @@ export interface PortableTextRendererProps {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeMermaidBlocks(blocks: any[]): any[] {
+export function normalizeMermaidBlocks(blocks: any[]): any[] {
   if (!Array.isArray(blocks) || blocks.length === 0) return blocks;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -152,6 +152,29 @@ function normalizeMermaidBlocks(blocks: any[]): any[] {
       }
     }
 
+    // Direct code block with language: 'mermaid'
+    if (block?._type === 'code' && (block?.language || '').toLowerCase() === 'mermaid') {
+      result.push({
+        _key: block._key || `mermaid-code-${i}`,
+        _type: 'mermaid',
+        chart: block.code || '',
+        title: block.filename || undefined,
+      });
+      i++;
+      continue;
+    }
+
+    // Direct mermaidDiagram block
+    if (block?._type === 'mermaidDiagram' || block?._type === 'mermaid') {
+      result.push({
+        _key: block._key || `mermaid-diagram-${i}`,
+        _type: 'mermaid',
+        chart: block.chart || block.code || '',
+      });
+      i++;
+      continue;
+    }
+
     result.push(block);
     i++;
   }
@@ -210,7 +233,14 @@ export function PortableTextRenderer({
           );
 
         if (isRawMermaid) {
-          return <MermaidRenderer chart={strippedFences} />;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const blockKey = (value as any)?._key;
+          return (
+            <MermaidRenderer
+              chart={strippedFences}
+              onOpenLightbox={onOpenLightbox && blockKey ? () => onOpenLightbox(blockKey) : undefined}
+            />
+          );
         }
 
         return (
@@ -506,12 +536,19 @@ export function PortableTextRenderer({
       },
 
       // 5. Code Block with Mermaid Diagram Detection
-      code: ({ value }: { value: { code?: string; language?: string; filename?: string } }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      code: ({ value }: { value: any }) => {
         const rawCode = value.code || '';
         const language = (value.language || 'text').toLowerCase();
+        const itemKey = value._key;
 
         if (language === 'mermaid') {
-          return <MermaidRenderer chart={rawCode} />;
+          return (
+            <MermaidRenderer
+              chart={rawCode}
+              onOpenLightbox={onOpenLightbox && itemKey ? () => onOpenLightbox(itemKey) : undefined}
+            />
+          );
         }
 
         return (
@@ -530,11 +567,25 @@ export function PortableTextRenderer({
       },
 
       // 6. Direct Mermaid Block Support (if authored as mermaidDiagram or mermaid block)
-      mermaid: ({ value }: { value: { chart?: string; code?: string } }) => {
-        return <MermaidRenderer chart={value.chart || value.code || ''} />;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mermaid: ({ value }: { value: any }) => {
+        const itemKey = value._key;
+        return (
+          <MermaidRenderer
+            chart={value.chart || value.code || ''}
+            onOpenLightbox={onOpenLightbox && itemKey ? () => onOpenLightbox(itemKey) : undefined}
+          />
+        );
       },
-      mermaidDiagram: ({ value }: { value: { chart?: string; code?: string } }) => {
-        return <MermaidRenderer chart={value.chart || value.code || ''} />;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mermaidDiagram: ({ value }: { value: any }) => {
+        const itemKey = value._key;
+        return (
+          <MermaidRenderer
+            chart={value.chart || value.code || ''}
+            onOpenLightbox={onOpenLightbox && itemKey ? () => onOpenLightbox(itemKey) : undefined}
+          />
+        );
       },
     },
   };

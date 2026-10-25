@@ -707,6 +707,12 @@ export const FALLBACK_ARTICLES: ArticleData[] = [
                 children: [{ _key: 'c1', _type: 'span', text: 'Executive Overview' }],
             },
             {
+                _key: 'wlc-1-mm',
+                _type: 'code',
+                language: 'mermaid',
+                code: 'graph TD\n  Client[Web Visitor] -->|Instant Shell| SuspenseBoundary[Streaming Shell Boundary]\n  SuspenseBoundary -->|Background Prefetch| DynamicContent[Hydrated Cache Component]\n  DynamicContent -->|PPR Ready| CompleteUI[Instant Visual State]',
+            },
+            {
                 _key: 'p-1',
                 _type: 'block',
                 style: 'normal',

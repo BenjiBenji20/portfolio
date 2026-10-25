@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { FiCalendar, FiClock } from 'react-icons/fi';
 import type { BlogData, ProjectData, ProjectMediaItem } from '@/types/sanity';
-import { PortableTextRenderer } from '@/components/ui/PortableTextRenderer';
+import { PortableTextRenderer, normalizeMermaidBlocks } from '@/components/ui/PortableTextRenderer';
 import { TabNavRightSidebar } from '@/components/ui/TabNavRightSidebar';
 import { MediaLightboxModal } from '@/components/ui/MediaLightboxModal';
 
@@ -22,16 +22,17 @@ export function BlogContentClient({ blog, projects = [] }: BlogContentClientProp
   const activeMediaKey = searchParams.get('media');
   const activePlayKey = searchParams.get('play');
 
-
-  // Extract all media items from the content for the Lightbox gallery
+  // Extract all media items from the normalized content for the Lightbox gallery
   const allMediaItems = useMemo<ProjectMediaItem[]>(() => {
     if (!blog.content || !Array.isArray(blog.content)) return [];
-    return blog.content.filter(
+    const normalized = normalizeMermaidBlocks(blog.content);
+    return normalized.filter(
       (item) =>
         item._type === 'projectMediaImage' ||
         item._type === 'projectMediaSanityVideo' ||
         item._type === 'projectMediaYoutube' ||
-        item._type === 'projectMediaVimeo'
+        item._type === 'projectMediaVimeo' ||
+        item._type === 'mermaid'
     ) as ProjectMediaItem[];
   }, [blog.content]);
 

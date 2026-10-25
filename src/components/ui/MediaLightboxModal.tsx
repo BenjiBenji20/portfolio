@@ -12,9 +12,11 @@ import {
   FiCalendar,
   FiClock,
   FiPlay,
+  FiCode,
 } from 'react-icons/fi';
 import type { ProjectMediaItem } from '@/types/sanity';
 import { urlForImage } from '@/sanity/lib/image';
+import { MermaidRenderer } from '@/components/ui/MermaidRenderer';
 
 export interface MediaLightboxModalProps {
   mediaItems: ProjectMediaItem[];
@@ -98,20 +100,79 @@ function LightboxContent({
   const [isDesktopExpanded, setIsDesktopExpanded] = useState(false);
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
 
-  // Smooth mobile touch swipe
+  // Pan / Drag State for Zoomed Media
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Reset pan offset and zoom on slide change
+  useEffect(() => {
+    setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+  }, [currentItem._key]);
+
+  const handleZoomReset = () => {
+    setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  // Mouse drag handlers for panning
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoomLevel <= 1) return;
+    e.preventDefault();
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX - panOffset.x,
+      y: e.clientY - panOffset.y,
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || zoomLevel <= 1) return;
+    e.preventDefault();
+    setPanOffset({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Smooth mobile touch swipe (when not zoomed) or touch pan (when zoomed)
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const [touchDeltaX, setTouchDeltaX] = useState<number>(0);
   const [isSwiping, setIsSwiping] = useState(false);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
-      setTouchStartX(e.touches[0].clientX);
-      setTouchDeltaX(0);
-      setIsSwiping(true);
+      if (zoomLevel > 1) {
+        setIsDragging(true);
+        setDragStart({
+          x: e.touches[0].clientX - panOffset.x,
+          y: e.touches[0].clientY - panOffset.y,
+        });
+      } else {
+        setTouchStartX(e.touches[0].clientX);
+        setTouchStartY(e.touches[0].clientY);
+        setTouchDeltaX(0);
+        setIsSwiping(true);
+      }
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (zoomLevel > 1 && isDragging) {
+      setPanOffset({
+        x: e.touches[0].clientX - dragStart.x,
+        y: e.touches[0].clientY - dragStart.y,
+      });
+      return;
+    }
+
     if (!isSwiping || touchStartX === null) return;
     const currentX = e.touches[0].clientX;
     const delta = currentX - touchStartX;
@@ -119,6 +180,11 @@ function LightboxContent({
   };
 
   const handleTouchEnd = () => {
+    if (zoomLevel > 1) {
+      setIsDragging(false);
+      return;
+    }
+
     if (!isSwiping || touchStartX === null) return;
     const SWIPE_THRESHOLD = 45;
     if (touchDeltaX < -SWIPE_THRESHOLD) {
@@ -127,6 +193,7 @@ function LightboxContent({
       onPrev();
     }
     setTouchStartX(null);
+    setTouchStartY(null);
     setTouchDeltaX(0);
     setIsSwiping(false);
   };
@@ -163,12 +230,19 @@ function LightboxContent({
           poster: posterUrl,
         };
       }
+      case 'mermaid': {
+        return {
+          type: 'mermaid',
+          chart: currentItem.chart,
+        };
+      }
       default:
         return { type: 'unknown' };
     }
   };
 
   const mediaSource = getMediaSource();
+  const isZoomable = mediaSource.type === 'image' || mediaSource.type === 'mermaid';
   const description =
     currentItem.description || ('caption' in currentItem ? currentItem.caption : '') || '';
   const isLongDescription = description.length > 110;
@@ -192,11 +266,11 @@ function LightboxContent({
           <span className="font-mono text-xs text-zinc-300 bg-zinc-900/90 px-3 py-1 border border-zinc-800 rounded-none shadow">
             {activeIndex + 1} / {totalItems}
           </span>
-          {mediaSource.type === 'image' && (
+          {isZoomable && (
             <div className="hidden sm:flex items-center gap-1 bg-zinc-900/90 border border-zinc-800 p-0.5 rounded-none">
               <button
                 type="button"
-                onClick={() => setZoomLevel((z) => Math.min(z + 0.25, 3))}
+                onClick={() => setZoomLevel((z) => Math.min(z + 0.25, 3.5))}
                 className="p-1.5 text-zinc-400 hover:text-white transition-colors cursor-pointer"
                 title="Zoom In"
               >
@@ -204,16 +278,22 @@ function LightboxContent({
               </button>
               <button
                 type="button"
-                onClick={() => setZoomLevel((z) => Math.max(z - 0.25, 0.5))}
+                onClick={() => {
+                  setZoomLevel((z) => {
+                    const next = Math.max(z - 0.25, 0.5);
+                    if (next <= 1) setPanOffset({ x: 0, y: 0 });
+                    return next;
+                  });
+                }}
                 className="p-1.5 text-zinc-400 hover:text-white transition-colors cursor-pointer"
                 title="Zoom Out"
               >
                 <FiZoomOut className="w-4 h-4" />
               </button>
-              {zoomLevel !== 1 && (
+              {(zoomLevel !== 1 || panOffset.x !== 0 || panOffset.y !== 0) && (
                 <button
                   type="button"
-                  onClick={() => setZoomLevel(1)}
+                  onClick={handleZoomReset}
                   className="p-1.5 text-zinc-400 hover:text-white transition-colors cursor-pointer"
                   title="Reset Zoom"
                 >
@@ -269,25 +349,45 @@ function LightboxContent({
               </button>
             )}
 
-            {/* Media Rendering with smooth mobile touch swipe transform */}
+            {/* Media Rendering with smooth mobile touch swipe transform and draggable zoom */}
             <div
-              className="relative w-full h-full flex items-center justify-center"
+              className={`relative w-full h-full flex items-center justify-center select-none overflow-hidden ${
+                zoomLevel > 1 ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : ''
+              }`}
               style={{
                 transform: isSwiping ? `translateX(${touchDeltaX}px)` : undefined,
                 transition: isSwiping ? 'none' : 'transform 0.25s ease-out',
               }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
             >
               {mediaSource.type === 'image' && mediaSource.url && (
                 <div
-                  className="relative w-full h-full flex items-center justify-center transition-transform duration-150"
-                  style={{ transform: `scale(${zoomLevel})` }}
+                  className="relative w-full h-full flex items-center justify-center transition-transform duration-75"
+                  style={{
+                    transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
+                  }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={mediaSource.url}
                     alt={currentItem.title || 'Enlarged media preview'}
                     className="max-w-full max-h-full object-contain pointer-events-none select-none"
+                    draggable={false}
                   />
+                </div>
+              )}
+
+              {mediaSource.type === 'mermaid' && mediaSource.chart && (
+                <div
+                  className="relative w-full h-full flex items-center justify-center transition-transform duration-75 p-4 sm:p-8"
+                  style={{
+                    transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
+                  }}
+                >
+                  <MermaidRenderer chart={mediaSource.chart} isLightboxView />
                 </div>
               )}
 
@@ -552,11 +652,16 @@ function LightboxContent({
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-[10px] font-mono text-zinc-400">
+                          <div className="w-full h-full bg-zinc-900 flex flex-col items-center justify-center text-[10px] font-mono text-zinc-400 gap-0.5">
                             {item._type === 'projectMediaSanityVideo' ||
                             item._type === 'projectMediaYoutube' ||
                             item._type === 'projectMediaVimeo' ? (
                               <FiPlay className="w-3.5 h-3.5 text-zinc-400" />
+                            ) : item._type === 'mermaid' ? (
+                              <>
+                                <FiCode className="w-3.5 h-3.5 text-sky-400" />
+                                <span className="text-[8px] font-mono text-sky-300">SVG</span>
+                              </>
                             ) : (
                               idx + 1
                             )}

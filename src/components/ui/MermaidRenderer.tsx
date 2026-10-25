@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState, useCallback } from 'react';
+import { FiMaximize2, FiX, FiZoomIn, FiZoomOut, FiRotateCcw } from 'react-icons/fi';
 
 interface MermaidRendererProps {
   chart: string;
   className?: string;
+  onOpenLightbox?: () => void;
+  isLightboxView?: boolean;
 }
 
 function autoFormatMermaid(input: string): string {
@@ -44,7 +47,12 @@ function autoFormatMermaid(input: string): string {
   return s;
 }
 
-export function MermaidRenderer({ chart, className = '' }: MermaidRendererProps) {
+export function MermaidRenderer({
+  chart,
+  className = '',
+  onOpenLightbox,
+  isLightboxView = false,
+}: MermaidRendererProps) {
   const uniqueId = useId().replace(/[:]/g, '_');
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,10 +128,42 @@ export function MermaidRenderer({ chart, className = '' }: MermaidRendererProps)
     );
   }
 
+  // Inside the Lightbox modal: render clean SVG
+  if (isLightboxView) {
+    return (
+      <div
+        className={`w-full flex items-center justify-center select-none ${className}`}
+        dangerouslySetInnerHTML={{ __html: svgContent }}
+      />
+    );
+  }
+
+  // Inline embedded card in content
   return (
-    <div
-      className={`my-4 p-4 sm:p-6 border border-zinc-800/80 bg-zinc-950/80 overflow-x-auto shadow-md scrollbar-thin scrollbar-thumb-zinc-700 flex items-center justify-center ${className}`}
-      dangerouslySetInnerHTML={{ __html: svgContent }}
-    />
+    <figure className={`relative my-5 border border-zinc-800/80 bg-zinc-950/80 overflow-hidden group ${className}`}>
+      {/* Top-Right Enlarge Trigger */}
+      {onOpenLightbox && (
+        <button
+          type="button"
+          onClick={onOpenLightbox}
+          className="absolute top-2.5 right-2.5 z-20 w-8 h-8 bg-zinc-950/90 hover:bg-sky-500 text-zinc-400 hover:text-white border border-zinc-700/80 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 cursor-pointer shadow-lg"
+          title="Enlarge Diagram in Lightbox"
+          aria-label="Enlarge Diagram in Lightbox"
+        >
+          <FiMaximize2 className="w-4 h-4" />
+        </button>
+      )}
+
+      {/* Diagram SVG Container with zoom cursor */}
+      <div
+        onClick={onOpenLightbox}
+        className={`p-4 sm:p-6 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-700 flex items-center justify-center ${
+          onOpenLightbox ? 'cursor-zoom-in' : ''
+        }`}
+        dangerouslySetInnerHTML={{ __html: svgContent }}
+        title={onOpenLightbox ? 'Click to Enlarge Diagram in Lightbox' : undefined}
+      />
+    </figure>
   );
 }
+

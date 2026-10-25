@@ -186,11 +186,17 @@ export interface ProjectMediaVimeoItem extends BaseMediaItem {
   caption?: string;
 }
 
+export interface ProjectMediaMermaidItem extends BaseMediaItem {
+  _type: 'mermaid';
+  chart: string;
+}
+
 export type ProjectMediaItem =
   | ProjectMediaImageItem
   | ProjectMediaSanityVideoItem
   | ProjectMediaYouTubeItem
-  | ProjectMediaVimeoItem;
+  | ProjectMediaVimeoItem
+  | ProjectMediaMermaidItem;
 
 export interface BlogData {
   _id?: string;

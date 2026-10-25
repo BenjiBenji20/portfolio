@@ -16,7 +16,7 @@ import {
 import type { ArticleData, WorkLogData, ProjectMediaItem } from '@/types/sanity';
 import { urlForImage } from '@/sanity/lib/image';
 import { BlogItemCard, type BlogItem } from './BlogItemCard';
-import { PortableTextRenderer } from '@/components/ui/PortableTextRenderer';
+import { PortableTextRenderer, normalizeMermaidBlocks } from '@/components/ui/PortableTextRenderer';
 import { MediaLightboxModal } from '@/components/ui/MediaLightboxModal';
 
 interface ProjectBlogTabsProps {
@@ -226,12 +226,14 @@ function ProjectBlogTabsContent({
     const items: ProjectMediaItem[] = [];
     workLogs.forEach((log) => {
       if (log.content && Array.isArray(log.content)) {
-        log.content.forEach((block) => {
+        const normalized = normalizeMermaidBlocks(log.content);
+        normalized.forEach((block) => {
           if (
             block._type === 'projectMediaImage' ||
             block._type === 'projectMediaSanityVideo' ||
             block._type === 'projectMediaYoutube' ||
-            block._type === 'projectMediaVimeo'
+            block._type === 'projectMediaVimeo' ||
+            block._type === 'mermaid'
           ) {
             items.push(block as ProjectMediaItem);
           }

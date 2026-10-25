@@ -1,10 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { FiCalendar, FiClock, FiUser, FiUsers } from 'react-icons/fi';
 import type { ArticleData, ProjectData, ProjectMediaItem } from '@/types/sanity';
-import { PortableTextRenderer, extractTocFromBlocks } from '@/components/ui/PortableTextRenderer';
+import {
+  PortableTextRenderer,
+  extractTocFromBlocks,
+  normalizeMermaidBlocks,
+} from '@/components/ui/PortableTextRenderer';
 import { BackButton } from '@/components/ui/BackButton';
 import { TabNavRightSidebar, type TabNavItem } from '@/components/ui/TabNavRightSidebar';
 import { MediaLightboxModal } from '@/components/ui/MediaLightboxModal';
@@ -17,7 +21,7 @@ interface ArticleContentClientProps {
   projectSlug: string;
 }
 
-export function ArticleContentClient({
+function ArticleContentClientInternal({
   article,
   project,
   projectSlug,
@@ -33,12 +37,14 @@ export function ArticleContentClient({
   // Extract all media items from the content for the Lightbox gallery (reused from /blog)
   const allMediaItems = useMemo<ProjectMediaItem[]>(() => {
     if (!article.content || !Array.isArray(article.content)) return [];
-    return article.content.filter(
+    const normalized = normalizeMermaidBlocks(article.content);
+    return normalized.filter(
       (item) =>
         item._type === 'projectMediaImage' ||
         item._type === 'projectMediaSanityVideo' ||
         item._type === 'projectMediaYoutube' ||
-        item._type === 'projectMediaVimeo'
+        item._type === 'projectMediaVimeo' ||
+        item._type === 'mermaid'
     ) as ProjectMediaItem[];
   }, [article.content]);
 
@@ -196,5 +202,13 @@ export function ArticleContentClient({
         onSelectMedia={handleSelectMedia}
       />
     </div>
+  );
+}
+
+export function ArticleContentClient(props: ArticleContentClientProps) {
+  return (
+    <Suspense fallback={null}>
+      <ArticleContentClientInternal {...props} />
+    </Suspense>
   );
 }

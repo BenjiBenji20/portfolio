@@ -9,7 +9,9 @@ interface SidebarContainerProps {
 export function SidebarContainer({ children }: SidebarContainerProps) {
   const pathname = usePathname();
   const shouldHideOnMobileAndTablet =
-    pathname?.startsWith('/projects') || pathname?.startsWith('/blog');
+    pathname?.startsWith('/projects') ||
+    pathname?.startsWith('/project') ||
+    pathname?.startsWith('/blog');
 
   return (
     <div

@@ -14,9 +14,13 @@ import { MediaLightboxModal } from '@/components/ui/MediaLightboxModal';
 
 interface ProjectDetailClientProps {
   project: ProjectData;
+  allProjects?: ProjectData[];
 }
 
-function ProjectDetailClientInternal({ project }: ProjectDetailClientProps) {
+function ProjectDetailClientInternal({
+  project,
+  allProjects = [],
+}: ProjectDetailClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -41,14 +45,27 @@ function ProjectDetailClientInternal({ project }: ProjectDetailClientProps) {
 
   // Extract headings (h2/h3) from Portable Text blocks for sticky Table of Contents
   const tocItems = useMemo<TabNavItem[]>(() => {
-    if (!project.content || !Array.isArray(project.content)) return [];
-    const extracted = extractTocFromBlocks(project.content);
-    return extracted.map((item) => ({
-      id: item.id,
-      label: item.text,
-      href: `#${item.id}`,
-    }));
-  }, [project.content]);
+    const items: TabNavItem[] = [
+      {
+        id: 'project-overview',
+        label: project.title,
+        href: '#project-overview',
+      },
+    ];
+
+    if (project.content && Array.isArray(project.content)) {
+      const extracted = extractTocFromBlocks(project.content);
+      items.push(
+        ...extracted.map((item) => ({
+          id: item.id,
+          label: item.text,
+          href: `#${item.id}`,
+        }))
+      );
+    }
+
+    return items;
+  }, [project.content, project.title]);
 
   // Handle Lightbox Open (sets ?media=<key> in URL)
   const handleOpenLightbox = (key: string) => {
@@ -82,20 +99,22 @@ function ProjectDetailClientInternal({ project }: ProjectDetailClientProps) {
   const hasContent = Boolean(project.content && project.content.length > 0);
 
   return (
-    <div className="w-full space-y-10 animate-in fade-in duration-200">
-      {/* 1. Top Project Preview (Carousel, Metadata, Links, Stacks) */}
-      <ProjectPreview
-        project={project}
-        backHref="/projects"
-        backLabel="Back to Projects"
-      />
+    <div className="w-full flex flex-col md:flex-row items-start gap-8 lg:gap-10">
+      {/* Left / Main Content Column */}
+      <div className="flex-1 min-w-0 space-y-10 animate-in fade-in duration-200">
+        {/* 1. Top Project Preview (Carousel, Metadata, Links, Stacks) */}
+        <div id="project-overview" className="scroll-mt-24">
+          <ProjectPreview
+            project={project}
+            backHref="/projects"
+            backLabel="Back to Projects"
+          />
+        </div>
 
-      {/* 2. Project Body Section: Portable Text narrative + Section-based Table of Contents */}
-      {hasContent && (
-        <div className="pt-8 border-t border-zinc-800/80">
-          <div className="w-full flex flex-col md:flex-row items-start gap-8 lg:gap-10">
-            {/* Main PortableText Body */}
-            <article className="flex-1 min-w-0 space-y-6 text-zinc-100">
+        {/* 2. Project Body Section: Portable Text narrative */}
+        {hasContent && (
+          <div className="pt-8 border-t border-zinc-800/80">
+            <article className="min-w-0 space-y-6 text-zinc-100">
               <div className="border-b border-zinc-800/80 pb-3">
                 <span className="font-mono text-xs uppercase tracking-widest text-sky-400">
                   Engineering Breakdown
@@ -114,18 +133,18 @@ function ProjectDetailClientInternal({ project }: ProjectDetailClientProps) {
                 />
               </div>
             </article>
-
-            {/* Right Sidebar: Table of Contents */}
-            {tocItems.length > 0 && (
-              <TabNavRightSidebar
-                title="Table of Contents"
-                items={tocItems}
-                emptyText="No sections found"
-              />
-            )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* Right Sidebar: Table of Contents or Sibling Projects Navigation */}
+      <TabNavRightSidebar
+        title={tocItems.length > 0 ? 'Table of Contents' : 'Projects'}
+        items={tocItems.length > 0 ? tocItems : undefined}
+        projects={tocItems.length === 0 ? allProjects : undefined}
+        route="/project"
+        emptyText="No sections found"
+      />
 
       {/* 3. Modal Lightbox for Project Media and Diagrams */}
       <MediaLightboxModal

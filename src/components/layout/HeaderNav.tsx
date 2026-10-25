@@ -19,6 +19,9 @@ export function HeaderNav() {
     if (href === '/') {
       return pathname === '/';
     }
+    if (href === '/projects') {
+      return pathname.startsWith('/projects') || pathname.startsWith('/project');
+    }
     return pathname.startsWith(href);
   };
 

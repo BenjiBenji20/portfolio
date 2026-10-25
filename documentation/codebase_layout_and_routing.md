@@ -41,3 +41,5 @@ graph TD
 - **`(portfolio)` Route Group:** Encapsulates `/`, `/projects`, and `/blogs` inside `<AppShell>`, providing persistent navigation and profile sidebar across all public pages without lateral layout shift.
 - **`/studio` Isolation:** Bypasses `<AppShell>` to render `<NextStudio />` as an unconstrained, full-screen editorial workspace.
 - **Client Component Boundary:** Studio routes are client-isolated (`Studio.tsx`) to prevent Turbopack server-component module conflicts with internal Studio packages.
+- **Responsive Profile Sidebar:** Automatically collapses to `hidden lg:block` on mobile and tablet (`< lg`) across catalog and detail routes (`/projects`, `/project`, `/blog`).
+- **Canonical Route Matching:** `HeaderNav` highlights `Projects` for both catalog (`/projects`) and singular item routes (`/project/[slug]`).

@@ -82,13 +82,16 @@ async function ProjectDetailContent({
   params,
 }: ProjectDetailPageProps) {
   const { slug } = await params;
-  const project = await getProjectBySlug(slug);
+  const [project, allProjects] = await Promise.all([
+    getProjectBySlug(slug),
+    getAllProjects(),
+  ]);
 
   if (!project) {
     notFound();
   }
 
-  return <ProjectDetailClient project={project} />;
+  return <ProjectDetailClient project={project} allProjects={allProjects} />;
 }
 
 export default function ProjectDetailPage({

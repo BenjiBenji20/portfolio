@@ -36,10 +36,3 @@ graph TD
 - **Mobile Lightbox:** Fullscreen media canvas with a bottom gradient OVERLAY (**no card container**) and an inline `Read more...` expander for long descriptions.
 - **Progressive URL State:** `?media=<key>` and `?play=<key>` URL query synchronization preserves active lightbox and video playback states across browser hard reloads.
 
-## 4. Key Target Files
-- [`src/sanity/schemas/blog.ts`](file:///c:/Users/imper/Documents/portfolio-blog-site/portfolio-v2/src/sanity/schemas/blog.ts)
-- [`src/components/blog/MediaLightboxModal.tsx`](file:///c:/Users/imper/Documents/portfolio-blog-site/portfolio-v2/src/components/blog/MediaLightboxModal.tsx)
-- [`src/components/blog/BlogTableOfContents.tsx`](file:///c:/Users/imper/Documents/portfolio-blog-site/portfolio-v2/src/components/blog/BlogTableOfContents.tsx)
-- [`src/components/blog/PortableTextRenderer.tsx`](file:///c:/Users/imper/Documents/portfolio-blog-site/portfolio-v2/src/components/blog/PortableTextRenderer.tsx)
-- [`src/components/blog/BlogContentClient.tsx`](file:///c:/Users/imper/Documents/portfolio-blog-site/portfolio-v2/src/components/blog/BlogContentClient.tsx)
-- [`src/app/(portfolio)/blog/page.tsx`](file:///c:/Users/imper/Documents/portfolio-blog-site/portfolio-v2/src/app/%28portfolio%29/blog/page.tsx)

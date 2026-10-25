@@ -36,3 +36,8 @@ graph TD
 - **Mobile Lightbox:** Fullscreen media canvas with a bottom gradient OVERLAY (**no card container**) and an inline `Read more...` expander for long descriptions.
 - **Progressive URL State:** `?media=<key>` and `?play=<key>` URL query synchronization preserves active lightbox and video playback states across browser hard reloads.
 
+## 4. Work Log Pagination (`/blog/{slug}?tab=worklog`)
+- **10-Item Threshold:** Paginates milestone rows to a max of 10 entries per page to cap concurrent Portable Text and Mermaid diagram rendering.
+- **Bookmarkable URL State:** Synced with `?tab=worklog&page=N`. Automatically resets `page` on switching to `articles`.
+- **Smooth Anchor Scroll:** Automatically scrolls to `#worklog-timeline` on page transitions.
+

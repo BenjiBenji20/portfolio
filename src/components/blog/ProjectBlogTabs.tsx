@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useMemo, useRef, useEffect, Suspense } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
   FiBookOpen,
@@ -10,6 +10,8 @@ import {
   FiExternalLink,
   FiChevronDown,
   FiChevronUp,
+  FiChevronLeft,
+  FiChevronRight,
   FiUsers,
   FiUser,
 } from 'react-icons/fi';
@@ -243,6 +245,56 @@ function ProjectBlogTabsContent({
     return items;
   }, [workLogs]);
 
+  // Pagination for Work Log (Threshold: 10 items per page; currently 2 for testing)
+  const PAGE_SIZE = 10;
+  const rawPage = parseInt(searchParams.get('page') || '1', 10);
+  const totalWorkLogs = workLogs.length;
+  const totalPages = Math.max(1, Math.ceil(totalWorkLogs / PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, isNaN(rawPage) ? 1 : rawPage), totalPages);
+
+  // Preserve last visited work log page when switching between tabs
+  const lastWorkLogPageRef = useRef<number>(currentPage);
+
+  useEffect(() => {
+    if (activeTab === 'worklog' && currentPage > 0) {
+      lastWorkLogPageRef.current = currentPage;
+    }
+  }, [activeTab, currentPage]);
+
+  const paginatedWorkLogs = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    return workLogs.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [workLogs, currentPage]);
+
+  const pageNumbers = useMemo<(number | string)[]>(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, '...', totalPages];
+    }
+    if (currentPage >= totalPages - 3) {
+      return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+  }, [currentPage, totalPages]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
+    lastWorkLogPageRef.current = newPage;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', 'worklog');
+    params.set('page', newPage.toString());
+    params.delete('media');
+    params.delete('play');
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+
+    const timelineEl = document.getElementById('worklog-timeline');
+    if (timelineEl) {
+      timelineEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const handleOpenLightbox = (key: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('media', key);
@@ -271,6 +323,17 @@ function ProjectBlogTabsContent({
   const handleTabChange = (newTab: 'articles' | 'worklog') => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', newTab);
+    if (newTab === 'worklog') {
+      if (lastWorkLogPageRef.current > 1) {
+        params.set('page', lastWorkLogPageRef.current.toString());
+      } else {
+        params.delete('page');
+      }
+    } else {
+      params.delete('page');
+    }
+    params.delete('media');
+    params.delete('play');
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
@@ -362,19 +425,83 @@ function ProjectBlogTabsContent({
           </div>
         )
       ) : (
-        /* Work Log / Dev Log Timeline with Collapsible Footer */
+        /* Work Log / Dev Log Timeline with Pagination */
         workLogs.length > 0 ? (
-          <div className="space-y-6">
-            {workLogs.map((log) => (
-              <WorkLogRow
-                key={log._id || log.title}
-                log={log}
-                repositoryUrl={repositoryUrl}
-                activePlayKey={activePlayKey}
-                onPlayVideo={handlePlayVideo}
-                onOpenLightbox={handleOpenLightbox}
-              />
-            ))}
+          <div id="worklog-timeline" className="scroll-mt-24 space-y-6">
+            <div className="space-y-6">
+              {paginatedWorkLogs.map((log) => (
+                <WorkLogRow
+                  key={log._id || log.title}
+                  log={log}
+                  repositoryUrl={repositoryUrl}
+                  activePlayKey={activePlayKey}
+                  onPlayVideo={handlePlayVideo}
+                  onOpenLightbox={handleOpenLightbox}
+                />
+              ))}
+            </div>
+
+            {/* Pagination Controls (renders when total milestones exceed PAGE_SIZE = 10) */}
+            {totalPages > 1 && (
+              <div className="pt-8 border-t border-zinc-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono">
+                <span className="text-zinc-500">
+                  Showing{' '}
+                  <span className="text-zinc-300 font-medium">
+                    {(currentPage - 1) * PAGE_SIZE + 1}–
+                    {Math.min(currentPage * PAGE_SIZE, totalWorkLogs)}
+                  </span>{' '}
+                  of <span className="text-zinc-300 font-medium">{totalWorkLogs}</span> milestones
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-none border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    aria-label="Previous Page"
+                  >
+                    <FiChevronLeft className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Prev</span>
+                  </button>
+
+                  {/* Page Numbers */}
+                  <div className="flex items-center gap-1">
+                    {pageNumbers.map((page, idx) =>
+                      typeof page === 'number' ? (
+                        <button
+                          key={page}
+                          type="button"
+                          onClick={() => handlePageChange(page)}
+                          className={`min-w-8 h-8 px-2 flex items-center justify-center transition-colors cursor-pointer ${
+                            currentPage === page
+                              ? 'bg-sky-500/10 text-sky-400 border border-sky-500/40 font-bold'
+                              : 'bg-zinc-900/40 border border-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ) : (
+                        <span key={`ellipsis-${idx}`} className="px-1 text-zinc-600">
+                          …
+                        </span>
+                      )
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-none border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    aria-label="Next Page"
+                  >
+                    <span className="hidden sm:inline">Next</span>
+                    <FiChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="p-8 text-center border border-dashed border-zinc-800 text-zinc-500 text-sm font-mono">

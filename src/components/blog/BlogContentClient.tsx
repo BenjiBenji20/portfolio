@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { FiCalendar, FiClock } from 'react-icons/fi';
 import type { BlogData, ProjectData, ProjectMediaItem } from '@/types/sanity';
-import { PortableTextRenderer } from './PortableTextRenderer';
+import { PortableTextRenderer } from '@/components/ui/PortableTextRenderer';
 import { TabNavRightSidebar } from '@/components/ui/TabNavRightSidebar';
 import { MediaLightboxModal } from '@/components/ui/MediaLightboxModal';
 

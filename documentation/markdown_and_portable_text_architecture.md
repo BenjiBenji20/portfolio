@@ -13,7 +13,7 @@ Defines the content rendering paradigm across `/project/{slug}`, `/blog`, `/blog
 | `/project/{slug}` | `project` | Structured Fields | Top `ProjectPreview` banner (16:9 carousel, tech tags, links, client/org metadata). |
 | `/blog` | `blog` | Portable Text | Personal engineer blog with embedded media blocks, sticky TOC, and split Lightbox. |
 | `/blog/{slug}?tab=articles` | `article` | Cards (`excerpt`) | 2x2 article preview cards with strictly locked heights and scroll-y excerpt details. |
-| `/blog/{slug}?tab=worklog` | `workLog` | Markdown / Text | Engineering changelog entries with collapsible commit SHA, contributors, and backlinks. |
+| `/blog/{slug}?tab=worklog` | `workLog` | Portable Text (Text fallback) | Changelog entries rendered via `PortableTextRenderer` with Mermaid diagrams, screenshots, videos, and collapsible metadata footer. |
 | `/blog/{slug}/article` | `article` | Portable Text | Deep-dive technical articles using `PortableTextRenderer`, dynamic TOC, and Lightbox. |
 
 ## 3. Data Flow & Publishing Lifecycle
@@ -24,7 +24,7 @@ graph TD
     B --> C["Next.js Cache Tag Purge ('sanity:article', 'sanity:workLog')"]
     A --> D["/blog: PortableTextRenderer"]
     A --> E["/project/{slug}: ProjectPreview Component"]
-    A --> F["/blog/{slug}?tab=worklog: Markdown Stream"]
+    A --> F["/blog/{slug}?tab=worklog: PortableTextRenderer (Mermaid + Media)"]
     A --> G["/blog/{slug}/article: PortableTextRenderer + TOC"]
 ```
 

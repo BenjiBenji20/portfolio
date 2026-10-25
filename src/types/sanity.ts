@@ -228,7 +228,9 @@ export interface WorkLogData {
   projectSlug: string;
   badge: string;
   date: string;
-  description: string;
+  description?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  content?: any[];
   commitSha?: string;
   developers?: string[];
   backlinks?: MediaBacklink[];

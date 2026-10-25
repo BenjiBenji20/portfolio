@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useMemo, Suspense } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
   FiBookOpen,
@@ -13,9 +13,11 @@ import {
   FiUsers,
   FiUser,
 } from 'react-icons/fi';
-import type { ArticleData, WorkLogData } from '@/types/sanity';
+import type { ArticleData, WorkLogData, ProjectMediaItem } from '@/types/sanity';
 import { urlForImage } from '@/sanity/lib/image';
 import { BlogItemCard, type BlogItem } from './BlogItemCard';
+import { PortableTextRenderer } from '@/components/ui/PortableTextRenderer';
+import { MediaLightboxModal } from '@/components/ui/MediaLightboxModal';
 
 interface ProjectBlogTabsProps {
   projectSlug: string;
@@ -28,9 +30,15 @@ interface ProjectBlogTabsProps {
 function WorkLogRow({
   log,
   repositoryUrl,
+  activePlayKey,
+  onPlayVideo,
+  onOpenLightbox,
 }: {
   log: WorkLogData;
   repositoryUrl?: string;
+  activePlayKey?: string | null;
+  onPlayVideo?: (key: string) => void;
+  onOpenLightbox?: (key: string) => void;
 }) {
   const [isFooterExpanded, setIsFooterExpanded] = useState(false);
 
@@ -57,7 +65,7 @@ function WorkLogRow({
     : '';
 
   return (
-    <div className="relative group">
+    <div className="relative group border-b border-zinc-800/40 pb-6 last:border-b-0 space-y-3">
       {/* Header: Title, Badge, Date */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
         <h4 className="text-sm font-semibold text-zinc-100 flex items-center gap-2 flex-wrap">
@@ -72,10 +80,21 @@ function WorkLogRow({
         </span>
       </div>
 
-      {/* Description */}
-      <p className="text-xs text-zinc-400 leading-relaxed max-w-3xl whitespace-pre-line">
-        {log.description}
-      </p>
+      {/* Body: Portable Text (Rich text, screenshots, videos, Mermaid diagrams) or legacy description */}
+      <div className="text-xs text-zinc-300">
+        {log.content && log.content.length > 0 ? (
+          <PortableTextRenderer
+            value={log.content}
+            activePlayKey={activePlayKey}
+            onPlayVideo={onPlayVideo}
+            onOpenLightbox={onOpenLightbox}
+          />
+        ) : log.description ? (
+          <p className="text-xs text-zinc-400 leading-relaxed max-w-3xl whitespace-pre-line">
+            {log.description}
+          </p>
+        ) : null}
+      </div>
 
       {/* Collapsible Footer Trigger */}
       {hasFooterContent && (
@@ -198,6 +217,55 @@ function ProjectBlogTabsContent({
   const activeTab: 'articles' | 'worklog' =
     tabParam === 'worklog' || tabParam === 'work-log' ? 'worklog' : 'articles';
 
+  // URL progressive state for worklog media: ?media=<key> and ?play=<key>
+  const activeMediaKey = searchParams.get('media');
+  const activePlayKey = searchParams.get('play');
+
+  // Extract all media items from workLogs for Lightbox support
+  const allWorkLogMediaItems = useMemo<ProjectMediaItem[]>(() => {
+    const items: ProjectMediaItem[] = [];
+    workLogs.forEach((log) => {
+      if (log.content && Array.isArray(log.content)) {
+        log.content.forEach((block) => {
+          if (
+            block._type === 'projectMediaImage' ||
+            block._type === 'projectMediaSanityVideo' ||
+            block._type === 'projectMediaYoutube' ||
+            block._type === 'projectMediaVimeo'
+          ) {
+            items.push(block as ProjectMediaItem);
+          }
+        });
+      }
+    });
+    return items;
+  }, [workLogs]);
+
+  const handleOpenLightbox = (key: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('media', key);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const handleCloseLightbox = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('media');
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+
+  const handleSelectMedia = (key: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('media', key);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const handlePlayVideo = (key: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('play', key);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   const handleTabChange = (newTab: 'articles' | 'worklog') => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', newTab);
@@ -300,6 +368,9 @@ function ProjectBlogTabsContent({
                 key={log._id || log.title}
                 log={log}
                 repositoryUrl={repositoryUrl}
+                activePlayKey={activePlayKey}
+                onPlayVideo={handlePlayVideo}
+                onOpenLightbox={handleOpenLightbox}
               />
             ))}
           </div>
@@ -308,6 +379,16 @@ function ProjectBlogTabsContent({
             No work logs recorded for this project yet.
           </div>
         )
+      )}
+
+      {/* Lightbox Modal for Work Log Media */}
+      {allWorkLogMediaItems.length > 0 && (
+        <MediaLightboxModal
+          mediaItems={allWorkLogMediaItems}
+          activeKey={activeMediaKey}
+          onClose={handleCloseLightbox}
+          onSelectMedia={handleSelectMedia}
+        />
       )}
     </div>
   );

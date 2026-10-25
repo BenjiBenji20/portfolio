@@ -356,6 +356,45 @@ export const workLogsByProjectSlugQuery = `*[_type == "workLog" && (project->slu
   badge,
   date,
   description,
+  content[] {
+    ...,
+    _type == "projectMediaImage" => {
+      ...,
+      asset->{
+        _id,
+        url,
+        mimeType,
+        size
+      }
+    },
+    _type == "projectMediaSanityVideo" => {
+      ...,
+      asset->{
+        _id,
+        url,
+        mimeType,
+        size
+      },
+      poster {
+        asset->{ _id, url },
+        alt
+      }
+    },
+    _type == "projectMediaYoutube" => {
+      ...,
+      poster {
+        asset->{ _id, url },
+        alt
+      }
+    },
+    _type == "projectMediaVimeo" => {
+      ...,
+      poster {
+        asset->{ _id, url },
+        alt
+      }
+    }
+  },
   commitSha,
   developers,
   backlinks[] {

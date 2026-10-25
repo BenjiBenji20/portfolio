@@ -46,13 +46,59 @@ export const workLogType = defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'content',
+      title: 'Work Log Content (Portable Text)',
+      type: 'array',
+      description:
+        'Technical devlog narrative with support for rich text, screenshots, videos (Sanity/YouTube/Vimeo), and ```mermaid diagrams',
+      of: [
+        defineArrayMember({
+          type: 'block',
+          styles: [
+            { title: 'Normal', value: 'normal' },
+            { title: 'H2', value: 'h2' },
+            { title: 'H3', value: 'h3' },
+            { title: 'Quote', value: 'blockquote' },
+          ],
+          lists: [
+            { title: 'Bullet', value: 'bullet' },
+            { title: 'Numbered', value: 'number' },
+          ],
+          marks: {
+            decorators: [
+              { title: 'Strong', value: 'strong' },
+              { title: 'Emphasis', value: 'em' },
+              { title: 'Code', value: 'code' },
+            ],
+            annotations: [
+              {
+                name: 'link',
+                type: 'object',
+                title: 'URL',
+                fields: [
+                  {
+                    name: 'href',
+                    type: 'url',
+                    title: 'URL',
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+        defineArrayMember({ type: 'projectMediaImage' }),
+        defineArrayMember({ type: 'projectMediaSanityVideo' }),
+        defineArrayMember({ type: 'projectMediaYoutube' }),
+        defineArrayMember({ type: 'projectMediaVimeo' }),
+      ],
+    }),
+    defineField({
       name: 'description',
-      title: 'Technical Summary (Markdown)',
+      title: 'Technical Summary (Markdown / Plain Text)',
       type: 'text',
       rows: 4,
       description:
-        'Autonomous (for agentic writer) devlog summary highlighting technical changes, trade-offs, and architecture',
-      validation: (Rule) => Rule.required(),
+        'Optional plain text or markdown devlog summary (used as fallback when Portable Text content is not provided)',
     }),
     defineField({
       name: 'commitSha',

@@ -12,6 +12,7 @@ import type {
 } from '@/types/sanity';
 import { urlForImage } from '@/sanity/lib/image';
 import { AmbientImage } from '@/components/ui/AmbientImage';
+import { MermaidRenderer } from '@/components/ui/MermaidRenderer';
 
 export interface TocItem {
   id: string;
@@ -68,12 +69,13 @@ function getVimeoEmbedUrl(url: string): string | null {
   return match ? `https://player.vimeo.com/video/${match[1]}?autoplay=1` : null;
 }
 
-interface PortableTextRendererProps {
+export interface PortableTextRendererProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: any[];
   activePlayKey?: string | null;
   onPlayVideo?: (key: string) => void;
   onOpenLightbox?: (key: string) => void;
+  className?: string;
 }
 
 export function PortableTextRenderer({
@@ -81,6 +83,7 @@ export function PortableTextRenderer({
   activePlayKey,
   onPlayVideo,
   onOpenLightbox,
+  className = '',
 }: PortableTextRendererProps) {
   const [localPlayingKey, setLocalPlayingKey] = useState<string | null>(null);
 
@@ -95,18 +98,32 @@ export function PortableTextRenderer({
 
   const components: PortableTextComponents = {
     block: {
-      normal: ({ children }) => (
-        <p className="text-sm sm:text-base leading-relaxed text-zinc-300 font-normal my-4">
-          {children}
-        </p>
-      ),
+      normal: ({ children }) => {
+        // Handle inline markdown fenced mermaid block if author typed ```mermaid in a standard block
+        const textContent = Array.isArray(children)
+          ? children.map((c) => (typeof c === 'string' ? c : '')).join('')
+          : typeof children === 'string'
+          ? children
+          : '';
+
+        const mermaidMatch = textContent.trim().match(/^```mermaid\s*([\s\S]*?)\s*```$/i);
+        if (mermaidMatch && mermaidMatch[1]) {
+          return <MermaidRenderer chart={mermaidMatch[1].trim()} />;
+        }
+
+        return (
+          <p className="text-sm sm:text-base leading-relaxed text-zinc-300 font-normal my-3">
+            {children}
+          </p>
+        );
+      },
       h1: ({ children }) => {
         const text = Array.isArray(children) ? children.join('') : String(children ?? '');
         const id = slugify(text);
         return (
           <h1
             id={id}
-            className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-zinc-100 mt-10 mb-4 pt-4 border-t border-zinc-800/80"
+            className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-zinc-100 mt-8 mb-4 pt-4 border-t border-zinc-800/80"
           >
             {children}
           </h1>
@@ -118,7 +135,7 @@ export function PortableTextRenderer({
         return (
           <h2
             id={id}
-            className="scroll-mt-24 text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-zinc-100 mt-8 mb-3 flex items-center gap-2"
+            className="scroll-mt-24 text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-zinc-100 mt-6 mb-3 flex items-center gap-2"
           >
             <span>{children}</span>
           </h2>
@@ -130,26 +147,26 @@ export function PortableTextRenderer({
         return (
           <h3
             id={id}
-            className="scroll-mt-24 text-base sm:text-lg font-semibold tracking-tight text-zinc-200 mt-6 mb-2"
+            className="scroll-mt-24 text-base sm:text-lg font-semibold tracking-tight text-zinc-200 mt-5 mb-2"
           >
             {children}
           </h3>
         );
       },
       blockquote: ({ children }) => (
-        <blockquote className="border-l-2 border-sky-400 pl-4 py-1 my-4 italic text-zinc-400 text-sm sm:text-base bg-zinc-900/30">
+        <blockquote className="border-l-2 border-sky-400 pl-4 py-1 my-3 italic text-zinc-400 text-sm sm:text-base bg-zinc-900/30">
           {children}
         </blockquote>
       ),
     },
     list: {
       bullet: ({ children }) => (
-        <ul className="list-disc list-outside ml-6 space-y-1.5 my-4 text-sm sm:text-base text-zinc-300">
+        <ul className="list-disc list-outside ml-6 space-y-1.5 my-3 text-sm sm:text-base text-zinc-300">
           {children}
         </ul>
       ),
       number: ({ children }) => (
-        <ol className="list-decimal list-outside ml-6 space-y-1.5 my-4 text-sm sm:text-base text-zinc-300">
+        <ol className="list-decimal list-outside ml-6 space-y-1.5 my-3 text-sm sm:text-base text-zinc-300">
           {children}
         </ol>
       ),
@@ -186,8 +203,7 @@ export function PortableTextRenderer({
         if (!imageUrl) return null;
 
         return (
-          <figure className="my-6 border border-zinc-800/80 bg-zinc-950/60 overflow-hidden group">
-            {/* Ambient Image Display */}
+          <figure className="my-5 border border-zinc-800/80 bg-zinc-950/60 overflow-hidden group">
             <div
               className="relative w-full aspect-[16/10] overflow-hidden cursor-pointer bg-zinc-950"
               onClick={() => onOpenLightbox && onOpenLightbox(itemKey)}
@@ -210,6 +226,7 @@ export function PortableTextRenderer({
                 <FiMaximize2 className="w-4 h-4" />
               </button>
             </div>
+
           </figure>
         );
       },
@@ -219,17 +236,18 @@ export function PortableTextRenderer({
         const itemKey = value._key;
         const isPlaying = isVideoPlaying(itemKey);
         const videoUrl = value.asset?.url;
-        const posterUrl = value.poster ? urlForImage(value.poster) : null;
+        const posterUrl =
+          value.poster?.asset?.url ||
+          (value.poster ? urlForImage(value.poster) : null);
 
         if (!videoUrl) return null;
 
         return (
-          <div className="my-6 border border-zinc-800/80 bg-zinc-950/60 overflow-hidden">
-            <div className="relative w-full aspect-[16/10] bg-black flex items-center justify-center">
+          <div className="my-5 border border-zinc-800/80 bg-zinc-950/60 overflow-hidden">
+            <div className="relative w-full aspect-[16/9] bg-zinc-950 flex items-center justify-center">
               {isPlaying ? (
                 <video
                   src={videoUrl}
-                  poster={posterUrl ?? undefined}
                   controls
                   autoPlay
                   playsInline
@@ -240,20 +258,14 @@ export function PortableTextRenderer({
                   className="relative w-full h-full bg-zinc-950 flex items-center justify-center cursor-pointer group"
                   onClick={() => handlePlay(itemKey)}
                 >
-                  {posterUrl ? (
+                  {posterUrl && (
                     <div className="absolute inset-0 pointer-events-none">
                       <AmbientImage
                         src={posterUrl}
-                        alt={value.title || 'Native video thumbnail'}
+                        alt={value.title || 'Video poster preview'}
                         sizes="(max-width: 768px) 100vw, 900px"
                         unoptimized
                       />
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center text-zinc-600 gap-2">
-                      <span className="text-[11px] font-mono tracking-wider uppercase text-zinc-500">
-                        {value.title || 'Native Video'}
-                      </span>
                     </div>
                   )}
                   <button
@@ -274,20 +286,21 @@ export function PortableTextRenderer({
         );
       },
 
-      // 3. YouTube Embed Block (Lazy Facade)
+      // 3. YouTube Embed Video Block (Lazy Facade)
       projectMediaYoutube: ({ value }: { value: ProjectMediaYouTubeItem }) => {
         const itemKey = value._key;
         const isPlaying = isVideoPlaying(itemKey);
         const embedUrl = getYouTubeEmbedUrl(value.url);
-        const customPoster = value.poster ? urlForImage(value.poster) : null;
-        const defaultPoster = getYouTubeThumbnailUrl(value.url);
-        const posterUrl = customPoster || defaultPoster;
+        const posterUrl =
+          value.poster?.asset?.url ||
+          (value.poster ? urlForImage(value.poster) : null) ||
+          getYouTubeThumbnailUrl(value.url);
 
         if (!embedUrl) return null;
 
         return (
-          <div className="my-6 border border-zinc-800/80 bg-zinc-950/60 overflow-hidden">
-            <div className="relative w-full aspect-[16/10] bg-black flex items-center justify-center">
+          <div className="my-5 border border-zinc-800/80 bg-zinc-950/60 overflow-hidden">
+            <div className="relative w-full aspect-[16/9] bg-zinc-950 flex items-center justify-center">
               {isPlaying ? (
                 <iframe
                   src={embedUrl}
@@ -301,7 +314,7 @@ export function PortableTextRenderer({
                   className="relative w-full h-full bg-zinc-950 flex items-center justify-center cursor-pointer group"
                   onClick={() => handlePlay(itemKey)}
                 >
-                  {posterUrl ? (
+                  {posterUrl && (
                     <div className="absolute inset-0 pointer-events-none">
                       <AmbientImage
                         src={posterUrl}
@@ -309,12 +322,6 @@ export function PortableTextRenderer({
                         sizes="(max-width: 768px) 100vw, 900px"
                         unoptimized
                       />
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 bg-zinc-950 flex items-center justify-center text-zinc-600">
-                      <span className="text-[11px] font-mono tracking-wider uppercase text-zinc-500">
-                        {value.title || 'YouTube Video'}
-                      </span>
                     </div>
                   )}
                   <button
@@ -335,18 +342,20 @@ export function PortableTextRenderer({
         );
       },
 
-      // 4. Vimeo Embed Block (Lazy Facade)
+      // 4. Vimeo Embed Video Block (Lazy Facade)
       projectMediaVimeo: ({ value }: { value: ProjectMediaVimeoItem }) => {
         const itemKey = value._key;
         const isPlaying = isVideoPlaying(itemKey);
         const embedUrl = getVimeoEmbedUrl(value.url);
-        const posterUrl = value.poster ? urlForImage(value.poster) : null;
+        const posterUrl =
+          value.poster?.asset?.url ||
+          (value.poster ? urlForImage(value.poster) : null);
 
         if (!embedUrl) return null;
 
         return (
-          <div className="my-6 border border-zinc-800/80 bg-zinc-950/60 overflow-hidden">
-            <div className="relative w-full aspect-[16/10] bg-black flex items-center justify-center">
+          <div className="my-5 border border-zinc-800/80 bg-zinc-950/60 overflow-hidden">
+            <div className="relative w-full aspect-[16/9] bg-zinc-950 flex items-center justify-center">
               {isPlaying ? (
                 <iframe
                   src={embedUrl}
@@ -393,8 +402,44 @@ export function PortableTextRenderer({
           </div>
         );
       },
+
+      // 5. Code Block with Mermaid Diagram Detection
+      code: ({ value }: { value: { code?: string; language?: string; filename?: string } }) => {
+        const rawCode = value.code || '';
+        const language = (value.language || 'text').toLowerCase();
+
+        if (language === 'mermaid') {
+          return <MermaidRenderer chart={rawCode} />;
+        }
+
+        return (
+          <div className="my-5 overflow-hidden border border-zinc-800/80 bg-zinc-950">
+            {value.filename && (
+              <div className="flex items-center justify-between px-4 py-1.5 border-b border-zinc-800/80 bg-zinc-900/40 text-[11px] font-mono text-zinc-400">
+                <span>{value.filename}</span>
+                <span className="uppercase text-zinc-500">{language}</span>
+              </div>
+            )}
+            <pre className="p-4 text-xs font-mono text-zinc-200 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-700">
+              <code>{rawCode}</code>
+            </pre>
+          </div>
+        );
+      },
+
+      // 6. Direct Mermaid Block Support (if authored as mermaidDiagram or mermaid block)
+      mermaid: ({ value }: { value: { chart?: string; code?: string } }) => {
+        return <MermaidRenderer chart={value.chart || value.code || ''} />;
+      },
+      mermaidDiagram: ({ value }: { value: { chart?: string; code?: string } }) => {
+        return <MermaidRenderer chart={value.chart || value.code || ''} />;
+      },
     },
   };
 
-  return <PortableText value={value} components={components} />;
+  return (
+    <div className={`portable-text-container ${className}`}>
+      <PortableText value={value} components={components} />
+    </div>
+  );
 }

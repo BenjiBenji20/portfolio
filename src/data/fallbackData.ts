@@ -911,6 +911,26 @@ export const FALLBACK_WORK_LOGS: WorkLogData[] = [
         date: '2026-10-23',
         description:
             'Migrated layout boundaries to streaming Suspense shells for sub-50ms instant initial paint with Next.js 16 Partial Prefetching.',
+        content: [
+            {
+                _key: 'wlc-1',
+                _type: 'block',
+                style: 'normal',
+                children: [
+                    {
+                        _key: 'sp-1',
+                        _type: 'span',
+                        text: 'Migrated layout boundaries to streaming Suspense shells for sub-50ms instant initial paint with Next.js 16 Partial Prefetching.',
+                    },
+                ],
+            },
+            {
+                _key: 'wlc-1-mm',
+                _type: 'code',
+                language: 'mermaid',
+                code: 'graph TD\n  Client[Web Visitor] -->|Instant Shell| SuspenseBoundary[Streaming Shell Boundary]\n  SuspenseBoundary -->|Background Prefetch| DynamicContent[Hydrated Cache Component]\n  DynamicContent -->|PPR Ready| CompleteUI[Instant Visual State]',
+            },
+        ],
         commitSha: 'bc3492e',
         developers: ['Benji Cañones'],
         author: 'Agentic Writer',
@@ -930,6 +950,30 @@ export const FALLBACK_WORK_LOGS: WorkLogData[] = [
         date: '2026-10-18',
         description:
             'Offloaded vector embedding generation to background Google Cloud Tasks worker to prevent blocking HTTP handler timeouts.',
+        content: [
+            {
+                _key: 'wlc-2',
+                _type: 'block',
+                style: 'normal',
+                children: [
+                    {
+                        _key: 'sp-2',
+                        _type: 'span',
+                        text: 'Offloaded vector embedding generation to background Google Cloud Tasks worker to prevent blocking HTTP handler timeouts.',
+                    },
+                ],
+            },
+            {
+                _key: 'wlc-2-img',
+                _type: 'projectMediaImage',
+                alt: 'Google Cloud Tasks Ingestion Pipeline',
+                title: 'Asynchronous Vector Ingestion Worker Queue',
+                caption: 'Background worker decoupling HTTP intake from heavy Gemini vectorization',
+                asset: {
+                    url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
+                },
+            },
+        ],
         commitSha: '7f9a12c',
         developers: ['Benji Cañones'],
         author: 'Human',
@@ -949,6 +993,26 @@ export const FALLBACK_WORK_LOGS: WorkLogData[] = [
         date: '2026-10-10',
         description:
             'Enforced constant-time HMAC SHA-256 signature verification and token-bucket rate limiting on all incoming deployment intake endpoints.',
+        content: [
+            {
+                _key: 'wlc-3',
+                _type: 'block',
+                style: 'normal',
+                children: [
+                    {
+                        _key: 'sp-3',
+                        _type: 'span',
+                        text: 'Enforced constant-time HMAC SHA-256 signature verification and token-bucket rate limiting on all incoming deployment intake endpoints.',
+                    },
+                ],
+            },
+            {
+                _key: 'wlc-3-mm',
+                _type: 'code',
+                language: 'mermaid',
+                code: 'sequenceDiagram\n  participant Webhook as Sanity Content Lake\n  participant Route as Next.js /api/revalidate\n  participant Cache as Tag Cache Store\n  Webhook->>Route: POST /api/revalidate (HMAC SHA-256)\n  Route->>Route: crypto.timingSafeEqual()\n  Route->>Cache: revalidateTag("sanity:workLog")\n  Route-->>Webhook: 200 OK (Purged)',
+            },
+        ],
         commitSha: '4a8b33d',
         developers: ['Benji Cañones', 'Agentic Writer'],
         author: 'Agentic Writer',

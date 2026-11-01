@@ -116,7 +116,7 @@ export function ProjectPreview({
           {collaboratorsText && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400">
               <FiUsers className="w-3 h-3 text-zinc-500" />
-              <span>By: {collaboratorsText}</span>
+              <span>Collab with: {collaboratorsText}</span>
             </span>
           )}
 

@@ -15,6 +15,7 @@ Load only the specification file relevant to your active development task:
 | `GENERATION_ENGINE_SPEC.md` | Gemini API integration, diff parsing, Mermaid generation | `lib/ai/`, `lib/generators/` |
 | `CMS_DATA_SPEC.md` | Sanity client setup, mutation safety, GROQ utilities | `sanity/lib/`, `sanity/schemas/` |
 | `CHAT_RAG_POWERED_SPEC.md` | Visitor chat route, streaming patterns, context assembly | `app/api/chat/`, `components/chat/` |
+| `SYSTEM_ARCHITECTURE.md` | Two-Stage Hybrid Monolith Architecture | `app/`, `sanity/`, project root |
 
 ## 2. Strict Operating Rules
 - **No Schema Assumptions:** Never hardcode document structures. Follow user-defined schemas as specified in `CMS_DATA_SPEC.md`.

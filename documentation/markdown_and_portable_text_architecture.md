@@ -20,7 +20,7 @@ Defines the content rendering paradigm across `/project/{slug}`, `/blog`, `/blog
 
 ```mermaid
 graph TD
-    A["Sanity Content Lake (Published Docs)"] --> B["On-Demand Webhook /api/revalidate"]
+    A["Sanity Content Lake (Published Docs)"] --> B["On-Demand Webhook /api/webhook/sanity/revalidate"]
     B --> C["Next.js Cache Tag Purge ('sanity:article', 'sanity:workLog')"]
     A --> D["/blog: PortableTextRenderer"]
     A --> E["/project/{slug}: ProjectPreview Component"]

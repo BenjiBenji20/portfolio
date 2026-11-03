@@ -21,7 +21,7 @@
 - **Direct Edge Ingestion (`useCdn: false`):**
   - Configure server-side Sanity client instances handling mutations and on-demand cache regeneration with `useCdn: false`.
   - Bypassing Sanity's API CDN prevents edge propagation lag, ensuring freshly written or modified documents are immediately readable by serverless handlers.
-- **Next.js On-Demand Tag Revalidation (`/api/revalidate`):**
+- **Next.js On-Demand Tag Revalidation (`/api/webhook/sanity/revalidate`):**
   - Create a dedicated revalidation route handler triggered by a Sanity GROQ-powered webhook whenever documents are created, updated, or deleted.
   - Verify incoming webhook signatures using the shared Sanity webhook secret (`@sanity/webhook`) before proceeding.
   - Extract the mutated document's `_type` and `slug.current`.

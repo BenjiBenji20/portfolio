@@ -9,7 +9,7 @@ The platform operates as a unified monolithic repository split across two distin
   - **Webhook Intake & Fast Triage (`/api/webhooks/github`):** Receiving outbound GitHub push and pull request events, performing cryptographic HMAC-SHA256 verification, applying deterministic Tier 1 file filtering, and immediately handing off valid events to Stage 2 via `workflow_dispatch` within 1.5 seconds.
   - **Unified Action Gateway (`/api/gateway`):** Multiplexing low-latency visitor actions, including Google reCAPTCHA v3 score verification and EmailJS contact dispatch.
   - **Conversational RAG Assistant (`/api/chat`):** Executing real-time GROQ context projections against Sanity Content Lake and streaming token responses from Gemini 3.5-Flash.
-  - **On-Demand Cache Invalidation (`/api/revalidate`):** Listening for Sanity mutation webhooks to purge stale cache tags (`revalidateTag`) and regenerate static routes instantaneously.
+  - **On-Demand Cache Invalidation (`/api/webhook/sanity/revalidate`):** Listening for Sanity mutation webhooks to purge stale cache tags (`revalidateTag`) and regenerate static routes instantaneously.
 
 ### Stage 2: GitHub Actions Ephemeral Worker (Unconstrained Knowledge Layer)
 - **Runtime Environment:** GitHub Actions ephemeral Ubuntu runners (2 vCPU, 7 GB RAM) living inside the same repository (`.github/workflows/` and `/scripts`).

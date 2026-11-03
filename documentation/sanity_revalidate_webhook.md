@@ -12,11 +12,11 @@ Provides instantaneous on-demand cache revalidation across Next.js ISR and `'use
 sequenceDiagram
     autonumber
     participant Sanity as Sanity Studio / Content Lake
-    participant Webhook as /api/revalidate (Next.js)
+    participant Webhook as /api/webhook/sanity/revalidate (Next.js)
     participant Cache as Next.js Cache (Tags & Routes)
     participant Client as Web Visitor
 
-    Sanity->>Webhook: POST /api/revalidate + HMAC Header
+    Sanity->>Webhook: POST /api/webhook/sanity/revalidate + HMAC Header
     Note over Webhook: Validate secret via parseBody()
     alt Invalid Signature
         Webhook-->>Sanity: 401 Unauthorized
@@ -31,7 +31,7 @@ sequenceDiagram
 ```
 
 ## 3. Webhook Registration Details
-- **Target URL Endpoint:** `https://<DOMAIN>/api/revalidate` (or tunnel for local dev)
+- **Target URL Endpoint:** `https://<DOMAIN>/api/webhook/sanity/revalidate` (or tunnel for local dev)
 - **HTTP Method:** `POST`
 - **Secret:** Value of `SANITY_REVALIDATE_SECRET` environment variable
 - **Trigger on:** Create, Update, Delete

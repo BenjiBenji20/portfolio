@@ -10,7 +10,7 @@ Operational playbook to connect an external project repository (e.g., *Oravista*
 Add to `.env.local` (and Vercel Project Settings > Environment Variables):
 ```bash
 GITHUB_WEBHOOK_SECRET="your_shared_webhook_secret_here" # Random 32+ char secret
-GITHUB_PAT_TOKEN="ghp_... or github_pat_..."           # Token with workflow/Actions scope
+GIT_REPO_PAT_TOKEN="ghp_... or github_pat_..."           # Token with workflow/Actions scope
 PORTFOLIO_REPO_OWNER="BenjiBenji20"
 PORTFOLIO_REPO_NAME="portfolio"
 ```

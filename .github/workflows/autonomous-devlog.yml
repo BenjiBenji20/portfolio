@@ -1,0 +1,72 @@
+name: Autonomous DevLog Knowledge Synthesizer (Phase 2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: 'Full target repository name (e.g. BenjiBenji20/oravista)'
+        required: true
+        type: string
+      commit_sha:
+        description: 'Commit SHA to evaluate and document'
+        required: true
+        type: string
+      branch:
+        description: 'Target production branch'
+        required: false
+        default: 'main'
+        type: string
+      pr_number:
+        description: 'Pull Request number (if triggered from PR merge)'
+        required: false
+        type: string
+      pr_title:
+        description: 'Pull Request or primary commit title'
+        required: false
+        type: string
+      sender:
+        description: 'Author or merger username'
+        required: false
+        default: 'Developer'
+        type: string
+
+jobs:
+  synthesize-devlog:
+    name: Execute Agent Runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Portfolio Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Install Playwright Chromium (For Live Screenshots)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Autonomous DevLog Agent Runner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GIT_REPO_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          GIT_REPO_PAT_TOKEN: ${{ secrets.GIT_REPO_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          SANITY_API_WRITE_TOKEN: ${{ secrets.SANITY_API_WRITE_TOKEN }}
+          NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}
+          NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.NEXT_PUBLIC_SANITY_DATASET || 'production' }}
+        run: |
+          npx tsx scripts/agent_runner/index.ts \
+            --repo "${{ github.event.inputs.target_repo }}" \
+            --sha "${{ github.event.inputs.commit_sha }}" \
+            --branch "${{ github.event.inputs.branch }}" \
+            --pr "${{ github.event.inputs.pr_number }}" \
+            --title "${{ github.event.inputs.pr_title }}" \
+            --sender "${{ github.event.inputs.sender }}"
+

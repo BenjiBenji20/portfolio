@@ -40,8 +40,8 @@
   - Instead of running git diff downloads, Playwright browsers, or Gemini synthesis inside the serverless function, hand off execution to the portfolio repository's Stage 2 GitHub Actions runner.
   - Issue an authenticated HTTP `POST` request to the GitHub REST API:
     `https://api.github.com/repos/<portfolio_owner>/<portfolio_repo>/actions/workflows/autonomous-devlog.yml/dispatches`
-  - Authenticate using a fine-grained Personal Access Token (`GITHUB_PAT_TOKEN`) with `Actions: Read and Write` scope via the `Authorization: Bearer` header, alongside `Accept: application/vnd.github+json` and `X-GitHub-Api-Version: 2022-11-28`.
+  - Authenticate using a fine-grained Personal Access Token (`GIT_REPO_PAT_TOKEN`) with `Actions: Read and Write` scope via the `Authorization: Bearer` header, alongside `Accept: application/vnd.github+json` and `X-GitHub-Api-Version: 2022-11-28`.
   - Pass the normalized metadata inside the JSON body under `ref: "main"` and `inputs: { target_repo, commit_sha, branch, pr_title, pr_body }`.
 - **Fast-Acknowledgment Response:**
   - Once the GitHub API responds with HTTP `204 No Content` (confirming the workflow was queued), immediately return an HTTP `202 Accepted` response (`{ status: "Dispatched to Stage 2 Worker" }`) and close the serverless invocation.
-- **Security Isolation:** Keep both `GITHUB_WEBHOOK_SECRET` and `GITHUB_PAT_TOKEN` strictly in server-side environment variables. Never expose them to client bundles, log outputs, or error payloads returned to the caller.
+- **Security Isolation:** Keep both `GITHUB_WEBHOOK_SECRET` and `GIT_REPO_PAT_TOKEN` strictly in server-side environment variables. Never expose them to client bundles, log outputs, or error payloads returned to the caller.

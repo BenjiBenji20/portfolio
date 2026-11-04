@@ -8,19 +8,23 @@
  */
 export interface PortfolioConfig {
   track: boolean;
+  projectTitle: string;
+  projectSlug: string;
   schema?: string;
+  $schema?: string;
   requireHumanApproval?: boolean;
   note?: string;
   ignoreDirectory?: string[];
-  projectTitle: string;
-  projectSlug: string;
   category?: string;
   liveUrl?: string;
   primaryBranch?: string;
   mediaPreferences?: {
     captureScreenshots?: boolean;
     generateArchitectureDiagrams?: boolean;
+    [key: string]: unknown;
   };
+  // Dynamic arbitrary metadata keys supported for custom future requirements
+  [key: string]: unknown;
 }
 
 /**

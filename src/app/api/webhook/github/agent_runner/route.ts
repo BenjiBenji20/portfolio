@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
 
   // 1. Verify environment configuration
   const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
-  const patToken = process.env.GITHUB_PAT_TOKEN;
+  const patToken = process.env.GIT_REPO_PAT_TOKEN;
   const portfolioOwner = process.env.PORTFOLIO_REPO_OWNER || 'BenjiBenji20';
   const portfolioRepo = process.env.PORTFOLIO_REPO_NAME || 'portfolio';
 
@@ -269,7 +269,7 @@ export async function POST(req: NextRequest) {
 
   // 8. Verify Stage 2 PAT Authentication
   if (!patToken) {
-    console.error('[Webhook Gatekeeper] GITHUB_PAT_TOKEN is not configured on the server.');
+    console.error('[Webhook Gatekeeper] GIT_REPO_PAT_TOKEN is not configured on the server.');
     return NextResponse.json(
       { error: 'Server configuration error: GitHub dispatch PAT missing' },
       { status: 500 }

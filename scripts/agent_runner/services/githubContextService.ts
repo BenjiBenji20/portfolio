@@ -113,7 +113,7 @@ export async function fetchGitHubContext(
       console.log(`[GitHubContext] Fetching PR #${prNumber} details from ${targetRepo}...`);
       const prRes = await fetch(`https://api.github.com/repos/${targetRepo}/pulls/${prNumber}`, {
         headers: { ...headers, Accept: 'application/vnd.github+json' },
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(30000), // Balanced 30s timeout
       });
 
       if (prRes.ok) {
@@ -130,16 +130,29 @@ export async function fetchGitHubContext(
     console.log(`[GitHubContext] Fetching commit ${commitSha.slice(0, 7)} details from ${targetRepo}...`);
     const commitRes = await fetch(`https://api.github.com/repos/${targetRepo}/commits/${commitSha}`, {
       headers: { ...headers, Accept: 'application/vnd.github+json' },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(30000), // Balanced 30s timeout
     });
 
     if (commitRes.ok) {
       const commitJson = await commitRes.json();
       commitMessage = commitJson.commit?.message || '';
       if (commitJson.files && Array.isArray(commitJson.files)) {
-        changedFiles = commitJson.files
-          .map((f: { filename: string }) => f.filename)
-          .filter((filename: string) => !isIgnoredPath(filename, ignoreDirectories));
+        const rawFiles: string[] = commitJson.files.map((f: { filename: string }) => f.filename);
+        changedFiles = rawFiles.filter((filename: string) => !isIgnoredPath(filename, ignoreDirectories));
+        const ignoredFiles: string[] = rawFiles.filter((filename: string) => isIgnoredPath(filename, ignoreDirectories));
+
+        console.log(`[GitHubContext] Commit File Analysis (${rawFiles.length} total files):`);
+        if (changedFiles.length > 0) {
+          console.log(`[GitHubContext] Tracked files sent to AI Agent (${changedFiles.length}):`);
+          changedFiles.forEach((file: string) => console.log(`   + [TRACKED] ${file}`));
+        } else {
+          console.log(`[GitHubContext] Tracked files sent to AI Agent: (None)`);
+        }
+
+        if (ignoredFiles.length > 0) {
+          console.log(`[GitHubContext] Ignored/excluded files (${ignoredFiles.length}):`);
+          ignoredFiles.forEach((file: string) => console.log(`   - [IGNORED] ${file}`));
+        }
       }
     }
   } catch (err) {
@@ -151,7 +164,7 @@ export async function fetchGitHubContext(
     console.log(`[GitHubContext] Fetching raw git diff for ${commitSha.slice(0, 7)}...`);
     const diffRes = await fetch(`https://api.github.com/repos/${targetRepo}/commits/${commitSha}`, {
       headers: { ...headers, Accept: 'application/vnd.github.v3.diff' },
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(30000), // Balanced 30s timeout
     });
 
     if (diffRes.ok) {

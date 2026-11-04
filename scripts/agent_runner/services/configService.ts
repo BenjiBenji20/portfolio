@@ -29,7 +29,7 @@ export async function fetchPortfolioConfig(
   let matchedConfigPath = '.portfolio.json';
 
   try {
-    const defaultRes = await fetch(defaultUrl, { headers, signal: AbortSignal.timeout(10000) });
+    const defaultRes = await fetch(defaultUrl, { headers, signal: AbortSignal.timeout(30000) });
     if (defaultRes.ok) {
       rawConfigString = await defaultRes.text();
     } else if (defaultRes.status === 404) {
@@ -37,7 +37,7 @@ export async function fetchPortfolioConfig(
       console.log(`[ConfigService] .portfolio.json not found directly. Searching root directory for *.portfolio.json variants...`);
       const contentsUrl = `https://api.github.com/repos/${targetRepo}/contents?ref=${commitSha}`;
       const listHeaders = { ...headers, Accept: 'application/vnd.github+json' };
-      const listRes = await fetch(contentsUrl, { headers: listHeaders, signal: AbortSignal.timeout(10000) });
+      const listRes = await fetch(contentsUrl, { headers: listHeaders, signal: AbortSignal.timeout(30000) });
 
       if (listRes.ok) {
         const rootItems = (await listRes.json()) as Array<{ name: string; type: string; path: string }>;
@@ -49,7 +49,7 @@ export async function fetchPortfolioConfig(
           console.log(`[ConfigService] Discovered matching config file: "${candidate.name}". Fetching contents...`);
           matchedConfigPath = candidate.path;
           const candidateUrl = `https://api.github.com/repos/${targetRepo}/contents/${encodeURIComponent(candidate.path)}?ref=${commitSha}`;
-          const candidateRes = await fetch(candidateUrl, { headers, signal: AbortSignal.timeout(10000) });
+          const candidateRes = await fetch(candidateUrl, { headers, signal: AbortSignal.timeout(30000) });
           if (candidateRes.ok) {
             rawConfigString = await candidateRes.text();
           }

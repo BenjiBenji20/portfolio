@@ -67,6 +67,11 @@ export async function runAgenticDevlog() {
     config.ignoreDirectory
   );
 
+  if (gitContext.changedFiles.length === 0) {
+    console.log('[Runner] Skipping: Zero functional files to evaluate (all changes are ignored or binary artifacts).');
+    process.exit(0);
+  }
+
   const effectiveTitle = inputs.prTitle || gitContext.commitMessage.split('\n')[0] || 'Engineering Update';
 
   // 3. Prompt 1: Tier 3 Editorial Triage Gate

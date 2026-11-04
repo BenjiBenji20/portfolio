@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 /**
  * Service to capture high-DPI desktop screenshots using Headless Playwright
+ * with on-demand (lazy) Chromium browser installation.
  */
 export async function captureLiveScreenshot(
   liveUrl?: string,
@@ -16,13 +18,24 @@ export async function captureLiveScreenshot(
   console.log(`[PlaywrightService] Initiating headless screenshot capture for: ${liveUrl}`);
 
   try {
-    // Dynamic import to allow running even if Playwright browser is omitted in light environments
     const { chromium } = await import('playwright');
 
-    const browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    let browser;
+    try {
+      browser = await chromium.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+    } catch (launchErr) {
+      console.warn(
+        `[PlaywrightService] Chromium browser missing (${launchErr instanceof Error ? launchErr.message : String(launchErr)}). Installing Playwright Chromium on-demand...`
+      );
+      execSync('npx playwright install chromium', { stdio: 'inherit' });
+      browser = await chromium.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+    }
 
     const context = await browser.newContext({
       viewport: { width: 1280, height: 800 },

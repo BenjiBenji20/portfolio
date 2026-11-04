@@ -4,52 +4,50 @@
 **Status:** Active  
 
 ## 1. Overview
-Operational playbook to connect an external project repository (e.g., *Oravista*, *Incident Hound*) to the Benjineer Portfolio (`BenjiBenji20/portfolio`) Phase 1 Agentic Webhook Intake.
+Operational procedure to enable autonomous devlog tracking on external project repositories (e.g., *Oravista*, *Incident Hound*) and route them to Benjineer Portfolio (`BenjiBenji20/portfolio`).
 
-## 2. Step A: Configure Environment Variables in Portfolio
-Add to `.env.local` (and Vercel Project Settings > Environment Variables):
+## 2. Step 1: Configure Portfolio Environment Variables
+In your portfolio repository `.env.local` (and Vercel Project Settings > Environment Variables):
 ```bash
-GITHUB_WEBHOOK_SECRET="your_shared_webhook_secret_here" # Random 32+ char secret
-GIT_REPO_PAT_TOKEN="ghp_... or github_pat_..."           # Token with workflow/Actions scope
+GITHUB_WEBHOOK_SECRET="your_shared_webhook_secret_here" # Shared secret string
+GIT_REPO_PAT_TOKEN="github_pat_... or ghp_..."          # Token with Actions workflow dispatch
 PORTFOLIO_REPO_OWNER="BenjiBenji20"
 PORTFOLIO_REPO_NAME="portfolio"
 ```
-> **PAT Generation:** GitHub Settings > Developer Settings > Personal Access Tokens:
-> - **Option 1 (Classic):** Select `workflow` scope.
-> - **Option 2 (Fine-Grained):** Target repo `portfolio` -> Repository permissions -> `Actions: Read and write`.
+> [!NOTE]
+> **PAT Scope:** Developer Settings > Personal Access Tokens (Fine-grained) -> Target `portfolio` repo -> **Repository permissions** -> `Actions: Read and write`.
 
-## 3. Step B: Register Webhook in Tracked Repositories
-In each tracked repository (e.g., `BenjiBenji20/oravista`):
+## 3. Step 2: Register the Webhook in the Tracked Repo
+In the repository you want to track:
 1. Navigate to **Settings > Webhooks > Add webhook**.
-2. **Payload URL:** `https://<PORTFOLIO-DOMAIN>/api/webhook/github/agent_runner`
-3. **Content type:** `application/json` *(Do not use form-urlencoded)*.
-4. **Secret:** Exact value of `GITHUB_WEBHOOK_SECRET`.
-5. **SSL verification:** Enable.
+2. **Payload URL:** `https://<YOUR-PORTFOLIO-DOMAIN>/api/webhook/github/agent_runner` (e.g. `https://your-portfolio.vercel.app/api/webhook/github/agent_runner`).
+3. **Content type:** `application/json` *(Do not use application/x-www-form-urlencoded)*.
+4. **Secret:** The same secret string configured in `GITHUB_WEBHOOK_SECRET`.
+5. **SSL verification:** Enable SSL verification.
 6. **Events:** Select **Let me select individual events** -> Check **Pushes** and **Pull requests**.
-7. Click **Add webhook**. Confirm the initial `ping` returns a green checkmark (`200 OK`).
+7. Click **Add webhook**. Confirm the initial `ping` event delivers with a green checkmark (`200 OK`).
 
-## 4. Step C: Add `.portfolio.json` to Tracked Repo Root
-Commit `.portfolio.json` to the root of the default production branch (`main`):
+## 4. Step 3: Add Config File to the Tracked Repo Root
+Create `.portfolio.json` (or `<project_name>.portfolio.json` / `portfolio.json`) in the root of the main branch (EXAMPLE):
 ```json
 {
   "track": true,
   "$schema": "https://benjibenji20.dev/schemas/portfolio.v1.json",
   "requireHumanApproval": true,
-  "note": "Do not make your blog super technical",
+  "note": "Optional custom author instructions for Gemini",
   "ignoreDirectory": ["/public/assets/"],
   "projectTitle": "Incident Hound",
   "projectSlug": "incident-hound",
-  "category": "Backend Systems & Observability",
+  "category": "Backend Systems",
   "liveUrl": "https://incident-hound.demo.dev",
   "primaryBranch": "main",
   "mediaPreferences": {
-    "captureScreenshots": false,
+    "captureScreenshots": true,
     "generateArchitectureDiagrams": true
   }
 }
 ```
 
-## 5. Verification Checklist
-- Run local simulation suite: `npx tsx scripts/test_webhook_intake.ts`
-- In GitHub Webhooks, inspect **Recent Deliveries** for `200 OK` (ping/skips) or `202 Accepted` (dispatches).
-
+## 5. Verification & Diagnostics
+- **Immediate Skip Verification:** Pushing only `.md`, lockfiles, `__pycache__`, or `dist/` returns `200 OK` (skipped) in GitHub Webhook Deliveries.
+- **Workflow Dispatch:** Merging functional code into `main` returns `202 Accepted` and launches the GitHub Actions runner.

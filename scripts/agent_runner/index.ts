@@ -72,7 +72,7 @@ export async function runAgenticDevlog() {
   // 3. Prompt 1: Tier 3 Editorial Triage Gate
   const triage = await evaluateEditorialTriage(effectiveTitle, gitContext, config);
   console.log(`[Runner] Triage Result: Score ${triage.score}/10 | Publishable: ${triage.publishable}`);
-  console.log(`[Runner] Rationale: ${triage.rationale}`);
+  console.log(`[Runner] AI Agent's Rationale: ${triage.rationale}`);
 
   if (!triage.publishable || triage.score < 7) {
     console.log(`[Runner] Skipping: Change does not meet editorial threshold (score: ${triage.score}, threshold: >= 7).`);

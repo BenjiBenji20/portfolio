@@ -11,6 +11,80 @@ export interface GitHubContext {
 
 const MAX_DIFF_CHARS = 25000;
 
+const DEFAULT_IGNORED_SEGMENTS = [
+  '__pycache__',
+  '.pytest_cache',
+  '.mypy_cache',
+  '.ruff_cache',
+  'venv',
+  '.venv',
+  'env',
+  'node_modules',
+  'dist',
+  'build',
+  'out',
+  '.next',
+  '.nuxt',
+  '.turbo',
+  '.git',
+];
+
+const DEFAULT_IGNORED_EXTENSIONS = [
+  '.pyc',
+  '.pyo',
+  '.pyd',
+  '.map',
+  '.min.js',
+  '.min.css',
+  '.wasm',
+  '.exe',
+  '.dll',
+  '.so',
+  '.dylib',
+  '.bin',
+  '.zip',
+  '.tar',
+  '.gz',
+  '.tgz',
+  '.7z',
+  '.rar',
+  '.sqlite',
+  '.db',
+  '.ds_store',
+];
+
+function isIgnoredPath(filepath: string, userIgnoreDirs: string[] = []): boolean {
+  const normalized = filepath.toLowerCase().replace(/\\/g, '/');
+
+  // Check user specified ignore directories
+  for (const dir of userIgnoreDirs) {
+    const cleaned = dir.replace(/^\/+|\/+$/g, '').toLowerCase();
+    if (normalized.startsWith(cleaned) || normalized.includes(`/${cleaned}/`)) {
+      return true;
+    }
+  }
+
+  // Check default build / virtualenv / cache directory segments
+  for (const segment of DEFAULT_IGNORED_SEGMENTS) {
+    if (
+      normalized.startsWith(`${segment}/`) ||
+      normalized.includes(`/${segment}/`) ||
+      normalized.endsWith(`/${segment}`)
+    ) {
+      return true;
+    }
+  }
+
+  // Check binary & build extensions
+  for (const ext of DEFAULT_IGNORED_EXTENSIONS) {
+    if (normalized.endsWith(ext)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export async function fetchGitHubContext(
   targetRepo: string,
   commitSha: string,
@@ -63,7 +137,9 @@ export async function fetchGitHubContext(
       const commitJson = await commitRes.json();
       commitMessage = commitJson.commit?.message || '';
       if (commitJson.files && Array.isArray(commitJson.files)) {
-        changedFiles = commitJson.files.map((f: { filename: string }) => f.filename);
+        changedFiles = commitJson.files
+          .map((f: { filename: string }) => f.filename)
+          .filter((filename: string) => !isIgnoredPath(filename, ignoreDirectories));
       }
     }
   } catch (err) {
@@ -85,8 +161,8 @@ export async function fetchGitHubContext(
     console.warn(`[GitHubContext] Failed to fetch raw git diff:`, err);
   }
 
-  // 4. Scrub diff against ignoreDirectory
-  if (ignoreDirectories.length > 0 && rawDiff) {
+  // 4. Scrub diff against ignoreDirectory and default binary/build patterns
+  if (rawDiff) {
     rawDiff = scrubDiff(rawDiff, ignoreDirectories);
   }
 
@@ -107,7 +183,7 @@ export async function fetchGitHubContext(
 }
 
 /**
- * Strips diff blocks matching paths in ignoreDirectories
+ * Strips diff blocks matching binary artifacts, build directories, or ignoreDirectories
  */
 function scrubDiff(diff: string, ignoreDirectories: string[]): string {
   const fileDiffs = diff.split(/^diff --git /m);
@@ -118,14 +194,22 @@ function scrubDiff(diff: string, ignoreDirectories: string[]): string {
   for (const block of fileDiffs) {
     if (!block.trim()) continue;
     const firstLine = block.split('\n')[0];
-    const isIgnored = ignoreDirectories.some((dir) => {
-      const normalizedDir = dir.replace(/^\/+|\/+$/g, '');
-      return firstLine.includes(`a/${normalizedDir}/`) || firstLine.includes(`b/${normalizedDir}/`);
-    });
 
-    if (!isIgnored) {
-      keptBlocks.push('diff --git ' + block);
+    // Strip binary notices (e.g. "Binary files a/... and b/... differ")
+    if (block.includes('Binary files ') && block.includes(' differ')) {
+      continue;
     }
+
+    // Extract file paths from "a/path b/path"
+    const paths = firstLine.split(' ');
+    const pathA = paths[0]?.replace(/^a\//, '') || '';
+    const pathB = paths[1]?.replace(/^b\//, '') || '';
+
+    if (isIgnoredPath(pathA, ignoreDirectories) || isIgnoredPath(pathB, ignoreDirectories)) {
+      continue;
+    }
+
+    keptBlocks.push('diff --git ' + block);
   }
 
   return keptBlocks.join('\n');

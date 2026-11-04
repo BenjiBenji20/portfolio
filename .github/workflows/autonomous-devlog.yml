@@ -49,9 +49,6 @@ jobs:
       - name: Install Monorepo Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Install Playwright Chromium (For Live Screenshots)
-        run: npx playwright install --with-deps chromium
-
       - name: Run Autonomous DevLog Agent Runner
         env:
           GITHUB_TOKEN: ${{ secrets.GIT_REPO_PAT_TOKEN || secrets.GITHUB_TOKEN }}

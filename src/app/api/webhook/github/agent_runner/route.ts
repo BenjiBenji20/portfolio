@@ -26,6 +26,28 @@ const NON_FUNCTIONAL_EXTENSIONS = [
   '.gif',
   '.svg',
   '.ico',
+  // Compiled code & binaries
+  '.pyc',
+  '.pyo',
+  '.pyd',
+  '.map',
+  '.min.js',
+  '.min.css',
+  '.wasm',
+  '.exe',
+  '.dll',
+  '.so',
+  '.dylib',
+  '.bin',
+  // Archives & DBs
+  '.zip',
+  '.tar',
+  '.gz',
+  '.tgz',
+  '.7z',
+  '.rar',
+  '.sqlite',
+  '.db',
 ];
 
 const NON_FUNCTIONAL_FILENAMES = [
@@ -39,25 +61,50 @@ const NON_FUNCTIONAL_FILENAMES = [
   'license',
   'license.md',
   'license.txt',
+  '.ds_store',
+  'thumbs.db',
 ];
 
-const NON_FUNCTIONAL_PREFIXES = [
+const NON_FUNCTIONAL_SEGMENTS = [
   '.github/',
   '.vscode/',
   '.idea/',
   '.agents/',
   'documentation/',
+  // Python cache & virtualenvs
+  '__pycache__/',
+  '.pytest_cache/',
+  '.mypy_cache/',
+  '.ruff_cache/',
+  'venv/',
+  '.venv/',
+  'env/',
+  // Build outputs & package managers
+  'node_modules/',
+  'dist/',
+  'build/',
+  'out/',
+  '.next/',
+  '.nuxt/',
+  '.turbo/',
+  '.cache/',
 ];
 
 /**
- * Deterministically checks if a given file path is non-functional
+ * Deterministically checks if a given file path is non-functional or an accidental binary/build artifact
  */
 function isNonFunctionalFile(file: string): boolean {
-  const normalized = file.toLowerCase();
-  if (NON_FUNCTIONAL_FILENAMES.some((name) => normalized.endsWith(name))) {
+  const normalized = file.toLowerCase().replace(/\\/g, '/');
+  const basename = normalized.split('/').pop() || normalized;
+
+  if (NON_FUNCTIONAL_FILENAMES.some((name) => basename === name)) {
     return true;
   }
-  if (NON_FUNCTIONAL_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
+  if (
+    NON_FUNCTIONAL_SEGMENTS.some(
+      (segment) => normalized.startsWith(segment) || normalized.includes(`/${segment}`)
+    )
+  ) {
     return true;
   }
   if (NON_FUNCTIONAL_EXTENSIONS.some((ext) => normalized.endsWith(ext))) {

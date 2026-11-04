@@ -51,8 +51,7 @@ jobs:
 
       - name: Run Autonomous DevLog Agent Runner
         env:
-          GITHUB_TOKEN: ${{ secrets.GIT_REPO_PAT_TOKEN || secrets.GITHUB_TOKEN }}
-          GIT_REPO_PAT_TOKEN: ${{ secrets.GIT_REPO_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          GIT_REPO_PAT_TOKEN: ${{ secrets.GIT_REPO_PAT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
           SANITY_API_WRITE_TOKEN: ${{ secrets.SANITY_API_WRITE_TOKEN }}

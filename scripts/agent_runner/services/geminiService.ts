@@ -18,7 +18,7 @@ import {
  * 4. Schema Recovery & Self-Healing Loop (Temperature 0.0 + targeted diagnostic error feedback)
  */
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 
 async function callGemini(
   prompt: string,
@@ -53,7 +53,7 @@ async function callGemini(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(bodyPayload),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(60000), // 60s timeout for heavy diff synthesis
   });
 
   if (!res.ok) {
@@ -152,6 +152,10 @@ CORRECTION INSTRUCTIONS:
       if (attempt === maxRetries) {
         throw networkOrApiError;
       }
+      // Exponential backoff delay (2.5s, 5s) to gracefully absorb transient 503 high-demand spikes
+      const backoffMs = attempt * 2500;
+      console.warn(`[GeminiService] [${taskName}] Waiting ${backoffMs}ms before retry...`);
+      await new Promise((resolve) => setTimeout(resolve, backoffMs));
     }
   }
 

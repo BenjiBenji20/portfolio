@@ -17,7 +17,7 @@
 
 ## 3. Gemini Runtime & Streaming Contracts
 - **Endpoint Pattern:** Implement as a Next.js App Router POST route (`/app/api/chat/route.ts`) returning an AI SDK `DataStreamResponse` or native `ReadableStream`.
-- **Model Selection:** Use `gemini-2.5-flash` with low temperature (0.2–0.4) to maintain high factual consistency and prevent hallucinations.
+- **Model Selection:** Use `gemini-3.5-flash` with low temperature (0.2–0.4) to maintain high factual consistency and prevent hallucinations.
 - **Grounding Directives:** Instruct the model via system instructions to answer strictly based on the injected Sanity records. Missing details must be acknowledged directly without inventing tech stacks, dates, or repository features.
 
 ## 4. Client State & Session Boundaries

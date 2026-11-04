@@ -42,6 +42,8 @@ graph TD
 | [media_sizing_and_aspect_ratios.md](./media_sizing_and_aspect_ratios.md) | Asset Contracts | 16:9 banner standard, ambient blurred backdrop, and zero distortion cropping rules. |
 | [markdown_and_portable_text_architecture.md](./markdown_and_portable_text_architecture.md) | Ingestion Standards | Schema format mapping: Portable Text for articles, Markdown for devlogs, AI approval gate. |
 | [sanity_revalidate_webhook.md](./sanity_revalidate_webhook.md) | Cache Pipeline | HMAC SHA-256 signature verification and tag-based on-demand ISR revalidation. |
+| [github_agent_runner_webhook.md](./github_agent_runner_webhook.md) | Webhook Intake | Phase 1 Gatekeeper, Web Crypto HMAC, Tier 1 filter, and workflow_dispatch. |
+| [tracked_repository_setup_guide.md](./tracked_repository_setup_guide.md) | Repo Onboarding | Operational steps for env vars, GitHub Webhook setup, and .portfolio.json. |
 | [resend_and_recaptcha_contact_system.md](./resend_and_recaptcha_contact_system.md) | Security & Delivery | Google reCAPTCHA v3 bot filtering, token rate limiting, and Resend email templates. |
 | [mermaid_diagram_syntax_guide.md](./mermaid_diagram_syntax_guide.md) | Diagram Standards | DFD, flowchart, sequence, and state diagram specifications for Gemini/AI and humans. |
 

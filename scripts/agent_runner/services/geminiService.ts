@@ -20,7 +20,7 @@ import { geminiQuotaGuardrail } from '../utils/geminiQuotaGuardrail';
  * - Stage 3: Cross-Referenced Holistic Synthesis (Reduce Stage: correlate modules into devlog + Mermaid)
  */
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 async function callGemini(
   prompt: string,
@@ -302,10 +302,10 @@ export async function distillFileSummaries(
     // Knowledge retention: Inject prior batch summaries as context
     const priorKnowledgeContext = accumulatedSummaries.length > 0
       ? `\nPREVIOUSLY ANALYZED MODULES IN THIS PR (Retain this context):\n` +
-        accumulatedSummaries
-          .map((s) => `- ${s.filename}: ${s.responsibility} (Deltas: ${s.keyChanges.join(', ')})`)
-          .join('\n') +
-        `\n`
+      accumulatedSummaries
+        .map((s) => `- ${s.filename}: ${s.responsibility} (Deltas: ${s.keyChanges.join(', ')})`)
+        .join('\n') +
+      `\n`
       : '';
 
     const filesContent = batch
@@ -409,13 +409,13 @@ flowchart TD
 
   const summariesBlock = fileSummaries.length > 0
     ? fileSummaries
-        .map(
-          (s) => `### File: ${s.filename}
+      .map(
+        (s) => `### File: ${s.filename}
 - Responsibility: ${s.responsibility}
 - Key Deltas: ${s.keyChanges.join('; ')}
 - Architectural Impact: ${s.architecturalImpact || 'None'}`
-        )
-        .join('\n\n')
+      )
+      .join('\n\n')
     : `Changed Files: ${gitContext.changedFiles.join(', ')}\nRaw Diff Excerpt:\n${gitContext.rawDiff.slice(0, 10000)}`;
 
   const prompt = `

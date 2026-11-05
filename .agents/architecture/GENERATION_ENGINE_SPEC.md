@@ -11,7 +11,7 @@
 - **Summary Truncation Fallback:** If a diff exceeds the budget, generate an intermediate file-level change summary first, then feed the summarized changes to the generator.
 
 ## 2. Gemini Integration & Structured Output
-- **SDK & Model:** Use the Google Gen AI SDK invoking `gemini-3.5-flash` for high-throughput, low-latency generation.
+- **SDK & Model:** Use the Google Gen AI SDK invoking `gemini-2.5-flash` for high-throughput, low-latency generation.
 - **Output Enforcement:** Always utilize structured JSON mode (`responseSchema` or function calling). Do not rely on plain markdown text generation to populate database records.
 - **Dynamic Field Contract:** Return generic payload structures (e.g., `title`, `summary`, `bodyMarkdown`, `mermaidDiagram` (for diagrams such as ERDs, flowcharts, and sequence diagrams), `discoveredMediaUrls`) so content schema changes do not break the engine.
 

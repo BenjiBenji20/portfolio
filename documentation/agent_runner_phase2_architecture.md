@@ -4,7 +4,7 @@
 **Status:** Implemented  
 
 ## 1. Overview
-The Phase 2 Ephemeral Worker runs in GitHub Actions (`autonomous-devlog.yml`) on an Ubuntu runner. It fetches `.portfolio.json` contracts, executes Zod-constrained Gemini 3.5-Flash triage/synthesis with automated self-healing, captures Playwright screenshots, enforces deterministic Mermaid syntax, and publishes idempotent records to Sanity CMS.
+The Phase 2 Ephemeral Worker runs in GitHub Actions (`autonomous-devlog.yml`) on an Ubuntu runner. It fetches `.portfolio.json` contracts, executes Zod-constrained Gemini 2.5-flash triage/synthesis with automated self-healing, captures Playwright screenshots, enforces deterministic Mermaid syntax, and publishes idempotent records to Sanity CMS.
 
 ## 2. Execution Pipeline
 

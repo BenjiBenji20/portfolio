@@ -19,6 +19,7 @@ export const workLogType = defineType({
       title: 'Parent Project',
       type: 'reference',
       to: [{ type: 'project' }],
+      weak: true,
       description: 'The parent project this work log belongs to (search and select existing project)',
       validation: (Rule) => Rule.required(),
     }),

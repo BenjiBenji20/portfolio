@@ -1,6 +1,6 @@
 # Gemini Structured Generator & Autonomous DevLog Synthesis
 
-> **Overview:** Procedural instructions for the Agentic Dev to configure the Google Gen AI SDK using Gemini 3.5-Flash (As Agentic Writer), preprocess git diffs, enforce strict JSON schemas for devlog entries, and handle API retries and token constraints.  
+> **Overview:** Procedural instructions for the Agentic Dev to configure the Google Gen AI SDK using Gemini 2.5-flash (As Agentic Writer), preprocess git diffs, enforce strict JSON schemas for devlog entries, and handle API retries and token constraints.  
 > **When to Use:** Consult when authoring the automated devlog generation pipeline, structuring system prompts for diff analysis, configuring structured outputs, or tuning LLM inference parameters.
 
 ---

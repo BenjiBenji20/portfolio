@@ -210,7 +210,15 @@ export async function persistDevLogToSanity(
     author: 'Agentic Writer',
     developers: [sender, 'Agentic Writer'],
     content: contentBlocks,
-    ...(projectIdRef ? { project: { _type: 'reference', _ref: projectIdRef } } : {}),
+    ...(projectIdRef
+      ? {
+          project: {
+            _type: 'reference',
+            _ref: projectIdRef,
+            _weak: true, // Allows referencing draft projects awaiting human review
+          },
+        }
+      : {}),
     backlinks: targetRepo
       ? [
           {

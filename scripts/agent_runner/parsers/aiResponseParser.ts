@@ -4,7 +4,7 @@ import { z } from 'zod';
  * AI Response Parser & Zod Verification Engine
  * 
  * Provides strict structural validation, diagnostic extraction, and schema enforcement
- * for all deterministic Gemini 3.5-Flash responses.
+ * for all deterministic Gemini 2.5-flash responses.
  */
 
 // 1. Schema for Prompt 1: Tier 3 Editorial Triage

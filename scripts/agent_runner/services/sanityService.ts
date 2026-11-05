@@ -84,8 +84,8 @@ export async function persistDevLogToSanity(
         slug: { _type: 'slug', current: config.projectSlug },
         shortDescription: config.note || `Autonomous engineering project: ${config.projectTitle}`,
         projectType: config.category || 'Engineering',
-        ...(config.liveUrl ? { liveUrl: config.liveUrl } : {}),
-        ...(targetRepo ? { repositoryUrl: `https://github.com/${targetRepo}` } : {}),
+        ...(config.liveUrl ? { website: config.liveUrl } : {}),
+        ...(targetRepo ? { repository: `https://github.com/${targetRepo}` } : {}),
       };
 
       await client.createOrReplace(draftProjectPayload);
@@ -180,9 +180,16 @@ export async function persistDevLogToSanity(
     });
     contentBlocks.push({
       _key: 'mermaid-code',
-      _type: 'code',
-      language: 'mermaid',
-      code: synthesis.mermaidDiagram,
+      _type: 'block',
+      style: 'normal',
+      children: [
+        {
+          _key: 'mm-code-span',
+          _type: 'span',
+          text: synthesis.mermaidDiagram,
+          marks: ['code'],
+        },
+      ],
     });
   }
 

@@ -2,11 +2,21 @@
  * Service to fetch PR metadata, commit details, and raw git diffs from GitHub REST API
  */
 
+export interface FileDelta {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  patch?: string;
+}
+
 export interface GitHubContext {
   prBody: string;
   commitMessage: string;
   rawDiff: string;
+  diffStat: string;
   changedFiles: string[];
+  fileDeltas: FileDelta[];
 }
 
 const MAX_DIFF_CHARS = 25000;
@@ -105,7 +115,9 @@ export async function fetchGitHubContext(
   let prBody = '';
   let commitMessage = '';
   let rawDiff = '';
+  let diffStat = '';
   let changedFiles: string[] = [];
+  let fileDeltas: FileDelta[] = [];
 
   // 1. Fetch Pull Request body if prNumber is present
   if (prNumber) {
@@ -137,9 +149,30 @@ export async function fetchGitHubContext(
       const commitJson = await commitRes.json();
       commitMessage = commitJson.commit?.message || '';
       if (commitJson.files && Array.isArray(commitJson.files)) {
-        const rawFiles: string[] = commitJson.files.map((f: { filename: string }) => f.filename);
-        changedFiles = rawFiles.filter((filename: string) => !isIgnoredPath(filename, ignoreDirectories));
-        const ignoredFiles: string[] = rawFiles.filter((filename: string) => isIgnoredPath(filename, ignoreDirectories));
+        interface RawGithubFile {
+          filename: string;
+          status: string;
+          additions: number;
+          deletions: number;
+          patch?: string;
+        }
+
+        const rawFiles: RawGithubFile[] = commitJson.files;
+        const trackedFiles = rawFiles.filter((f) => !isIgnoredPath(f.filename, ignoreDirectories));
+        const ignoredFiles = rawFiles.filter((f) => isIgnoredPath(f.filename, ignoreDirectories));
+
+        changedFiles = trackedFiles.map((f) => f.filename);
+        fileDeltas = trackedFiles.map((f) => ({
+          filename: f.filename,
+          status: f.status || 'modified',
+          additions: f.additions || 0,
+          deletions: f.deletions || 0,
+          patch: f.patch,
+        }));
+
+        diffStat = fileDeltas
+          .map((f) => `${f.filename} (+${f.additions}, -${f.deletions}) [${f.status}]`)
+          .join('\n');
 
         console.log(`[GitHubContext] Commit File Analysis (${rawFiles.length} total files):`);
         if (changedFiles.length > 0) {
@@ -151,7 +184,7 @@ export async function fetchGitHubContext(
 
         if (ignoredFiles.length > 0) {
           console.log(`[GitHubContext] Ignored/excluded files (${ignoredFiles.length}):`);
-          ignoredFiles.forEach((file: string) => console.log(`   - [IGNORED] ${file}`));
+          ignoredFiles.forEach((f) => console.log(`   - [IGNORED] ${f.filename}`));
         }
       }
     }
@@ -191,7 +224,9 @@ export async function fetchGitHubContext(
     prBody,
     commitMessage,
     rawDiff,
+    diffStat,
     changedFiles,
+    fileDeltas,
   };
 }
 

@@ -47,6 +47,13 @@ export interface TriageResult {
   suggestedBadge?: string;
 }
 
+export interface FileSummary {
+  filename: string;
+  responsibility: string;
+  keyChanges: string[];
+  architecturalImpact?: string;
+}
+
 export interface DevLogSynthesisResult {
   title: string;
   badge: string;

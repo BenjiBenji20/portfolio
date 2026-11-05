@@ -57,6 +57,40 @@ export const DevLogSynthesisSchema = z.object({
 
 export type ValidatedDevLogSynthesis = z.infer<typeof DevLogSynthesisSchema>;
 
+// 3. Schema for Stage 2: Per-File Semantic Distillation (Map Stage)
+export const FileSummarySchema = z.object({
+  filename: z.string(),
+  responsibility: z.string().min(3, 'responsibility must be at least 3 characters'),
+  keyChanges: z.array(z.string()).default([]),
+  architecturalImpact: z.string().optional().default('None'),
+});
+
+export type ValidatedFileSummary = z.infer<typeof FileSummarySchema>;
+
+export const GEMINI_FILE_SUMMARY_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    filename: {
+      type: 'STRING',
+      description: 'The filename analyzed',
+    },
+    responsibility: {
+      type: 'STRING',
+      description: '1-2 sentence distillation of core responsibility and technical purpose',
+    },
+    keyChanges: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'Concrete functions, routes, state mutations, or interface changes',
+    },
+    architecturalImpact: {
+      type: 'STRING',
+      description: 'Side effects, dependencies on other modules, or performance/security impact',
+    },
+  },
+  required: ['filename', 'responsibility', 'keyChanges'],
+};
+
 // Corresponding Gemini API responseSchema definition
 export const GEMINI_DEVLOG_SYNTHESIS_SCHEMA = {
   type: 'OBJECT',

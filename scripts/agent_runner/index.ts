@@ -1,7 +1,11 @@
 import { fetchPortfolioConfig } from './services/configService';
 import { fetchGitHubContext } from './services/githubContextService';
 import { captureLiveScreenshot } from './services/playwrightService';
-import { evaluateEditorialTriage, synthesizeDevLog } from './services/geminiService';
+import {
+  evaluateEditorialTriage,
+  distillFileSummaries,
+  synthesizeDevLog,
+} from './services/geminiService';
 import { persistDevLogToSanity } from './services/sanityService';
 import type { RunnerInputs } from './types';
 
@@ -84,7 +88,11 @@ export async function runAgenticDevlog() {
     process.exit(0);
   }
 
-  // 4. Capture Headless Screenshot (if configured)
+  // 4. Stage 2: Per-File Semantic Distillation (Map Stage)
+  const fileSummaries = await distillFileSummaries(gitContext.fileDeltas, config);
+  console.log(`[Runner] Distilled ${fileSummaries.length} module summary(s) for holistic synthesis.`);
+
+  // 5. Capture Headless Screenshot (if configured)
   let screenshotBuffer: Buffer | null = null;
   if (config.mediaPreferences?.captureScreenshots && config.liveUrl) {
     screenshotBuffer = await captureLiveScreenshot(config.liveUrl);
@@ -92,12 +100,12 @@ export async function runAgenticDevlog() {
     console.log('[Runner] Screenshot capture skipped (captureScreenshots is false or liveUrl not defined).');
   }
 
-  // 5. Prompt 2 & 3: DevLog Narrative Synthesis & Mermaid Diagram
-  const synthesis = await synthesizeDevLog(effectiveTitle, gitContext, config, triage);
+  // 6. Stage 3: Cross-Referenced Holistic Synthesis (Reduce Stage)
+  const synthesis = await synthesizeDevLog(effectiveTitle, gitContext, config, triage, fileSummaries);
   console.log(`[Runner] Synthesized DevLog: "${synthesis.title}" [${synthesis.badge}]`);
 
-  // 6. Phase 3: Persist to Sanity Content Lake
-  const { docId } = await persistDevLogToSanity(
+  // 7. Persist to Sanity Content Lake (enforcing schema access control and drafts)
+  const { docId, reviewAlertRequired } = await persistDevLogToSanity(
     config,
     inputs.commitSha,
     synthesis,
@@ -109,6 +117,11 @@ export async function runAgenticDevlog() {
   console.log('\n========================================================');
   console.log(`Autonomous DevLog Pipeline Successfully Completed!`);
   console.log(`Sanity Document: ${docId}`);
+  if (reviewAlertRequired) {
+    console.log(`Status: PENDING HUMAN REVIEW (Saved as DRAFT in Sanity Studio)`);
+  } else {
+    console.log(`Status: PUBLISHED LIVE (Triggering instant Next.js ISR revalidation)`);
+  }
   console.log('========================================================\n');
 }
 

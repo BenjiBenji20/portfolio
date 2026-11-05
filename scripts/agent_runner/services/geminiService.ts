@@ -1,21 +1,22 @@
 import type { z } from 'zod';
-import type { ValidatedPortfolioConfig, TriageResult, DevLogSynthesisResult } from '../types';
-import type { GitHubContext } from './githubContextService';
+import type { ValidatedPortfolioConfig, TriageResult, DevLogSynthesisResult, FileSummary } from '../types';
+import type { GitHubContext, FileDelta } from './githubContextService';
 import {
   TriageResponseSchema,
   DevLogSynthesisSchema,
+  FileSummarySchema,
   GEMINI_TRIAGE_RESPONSE_SCHEMA,
   GEMINI_DEVLOG_SYNTHESIS_SCHEMA,
+  GEMINI_FILE_SUMMARY_SCHEMA,
   extractZodDiagnostics,
 } from '../parsers/aiResponseParser';
 
 /**
- * Service to execute Gemini 3.5-Flash prompts with strict SDK-level responseSchema,
+ * Service to execute Gemini 3-Stage Map-Reduce Pipeline with strict SDK-level responseSchema,
  * runtime Zod verification, and an iterative self-healing correction loop:
- * 1. Tier 3 Editorial Triage Prompt (Enforced via TriageResponseSchema)
- * 2. DevLog Narrative Synthesis Prompt (Enforced via DevLogSynthesisSchema)
- * 3. Architectural Mermaid Diagram Prompt (Deterministic Syntax Contract)
- * 4. Schema Recovery & Self-Healing Loop (Temperature 0.0 + targeted diagnostic error feedback)
+ * - Stage 1: Lightweight Triage Gate (diffStat + commit/PR metadata)
+ * - Stage 2: Per-File Semantic Distillation (Map Stage: compress large code files to dense facts)
+ * - Stage 3: Cross-Referenced Holistic Synthesis (Reduce Stage: correlate modules into devlog + Mermaid)
  */
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
@@ -139,10 +140,10 @@ ${lastRawOutput}
 \`\`\`
 
 CORRECTION INSTRUCTIONS:
-1. Examine each failing field listed in the diagnostic report above.
-2. Fix all constraint violations (e.g. required string lengths, array minimum item counts, or missing properties).
-3. If "mermaidDiagram" is present, ensure all node labels are wrapped in double quotes inside brackets (e.g. NodeA["Step Name"]).
-4. Return ONLY the corrected, valid JSON conforming exactly to the required schema. Do not include markdown code block backticks inside property values.
+- Examine each failing field listed in the diagnostic report above.
+- Fix all constraint violations (e.g. required string lengths, array minimum item counts, or missing properties).
+- If "mermaidDiagram" is present, ensure all node labels are wrapped in double quotes inside brackets (e.g. NodeA["Step Name"]).
+- Return ONLY the corrected, valid JSON conforming exactly to the required schema. Do not include markdown code block backticks inside property values.
 `;
     } catch (networkOrApiError) {
       console.error(
@@ -165,33 +166,38 @@ CORRECTION INSTRUCTIONS:
 }
 
 /**
- * Prompt 1: Tier 3 Editorial Triage
- * Constrained by GEMINI_TRIAGE_RESPONSE_SCHEMA and strictly validated by TriageResponseSchema (Zod)
- * with self-healing fallback.
+ * Stage 1: Lightweight Editorial Triage Gate
+ * Analyzes git diff --stat + commit/PR metadata with minimal token overhead (< 1.5s execution)
  */
 export async function evaluateEditorialTriage(
   prTitle: string,
   gitContext: GitHubContext,
   config: ValidatedPortfolioConfig
 ): Promise<TriageResult> {
-  console.log('[GeminiService] Running Prompt 1: Tier 3 Editorial Triage (Zod-enforced)...');
+  console.log('[GeminiService] Running Stage 1: Lightweight Editorial Triage Gate (Stat-enforced)...');
 
   const prompt = `
-Analyze the following pull request / commit changes for project "${config.projectTitle}".
-Evaluate whether this change represents genuine engineering momentum, architectural improvement, feature release, performance optimization, or security hardening worthy of documenting on the developer's public portfolio devlog.
+Evaluate the engineering significance of this commit/PR for project "${config.projectTitle}".
 
-PR / Commit Title: ${prTitle}
-PR Description: ${gitContext.prBody || 'None provided'}
-Commit Message: ${gitContext.commitMessage || 'None provided'}
-Changed Files: ${gitContext.changedFiles.join(', ')}
+METADATA & SCOPE:
+- PR / Commit Title: ${prTitle}
+- PR Description: ${gitContext.prBody || 'None provided'}
+- Primary Commit Message: ${gitContext.commitMessage || 'None provided'}
+- Changed File Count: ${gitContext.changedFiles.length}
 
-Git Diff Sample:
-\`\`\`diff
-${gitContext.rawDiff.slice(0, 10000)}
+DIFF STAT OVERVIEW:
+\`\`\`text
+${gitContext.diffStat || gitContext.changedFiles.map((f) => `- ${f}`).join('\n')}
 \`\`\`
+
+TRIAGE EVALUATION RULES:
+- Score 1-4 (REJECT): Routine dependency updates, formatting/linting fixes, minor typo edits, or empty scaffolding.
+- Score 5-6 (BORDERLINE): Minor refactors or simple single-line bug fixes without architectural impact.
+- Score 7-10 (APPROVE): Significant feature additions, new CLI apps, architectural state changes, security hardening, or optimization.
+- Return valid JSON matching schema.
 `;
 
-  const systemInstruction = `You are a strict technical lead and editorial gatekeeper evaluating software engineering progress. Score rigorously: routine dependency bumps or minor text tweaks score below 5; novel algorithms, state machines, API routes, or architectural additions score 7 or higher. Follow the required schema strictly.`;
+  const systemInstruction = `You are a strict technical lead and editorial gatekeeper. Score rigorously based on real engineering momentum. Do not hallucinate or award high scores to routine housekeeping.`;
 
   try {
     const validated = await executeWithSelfHealing(
@@ -221,26 +227,94 @@ ${gitContext.rawDiff.slice(0, 10000)}
 }
 
 /**
- * Prompt 2 & 3: DevLog Narrative Synthesis & Deterministic Mermaid Diagram
- * Constrained by GEMINI_DEVLOG_SYNTHESIS_SCHEMA and strictly validated by DevLogSynthesisSchema (Zod)
- * with multi-attempt self-healing retry loop.
+ * Stage 2: Per-File Semantic Distillation (Map Stage)
+ * Distills verbose source files (1k+ lines) into dense, high-signal technical facts
+ */
+export async function distillFileSummaries(
+  fileDeltas: FileDelta[],
+  config: ValidatedPortfolioConfig
+): Promise<FileSummary[]> {
+  console.log(`[GeminiService] Running Stage 2: Semantic Distillation on ${fileDeltas.length} functional file(s)...`);
+
+  const results: FileSummary[] = [];
+
+  // Filter for files with actual patch content
+  const actionableDeltas = fileDeltas.filter((d) => d.patch && d.patch.trim().length > 0);
+
+  // If few files or small diffs, summarize concurrently with limit
+  for (const delta of actionableDeltas) {
+    const patchPreview = delta.patch ? delta.patch.slice(0, 8000) : '';
+
+    const prompt = `
+Analyze the code patch for file "${delta.filename}" in project "${config.projectTitle}".
+
+FILE METRICS:
+- Status: ${delta.status}
+- Additions: +${delta.additions} | Deletions: -${delta.deletions}
+
+CODE PATCH:
+\`\`\`diff
+${patchPreview}
+\`\`\`
+
+DISTILLATION REQUIREMENTS:
+- Distill the core functional responsibility of this file in 1-2 dense, factual sentences.
+- List key functions, interfaces, routes, or algorithms added or modified.
+- Note any architectural impact (e.g. database schema changes, external API calls, caching, session state).
+- FORBIDDEN: Fluff or vague filler ("This file is an important part of the app").
+`;
+
+    const systemInstruction = `You are an expert compiler and systems engineer analyzing code deltas. Extract exact technical facts, function signatures, and state mutations only.`;
+
+    try {
+      const distilled = await executeWithSelfHealing(
+        `Distill-${delta.filename}`,
+        prompt,
+        systemInstruction,
+        FileSummarySchema,
+        GEMINI_FILE_SUMMARY_SCHEMA,
+        2
+      );
+
+      results.push({
+        filename: distilled.filename || delta.filename,
+        responsibility: distilled.responsibility,
+        keyChanges: distilled.keyChanges,
+        architecturalImpact: distilled.architecturalImpact,
+      });
+    } catch (err) {
+      console.warn(`[GeminiService] Semantic distillation failed for ${delta.filename}, using fallback:`, err);
+      results.push({
+        filename: delta.filename,
+        responsibility: `Modified ${delta.filename} (${delta.status}: +${delta.additions}, -${delta.deletions})`,
+        keyChanges: [`Updates to ${delta.filename}`],
+        architecturalImpact: 'None',
+      });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Stage 3: Cross-Referenced Holistic Synthesis (Reduce Stage)
+ * Weaves distilled per-file facts into an integrated engineering DevLog + deterministic Mermaid diagram
  */
 export async function synthesizeDevLog(
   prTitle: string,
   gitContext: GitHubContext,
   config: ValidatedPortfolioConfig,
-  triage: TriageResult
+  triage: TriageResult,
+  fileSummaries: FileSummary[] = []
 ): Promise<DevLogSynthesisResult> {
-  console.log('[GeminiService] Running Prompt 2 & 3: DevLog Narrative Synthesis & Deterministic Mermaid Diagram (Zod-enforced)...');
+  console.log('[GeminiService] Running Stage 3: Cross-Referenced Narrative Synthesis & Mermaid Diagram...');
 
   const generateDiagram = config.mediaPreferences?.generateArchitectureDiagrams !== false;
   const authorNote = config.note ? `CRITICAL AUTHOR NOTE FOR THIS PROJECT: "${config.note}"` : '';
 
   const mermaidInstructions = generateDiagram
     ? `
-Mermaid Diagram Instructions:
-Generate a clean, deterministic architectural diagram representing the data flow, component interactions, or state transitions introduced in this code change.
-STRICT SYNTAX CONTRACT (from MERMAID_SYNTAX_VALIDATOR & documentation/mermaid_diagram_syntax_guide.md):
+MERMAID ARCHITECTURAL DIAGRAM INSTRUCTIONS:
 - Allowed diagram types: ONLY "flowchart TD" (or "flowchart LR") or "sequenceDiagram". Forbid experimental types.
 - Node Labels MUST ALWAYS be wrapped in double quotes inside shape delimiters:
   * Standard processing step: NodeA["Step Name"]
@@ -249,9 +323,9 @@ STRICT SYNTAX CONTRACT (from MERMAID_SYNTAX_VALIDATOR & documentation/mermaid_di
   * Decision / Condition: Check{"Condition?"}
 - Edge labels MUST use pipe notation: A -->|"HTTPS GET"| B or A -.->|"Async Event"| B
 - NEVER include inline CSS styles, colors, classDef, or style attributes.
-- Return raw diagram string with newlines. Do NOT enclose in markdown backticks (\`\`\`mermaid) inside the JSON value.
+- Return raw diagram string with newlines. Do NOT enclose in markdown backticks (\`\`\`mermaid) inside JSON value.
 
-Example Flowchart format:
+Example Flowchart:
 flowchart TD
   Client["Web Browser"] -->|"HTTPS POST /api"| Gateway["API Gateway"]
   Gateway -->|"Validate Session"| Check{"Authorized?"}
@@ -259,53 +333,50 @@ flowchart TD
   Check -->|"No"| Deny["401 Unauthorized"]
   Worker -->|"Store Vectors"| DB[("Qdrant / Postgres")]
   DB -.->|"Stream Response"| Client
-
-Example Sequence format:
-sequenceDiagram
-  autonumber
-  actor User as Developer
-  participant Studio as Sanity Studio
-  participant Lake as Content Lake
-  participant Web as Next.js Site
-  User->>Studio: Publish Document
-  Studio->>Lake: Ingest Mutation
-  Lake-->>Web: Webhook Event
-  Web->>Web: Revalidate Cache Tag
 `
     : 'Do not generate a mermaid diagram (set mermaidDiagram to null).';
 
-  const prompt = `
-Generate a structured engineering devlog entry documenting the following changes for project "${config.projectTitle}".
+  const summariesBlock = fileSummaries.length > 0
+    ? fileSummaries
+        .map(
+          (s) => `### File: ${s.filename}
+- Responsibility: ${s.responsibility}
+- Key Deltas: ${s.keyChanges.join('; ')}
+- Architectural Impact: ${s.architecturalImpact || 'None'}`
+        )
+        .join('\n\n')
+    : `Changed Files: ${gitContext.changedFiles.join(', ')}\nRaw Diff Excerpt:\n${gitContext.rawDiff.slice(0, 10000)}`;
 
-PR / Commit Title: ${prTitle}
-Suggested Badge: ${triage.suggestedBadge || 'Engineering'}
-PR Description: ${gitContext.prBody || 'None provided'}
-Commit Message: ${gitContext.commitMessage}
-Changed Files: ${gitContext.changedFiles.join(', ')}
+  const prompt = `
+Synthesize a structured engineering DevLog entry for project "${config.projectTitle}".
+
+CHANGE CONTEXT:
+- PR / Commit Title: ${prTitle}
+- Suggested Badge: ${triage.suggestedBadge || 'Engineering'}
+- PR Description: ${gitContext.prBody || 'None provided'}
+- Commit Message: ${gitContext.commitMessage}
 ${authorNote}
 
-Git Diff:
-\`\`\`diff
-${gitContext.rawDiff}
-\`\`\`
+DISTILLED FILE MODULES & CROSS-REFERENCES:
+${summariesBlock}
 
-Requirements:
-1. Title: Concise, outcome-oriented engineering title (do NOT repeat commit hashes).
-2. Badge: Single uppercase or capitalized badge (e.g. "Architecture", "Security", "Backend", "AI Pipeline", "Optimization").
-3. Description: 2-3 sentence overview highlighting practical value, problem solved, and technical approach.
+SYNTHESIS REQUIREMENTS:
+1. Title: Concise, outcome-oriented engineering title without commit hashes.
+2. Badge: Single category badge (e.g. "Architecture", "Security", "Backend", "Feature", "Optimization").
+3. Description: 2-3 sentence overview highlighting practical value, problem solved, and technical approach. Connect how the modules interact.
 4. Highlights: 3-4 bullet points detailing concrete patterns, affected systems, or performance improvements.
-5. Affected Subsystems: Array of short system names (e.g. ["Ingestion Pipeline", "Qdrant Vector Store", "Next.js Cache"]).
+5. Affected Subsystems: Array of short system names (e.g. ["Ingestion Pipeline", "Redis Cache", "CLI Framework"]).
 ${mermaidInstructions}
 `;
 
   const systemInstruction = `
-You are NOT JUST an AI. You are my proxy. My other self. Write as if you are a Human technical writer documenting real engineering momentum.
-Calibrate your voice for a blended audience:
-- Recruiters & Clients: Keep the summary readable, outcome-focused, and accessible without dense jargon roadblocks.
-- Engineers & Technical Leads: Keep highlights technically precise, architectural, and grounded in concrete patterns.
-- Personal Reference: Maintain an authentic log of your build journey.
-Forbid hollow marketing buzzwords, empty hype, and repetitive conversational fluff ("In this commit...").
-Follow the required JSON schema strictly.
+You are my proxy — a Senior Technical Writer and Software Architect. Write as an authentic human engineer documenting real production momentum.
+
+STRICT VOICE & VOCABULARY INVARIANTS:
+- FORBIDDEN AI BUZZWORDS: Never use "In this modern landscape", "Delve into", "Pivotal", "Testament to", "Beacon", "A game-changer", "Revolutionary", "Let's explore", "In today's fast-paced world", "Exciting new feature".
+- GROUNDING: Cite concrete filenames, architectural patterns (e.g. "HMAC-SHA256 handshake", "Zod safeParse", "sliding-window rate limiter"), and measurable outcomes.
+- ZERO FABRICATION: Do not invent dependencies or link random external images.
+- Follow the required JSON schema strictly.
 ${authorNote}
 `;
 

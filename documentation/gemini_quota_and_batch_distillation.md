@@ -53,3 +53,7 @@ flowchart TD
 - As each batch completes, its distilled facts append to `accumulatedSummaries`.
 - Subsequent batches receive `PREVIOUSLY ANALYZED MODULES IN THIS PR`, enabling Gemini to connect dependencies across batches without context loss.
 
+### D. 503 High-Demand Failover & Quota Rollback
+- **Quota Rollback:** Transient 503 or network drops invoke `rollbackSlot()`, preventing server-side errors from saturating client RPM slots.
+- **Dynamic Model Failover:** If `gemini-2.5-flash` encounters repeated 503 surges, the pipeline switches to `gemini-2.0-flash` or `gemini-1.5-flash` with jittered exponential backoff.
+

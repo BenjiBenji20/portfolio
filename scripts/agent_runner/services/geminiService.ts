@@ -20,14 +20,16 @@ import { geminiQuotaGuardrail } from '../utils/geminiQuotaGuardrail';
  * - Stage 3: Cross-Referenced Holistic Synthesis (Reduce Stage: correlate modules into devlog + Mermaid)
  */
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const FALLBACK_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
 async function callGemini(
   prompt: string,
   systemInstruction?: string,
   temperature = 0.2,
   responseSchema?: Record<string, unknown>,
-  taskName = 'GeminiCall'
+  taskName = 'GeminiCall',
+  modelName = PRIMARY_MODEL
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -37,7 +39,7 @@ async function callGemini(
   // Enforce sliding-window rate limit guardrail before dispatching request
   await geminiQuotaGuardrail.waitForAvailableSlot(taskName);
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   const bodyPayload: Record<string, unknown> = {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -55,17 +57,27 @@ async function callGemini(
     };
   }
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(bodyPayload),
-    signal: AbortSignal.timeout(60000), // 60s timeout for heavy diff synthesis
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyPayload),
+      signal: AbortSignal.timeout(60000), // 60s timeout for heavy diff synthesis
+    });
+  } catch (fetchErr) {
+    // Network timeout or connection drop: rollback slot
+    geminiQuotaGuardrail.rollbackSlot();
+    throw fetchErr;
+  }
 
   if (!res.ok) {
     const errorText = await res.text();
     if (res.status === 429) {
       await geminiQuotaGuardrail.handleRateLimitResponse(errorText);
+    } else if (res.status === 503) {
+      // Server-side congestion: rollback sliding-window quota timestamp
+      geminiQuotaGuardrail.rollbackSlot();
     }
     throw new Error(`[GeminiService] Gemini API returned HTTP ${res.status}: ${errorText}`);
   }
@@ -95,18 +107,20 @@ async function executeWithSelfHealing<T>(
   systemInstruction: string,
   zodSchema: z.ZodType<T>,
   geminiSchema: Record<string, unknown>,
-  maxRetries = 3
+  maxRetries = 4
 ): Promise<T> {
   let currentPrompt = initialPrompt;
   let temperature = 0.2;
   let lastRawOutput = '';
   let lastErrorReport = '';
+  let activeModel = PRIMARY_MODEL;
+  let fallbackIndex = 0;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const isRetry = attempt > 1;
     if (isRetry) {
       console.warn(
-        `[GeminiService] [${taskName}] Self-Healing Attempt ${attempt}/${maxRetries} (Temp: 0.0). Feeding diagnostics back to model...`
+        `[GeminiService] [${taskName}] Retry Attempt ${attempt}/${maxRetries} (Model: ${activeModel}, Temp: ${temperature})...`
       );
     }
 
@@ -115,7 +129,9 @@ async function executeWithSelfHealing<T>(
         currentPrompt,
         systemInstruction,
         temperature,
-        geminiSchema
+        geminiSchema,
+        taskName,
+        activeModel
       );
       lastRawOutput = rawOutput;
 
@@ -123,7 +139,7 @@ async function executeWithSelfHealing<T>(
 
       if (diagnostics.valid && diagnostics.data) {
         if (isRetry) {
-          console.log(`[GeminiService] [${taskName}] Self-healing successful on attempt ${attempt}! Schema fully satisfied.`);
+          console.log(`[GeminiService] [${taskName}] Successful on attempt ${attempt} using ${activeModel}! Schema fully satisfied.`);
         }
         return diagnostics.data;
       }
@@ -154,17 +170,45 @@ CORRECTION INSTRUCTIONS:
 - Return ONLY the corrected, valid JSON conforming exactly to the required schema. Do not include markdown code block backticks inside property values.
 `;
     } catch (networkOrApiError) {
+      const errString = String(networkOrApiError);
+      const is503HighDemand =
+        errString.includes('503') ||
+        errString.includes('UNAVAILABLE') ||
+        errString.includes('high demand');
+
       console.error(
-        `[GeminiService] [${taskName}] API call failed on attempt ${attempt}:`,
+        `[GeminiService] [${taskName}] API call failed on attempt ${attempt} (${activeModel}):`,
         networkOrApiError
       );
+
       if (attempt === maxRetries) {
         throw networkOrApiError;
       }
-      // Exponential backoff delay (2.5s, 5s) to gracefully absorb transient 503 high-demand spikes
-      const backoffMs = attempt * 2500;
-      console.warn(`[GeminiService] [${taskName}] Waiting ${backoffMs}ms before retry...`);
-      await new Promise((resolve) => setTimeout(resolve, backoffMs));
+
+      if (is503HighDemand) {
+        // If high demand persists, failover to the next available fallback model
+        if (fallbackIndex < FALLBACK_MODELS.length) {
+          const nextModel = FALLBACK_MODELS[fallbackIndex++];
+          console.warn(
+            `[GeminiService] [${taskName}] ⚡ High demand detected on '${activeModel}'. Failing over to fallback model: '${nextModel}'`
+          );
+          activeModel = nextModel;
+        }
+
+        // Jittered backoff delay for 503 server congestion
+        const baseDelayMs = attempt === 1 ? 6000 : attempt * 8000;
+        const jitterMs = Math.floor(Math.random() * 2500);
+        const backoffMs = baseDelayMs + jitterMs;
+        console.warn(
+          `[GeminiService] [${taskName}] Waiting ${(backoffMs / 1000).toFixed(1)}s (jittered backoff) before retry...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+      } else {
+        // Standard exponential backoff delay for other transient errors
+        const backoffMs = attempt * 2500;
+        console.warn(`[GeminiService] [${taskName}] Waiting ${backoffMs}ms before retry...`);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+      }
     }
   }
 
@@ -214,7 +258,7 @@ TRIAGE EVALUATION RULES:
       systemInstruction,
       TriageResponseSchema,
       GEMINI_TRIAGE_RESPONSE_SCHEMA,
-      3
+      4
     );
 
     return {
@@ -340,7 +384,7 @@ DISTILLATION REQUIREMENTS:
         systemInstruction,
         BatchFileSummarySchema,
         GEMINI_BATCH_FILE_SUMMARY_SCHEMA,
-        2
+        3
       );
 
       for (const item of batchResult.files) {
@@ -457,7 +501,7 @@ ${authorNote}
     systemInstruction,
     DevLogSynthesisSchema,
     GEMINI_DEVLOG_SYNTHESIS_SCHEMA,
-    3
+    4
   );
 
   return {

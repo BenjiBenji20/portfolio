@@ -83,6 +83,17 @@ export class GeminiQuotaGuardrail {
     // Reset window timestamps after full quota sleep
     this.requestTimestamps.length = 0;
   }
+
+  /**
+   * Rolls back the most recent request timestamp if the request failed
+   * due to a server-side 503 high-demand error or network reset,
+   * so transient server failures do not unnecessarily saturate the client rate limit.
+   */
+  rollbackSlot(): void {
+    if (this.requestTimestamps.length > 0) {
+      this.requestTimestamps.pop();
+    }
+  }
 }
 
 // Global Singleton Instance

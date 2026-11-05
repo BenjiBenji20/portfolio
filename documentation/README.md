@@ -45,6 +45,7 @@ graph TD
 | [github_agent_runner_webhook.md](./github_agent_runner_webhook.md) | Webhook Intake | Phase 1 Gatekeeper, Web Crypto HMAC, Tier 1 filter, and workflow_dispatch. |
 | [agent_runner_phase2_architecture.md](./agent_runner_phase2_architecture.md) | Background Worker | Phase 2 Ubuntu runner, dynamic .portfolio.json, Zod self-healing parser, and Sanity. |
 | [agent_runner_phase3_publishing.md](./agent_runner_phase3_publishing.md) | Publishing & Grounding | Phase 3 Schema grounding, 3-Stage Map-Reduce synthesis, and instant ISR cache invalidation. |
+| [gemini_quota_and_batch_distillation.md](./gemini_quota_and_batch_distillation.md) | Rate Limiting & Distillation | GeminiQuotaGuardrail sliding-window throttler, size-aware batching, and context retention. |
 | [tracked_repository_setup_guide.md](./tracked_repository_setup_guide.md) | Repo Onboarding | Operational steps for env vars, GitHub Webhook setup, and .portfolio.json. |
 | [resend_and_recaptcha_contact_system.md](./resend_and_recaptcha_contact_system.md) | Security & Delivery | Google reCAPTCHA v3 bot filtering, token rate limiting, and Resend email templates. |
 | [mermaid_diagram_syntax_guide.md](./mermaid_diagram_syntax_guide.md) | Diagram Standards | DFD, flowchart, sequence, and state diagram specifications for Gemini/AI and humans. |

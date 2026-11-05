@@ -67,6 +67,12 @@ export const FileSummarySchema = z.object({
 
 export type ValidatedFileSummary = z.infer<typeof FileSummarySchema>;
 
+export const BatchFileSummarySchema = z.object({
+  files: z.array(FileSummarySchema),
+});
+
+export type ValidatedBatchFileSummary = z.infer<typeof BatchFileSummarySchema>;
+
 export const GEMINI_FILE_SUMMARY_SCHEMA = {
   type: 'OBJECT',
   properties: {
@@ -89,6 +95,18 @@ export const GEMINI_FILE_SUMMARY_SCHEMA = {
     },
   },
   required: ['filename', 'responsibility', 'keyChanges'],
+};
+
+export const GEMINI_BATCH_FILE_SUMMARY_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    files: {
+      type: 'ARRAY',
+      items: GEMINI_FILE_SUMMARY_SCHEMA,
+      description: 'Array of distilled file summaries',
+    },
+  },
+  required: ['files'],
 };
 
 // Corresponding Gemini API responseSchema definition

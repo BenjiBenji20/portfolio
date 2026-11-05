@@ -4,18 +4,19 @@ import type { GitHubContext, FileDelta } from './githubContextService';
 import {
   TriageResponseSchema,
   DevLogSynthesisSchema,
-  FileSummarySchema,
+  BatchFileSummarySchema,
   GEMINI_TRIAGE_RESPONSE_SCHEMA,
   GEMINI_DEVLOG_SYNTHESIS_SCHEMA,
-  GEMINI_FILE_SUMMARY_SCHEMA,
+  GEMINI_BATCH_FILE_SUMMARY_SCHEMA,
   extractZodDiagnostics,
 } from '../parsers/aiResponseParser';
+import { geminiQuotaGuardrail } from '../utils/geminiQuotaGuardrail';
 
 /**
  * Service to execute Gemini 3-Stage Map-Reduce Pipeline with strict SDK-level responseSchema,
- * runtime Zod verification, and an iterative self-healing correction loop:
+ * sliding-window rate limit guardrails, and knowledge-retaining batch distillation:
  * - Stage 1: Lightweight Triage Gate (diffStat + commit/PR metadata)
- * - Stage 2: Per-File Semantic Distillation (Map Stage: compress large code files to dense facts)
+ * - Stage 2: Size-Aware Batch Distillation (Adaptive batching + knowledge accumulator)
  * - Stage 3: Cross-Referenced Holistic Synthesis (Reduce Stage: correlate modules into devlog + Mermaid)
  */
 
@@ -25,12 +26,16 @@ async function callGemini(
   prompt: string,
   systemInstruction?: string,
   temperature = 0.2,
-  responseSchema?: Record<string, unknown>
+  responseSchema?: Record<string, unknown>,
+  taskName = 'GeminiCall'
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('[GeminiService] Missing GEMINI_API_KEY environment variable.');
   }
+
+  // Enforce sliding-window rate limit guardrail before dispatching request
+  await geminiQuotaGuardrail.waitForAvailableSlot(taskName);
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
@@ -59,6 +64,9 @@ async function callGemini(
 
   if (!res.ok) {
     const errorText = await res.text();
+    if (res.status === 429) {
+      await geminiQuotaGuardrail.handleRateLimitResponse(errorText);
+    }
     throw new Error(`[GeminiService] Gemini API returned HTTP ${res.status}: ${errorText}`);
   }
 
@@ -227,73 +235,136 @@ TRIAGE EVALUATION RULES:
 }
 
 /**
- * Stage 2: Per-File Semantic Distillation (Map Stage)
- * Distills verbose source files (1k+ lines) into dense, high-signal technical facts
+ * Groups file deltas into size-aware batches based on line and character budgets.
+ * - 10 small files (500 lines total) -> 1 batch.
+ * - 10 large files (8,000 lines total) -> dynamically partitioned into 4-5 batches.
+ */
+function groupFileDeltasIntoSizeBatches(
+  deltas: FileDelta[],
+  maxCharsPerBatch = 15000,
+  maxLinesPerBatch = 1500
+): FileDelta[][] {
+  const batches: FileDelta[][] = [];
+  let currentBatch: FileDelta[] = [];
+  let currentChars = 0;
+  let currentLines = 0;
+
+  for (const delta of deltas) {
+    const patchLength = delta.patch ? delta.patch.length : 0;
+    const lineCount = (delta.additions || 0) + (delta.deletions || 0);
+
+    if (
+      currentBatch.length > 0 &&
+      (currentChars + patchLength > maxCharsPerBatch || currentLines + lineCount > maxLinesPerBatch)
+    ) {
+      batches.push(currentBatch);
+      currentBatch = [];
+      currentChars = 0;
+      currentLines = 0;
+    }
+
+    currentBatch.push(delta);
+    currentChars += patchLength;
+    currentLines += lineCount;
+  }
+
+  if (currentBatch.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  return batches;
+}
+
+/**
+ * Stage 2: Size-Aware Batch Semantic Distillation (Map Stage)
+ * Packs files dynamically by line/char budget and retains accumulated context across batches
  */
 export async function distillFileSummaries(
   fileDeltas: FileDelta[],
   config: ValidatedPortfolioConfig
 ): Promise<FileSummary[]> {
-  console.log(`[GeminiService] Running Stage 2: Semantic Distillation on ${fileDeltas.length} functional file(s)...`);
-
-  const results: FileSummary[] = [];
-
-  // Filter for files with actual patch content
   const actionableDeltas = fileDeltas.filter((d) => d.patch && d.patch.trim().length > 0);
+  if (actionableDeltas.length === 0) return [];
 
-  // If few files or small diffs, summarize concurrently with limit
-  for (const delta of actionableDeltas) {
-    const patchPreview = delta.patch ? delta.patch.slice(0, 8000) : '';
+  const batches = groupFileDeltasIntoSizeBatches(actionableDeltas, 15000, 1500);
+  console.log(
+    `[GeminiService] Running Stage 2: Size-Aware Batch Distillation on ${actionableDeltas.length} functional file(s) across ${batches.length} batch(es)...`
+  );
+
+  const accumulatedSummaries: FileSummary[] = [];
+
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    console.log(
+      `[GeminiService] Distilling Batch ${i + 1}/${batches.length} (${batch.length} file(s): ${batch.map((f) => f.filename).join(', ')})...`
+    );
+
+    // Knowledge retention: Inject prior batch summaries as context
+    const priorKnowledgeContext = accumulatedSummaries.length > 0
+      ? `\nPREVIOUSLY ANALYZED MODULES IN THIS PR (Retain this context):\n` +
+        accumulatedSummaries
+          .map((s) => `- ${s.filename}: ${s.responsibility} (Deltas: ${s.keyChanges.join(', ')})`)
+          .join('\n') +
+        `\n`
+      : '';
+
+    const filesContent = batch
+      .map(
+        (f) => `### File: ${f.filename} [${f.status}] (+${f.additions}, -${f.deletions})
+\`\`\`diff
+${f.patch?.slice(0, 6000) || 'No patch available'}
+\`\`\``
+      )
+      .join('\n\n');
 
     const prompt = `
-Analyze the code patch for file "${delta.filename}" in project "${config.projectTitle}".
-
-FILE METRICS:
-- Status: ${delta.status}
-- Additions: +${delta.additions} | Deletions: -${delta.deletions}
-
-CODE PATCH:
-\`\`\`diff
-${patchPreview}
-\`\`\`
+Analyze the following code patches for project "${config.projectTitle}".
+${priorKnowledgeContext}
+CURRENT BATCH TO ANALYZE (${batch.length} files):
+${filesContent}
 
 DISTILLATION REQUIREMENTS:
-- Distill the core functional responsibility of this file in 1-2 dense, factual sentences.
+- For EACH file in this batch, distill its core functional responsibility in 1-2 dense, factual sentences.
 - List key functions, interfaces, routes, or algorithms added or modified.
 - Note any architectural impact (e.g. database schema changes, external API calls, caching, session state).
 - FORBIDDEN: Fluff or vague filler ("This file is an important part of the app").
+- Return a JSON object with a "files" array matching the schema.
 `;
 
-    const systemInstruction = `You are an expert compiler and systems engineer analyzing code deltas. Extract exact technical facts, function signatures, and state mutations only.`;
+    const systemInstruction = `You are an expert compiler and systems engineer analyzing code deltas. Extract exact technical facts, function signatures, and state mutations only. Retain prior context.`;
 
     try {
-      const distilled = await executeWithSelfHealing(
-        `Distill-${delta.filename}`,
+      const batchResult = await executeWithSelfHealing(
+        `BatchDistill-${i + 1}`,
         prompt,
         systemInstruction,
-        FileSummarySchema,
-        GEMINI_FILE_SUMMARY_SCHEMA,
+        BatchFileSummarySchema,
+        GEMINI_BATCH_FILE_SUMMARY_SCHEMA,
         2
       );
 
-      results.push({
-        filename: distilled.filename || delta.filename,
-        responsibility: distilled.responsibility,
-        keyChanges: distilled.keyChanges,
-        architecturalImpact: distilled.architecturalImpact,
-      });
+      for (const item of batchResult.files) {
+        accumulatedSummaries.push({
+          filename: item.filename,
+          responsibility: item.responsibility,
+          keyChanges: item.keyChanges,
+          architecturalImpact: item.architecturalImpact,
+        });
+      }
     } catch (err) {
-      console.warn(`[GeminiService] Semantic distillation failed for ${delta.filename}, using fallback:`, err);
-      results.push({
-        filename: delta.filename,
-        responsibility: `Modified ${delta.filename} (${delta.status}: +${delta.additions}, -${delta.deletions})`,
-        keyChanges: [`Updates to ${delta.filename}`],
-        architecturalImpact: 'None',
-      });
+      console.warn(`[GeminiService] Batch ${i + 1} failed, using fallbacks:`, err);
+      for (const delta of batch) {
+        accumulatedSummaries.push({
+          filename: delta.filename,
+          responsibility: `Modified ${delta.filename} (${delta.status}: +${delta.additions}, -${delta.deletions})`,
+          keyChanges: [`Updates to ${delta.filename}`],
+          architecturalImpact: 'None',
+        });
+      }
     }
   }
 
-  return results;
+  return accumulatedSummaries;
 }
 
 /**

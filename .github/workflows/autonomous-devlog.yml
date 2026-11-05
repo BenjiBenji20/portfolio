@@ -11,6 +11,10 @@ on:
         description: 'Commit SHA to evaluate and document'
         required: true
         type: string
+      base_sha:
+        description: 'Base commit SHA for multi-commit push comparison'
+        required: false
+        type: string
       branch:
         description: 'Target production branch'
         required: false
@@ -61,6 +65,7 @@ jobs:
           npx tsx scripts/agent_runner/index.ts \
             --repo "${{ github.event.inputs.target_repo }}" \
             --sha "${{ github.event.inputs.commit_sha }}" \
+            --base "${{ github.event.inputs.base_sha }}" \
             --branch "${{ github.event.inputs.branch }}" \
             --pr "${{ github.event.inputs.pr_number }}" \
             --title "${{ github.event.inputs.pr_title }}" \

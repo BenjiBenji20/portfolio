@@ -24,6 +24,7 @@ function parseInputs(): RunnerInputs {
   return {
     targetRepo: getArg('--repo') || process.env.TARGET_REPO || '',
     commitSha: getArg('--sha') || process.env.COMMIT_SHA || '',
+    baseSha: getArg('--base') || process.env.BASE_SHA || '',
     branch: getArg('--branch') || process.env.BRANCH || 'main',
     prNumber: getArg('--pr') || process.env.PR_NUMBER,
     prTitle: getArg('--title') || process.env.PR_TITLE,
@@ -39,6 +40,9 @@ export async function runAgenticDevlog() {
   console.log('========================================================');
   console.log(`Target Repo: ${inputs.targetRepo}`);
   console.log(`Commit SHA:  ${inputs.commitSha}`);
+  if (inputs.baseSha) {
+    console.log(`Base SHA:    ${inputs.baseSha} (Push Range Comparison)`);
+  }
   console.log(`Branch:      ${inputs.branch}`);
   console.log(`PR Number:   ${inputs.prNumber || 'N/A (Direct Push)'}`);
   console.log(`PR Title:    ${inputs.prTitle || 'N/A'}`);
@@ -63,12 +67,14 @@ export async function runAgenticDevlog() {
 
   console.log(`[Runner] Tracking enabled for project: "${config.projectTitle}" (slug: ${config.projectSlug})`);
 
-  // 2. Fetch Git Context & Diff (scrubbing ignored directories)
+  // 2. Fetch Git Context & Diff (scrubbing ignored directories & supporting multi-commit push ranges)
   const gitContext = await fetchGitHubContext(
     inputs.targetRepo,
     inputs.commitSha,
     inputs.prNumber,
-    config.ignoreDirectory
+    config.ignoreDirectory,
+    undefined,
+    inputs.baseSha
   );
 
   if (gitContext.changedFiles.length === 0) {

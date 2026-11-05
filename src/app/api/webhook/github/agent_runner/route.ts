@@ -234,6 +234,7 @@ export async function POST(req: NextRequest) {
   // 7. Event & Branch Guardrail
   let targetRepo: string;
   let commitSha: string;
+  let baseSha = '';
   let branch: string;
   let prNumber = '';
   let prTitle = '';
@@ -262,6 +263,7 @@ export async function POST(req: NextRequest) {
 
     targetRepo = prEvent.repository.full_name;
     commitSha = pr.merge_commit_sha || pr.head.sha;
+    baseSha = pr.base.sha || '';
     branch = baseBranch;
     prNumber = String(pr.number);
     prTitle = pr.title ? pr.title.slice(0, 250) : `Merged PR #${pr.number}`;
@@ -302,10 +304,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (pushEvent.before && !pushEvent.before.startsWith('0000000')) {
+      baseSha = pushEvent.before;
+    }
+
     targetRepo = pushEvent.repository.full_name;
     commitSha = pushEvent.head_commit.id || pushEvent.after;
     branch = refBranch;
-    prTitle = (pushEvent.head_commit.message || 'Direct push to production').split('\n')[0].slice(0, 250);
+
+    // Combine commit titles if push contains multiple commits
+    if (pushEvent.commits && pushEvent.commits.length > 1) {
+      prTitle = pushEvent.commits
+        .map((c) => (c.message || '').split('\n')[0].trim())
+        .filter(Boolean)
+        .join('; ')
+        .slice(0, 250);
+    } else {
+      prTitle = (pushEvent.head_commit.message || 'Direct push to production').split('\n')[0].slice(0, 250);
+    }
   } else {
     // Unhandled event (e.g. issues, star, fork)
     return NextResponse.json(
@@ -329,6 +345,7 @@ export async function POST(req: NextRequest) {
     inputs: {
       target_repo: targetRepo,
       commit_sha: commitSha,
+      base_sha: baseSha,
       branch: branch,
       pr_number: prNumber,
       pr_title: prTitle,

@@ -34,6 +34,7 @@ export interface PortfolioConfig {
 export interface WorkflowDispatchInputs {
   target_repo: string;
   commit_sha: string;
+  base_sha?: string;
   branch: string;
   pr_number: string;
   pr_title: string;

@@ -34,6 +34,7 @@ export type ValidatedPortfolioConfig = z.infer<typeof DynamicPortfolioConfigSche
 export interface RunnerInputs {
   targetRepo: string;
   commitSha: string;
+  baseSha?: string;
   branch: string;
   prNumber?: string;
   prTitle?: string;

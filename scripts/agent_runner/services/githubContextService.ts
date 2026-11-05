@@ -100,7 +100,8 @@ export async function fetchGitHubContext(
   commitSha: string,
   prNumber?: string,
   ignoreDirectories: string[] = [],
-  githubToken?: string
+  githubToken?: string,
+  baseSha?: string
 ): Promise<GitHubContext> {
   const token = githubToken || process.env.GIT_REPO_PAT_TOKEN || process.env.GITHUB_TOKEN;
   const headers: Record<string, string> = {
@@ -118,6 +119,8 @@ export async function fetchGitHubContext(
   let diffStat = '';
   let changedFiles: string[] = [];
   let fileDeltas: FileDelta[] = [];
+
+  const isComparisonRange = Boolean(baseSha && !baseSha.startsWith('0000000') && baseSha !== commitSha);
 
   // 1. Fetch Pull Request body if prNumber is present
   if (prNumber) {
@@ -137,65 +140,124 @@ export async function fetchGitHubContext(
     }
   }
 
-  // 2. Fetch commit details and file list
+  // 2. Fetch commit/range details and file list
   try {
-    console.log(`[GitHubContext] Fetching commit ${commitSha.slice(0, 7)} details from ${targetRepo}...`);
-    const commitRes = await fetch(`https://api.github.com/repos/${targetRepo}/commits/${commitSha}`, {
-      headers: { ...headers, Accept: 'application/vnd.github+json' },
-      signal: AbortSignal.timeout(30000), // Balanced 30s timeout
-    });
+    interface RawGithubFile {
+      filename: string;
+      status: string;
+      additions: number;
+      deletions: number;
+      patch?: string;
+    }
 
-    if (commitRes.ok) {
-      const commitJson = await commitRes.json();
-      commitMessage = commitJson.commit?.message || '';
-      if (commitJson.files && Array.isArray(commitJson.files)) {
-        interface RawGithubFile {
-          filename: string;
-          status: string;
-          additions: number;
-          deletions: number;
-          patch?: string;
+    if (isComparisonRange) {
+      console.log(
+        `[GitHubContext] Push contains multiple commits. Fetching comparison range (${baseSha?.slice(0, 7)}...${commitSha.slice(0, 7)}) from ${targetRepo}...`
+      );
+      const compareUrl = `https://api.github.com/repos/${targetRepo}/compare/${baseSha}...${commitSha}`;
+      const compareRes = await fetch(compareUrl, {
+        headers: { ...headers, Accept: 'application/vnd.github+json' },
+        signal: AbortSignal.timeout(30000),
+      });
+
+      if (compareRes.ok) {
+        const compareJson = await compareRes.json();
+        if (compareJson.commits && Array.isArray(compareJson.commits)) {
+          commitMessage = compareJson.commits
+            .map((c: { commit?: { message?: string } }) => c.commit?.message || '')
+            .filter(Boolean)
+            .join('\n\n---\n\n');
         }
 
-        const rawFiles: RawGithubFile[] = commitJson.files;
-        const trackedFiles = rawFiles.filter((f) => !isIgnoredPath(f.filename, ignoreDirectories));
-        const ignoredFiles = rawFiles.filter((f) => isIgnoredPath(f.filename, ignoreDirectories));
+        if (compareJson.files && Array.isArray(compareJson.files)) {
+          const rawFiles: RawGithubFile[] = compareJson.files;
+          const trackedFiles = rawFiles.filter((f) => !isIgnoredPath(f.filename, ignoreDirectories));
+          const ignoredFiles = rawFiles.filter((f) => isIgnoredPath(f.filename, ignoreDirectories));
 
-        changedFiles = trackedFiles.map((f) => f.filename);
-        fileDeltas = trackedFiles.map((f) => ({
-          filename: f.filename,
-          status: f.status || 'modified',
-          additions: f.additions || 0,
-          deletions: f.deletions || 0,
-          patch: f.patch,
-        }));
+          changedFiles = trackedFiles.map((f) => f.filename);
+          fileDeltas = trackedFiles.map((f) => ({
+            filename: f.filename,
+            status: f.status || 'modified',
+            additions: f.additions || 0,
+            deletions: f.deletions || 0,
+            patch: f.patch,
+          }));
 
-        diffStat = fileDeltas
-          .map((f) => `${f.filename} (+${f.additions}, -${f.deletions}) [${f.status}]`)
-          .join('\n');
+          diffStat = fileDeltas
+            .map((f) => `${f.filename} (+${f.additions}, -${f.deletions}) [${f.status}]`)
+            .join('\n');
 
-        console.log(`[GitHubContext] Commit File Analysis (${rawFiles.length} total files):`);
-        if (changedFiles.length > 0) {
-          console.log(`[GitHubContext] Tracked files sent to AI Agent (${changedFiles.length}):`);
-          changedFiles.forEach((file: string) => console.log(`   + [TRACKED] ${file}`));
-        } else {
-          console.log(`[GitHubContext] Tracked files sent to AI Agent: (None)`);
+          console.log(`[GitHubContext] Comparison Range File Analysis (${rawFiles.length} total files across push):`);
+          if (changedFiles.length > 0) {
+            console.log(`[GitHubContext] Tracked files sent to AI Agent (${changedFiles.length}):`);
+            changedFiles.forEach((file: string) => console.log(`   + [TRACKED] ${file}`));
+          } else {
+            console.log(`[GitHubContext] Tracked files sent to AI Agent: (None)`);
+          }
+
+          if (ignoredFiles.length > 0) {
+            console.log(`[GitHubContext] Ignored/excluded files (${ignoredFiles.length}):`);
+            ignoredFiles.forEach((f) => console.log(`   - [IGNORED] ${f.filename}`));
+          }
         }
+      }
+    } else {
+      console.log(`[GitHubContext] Fetching single commit ${commitSha.slice(0, 7)} details from ${targetRepo}...`);
+      const commitRes = await fetch(`https://api.github.com/repos/${targetRepo}/commits/${commitSha}`, {
+        headers: { ...headers, Accept: 'application/vnd.github+json' },
+        signal: AbortSignal.timeout(30000), // Balanced 30s timeout
+      });
 
-        if (ignoredFiles.length > 0) {
-          console.log(`[GitHubContext] Ignored/excluded files (${ignoredFiles.length}):`);
-          ignoredFiles.forEach((f) => console.log(`   - [IGNORED] ${f.filename}`));
+      if (commitRes.ok) {
+        const commitJson = await commitRes.json();
+        commitMessage = commitJson.commit?.message || '';
+        if (commitJson.files && Array.isArray(commitJson.files)) {
+          const rawFiles: RawGithubFile[] = commitJson.files;
+          const trackedFiles = rawFiles.filter((f) => !isIgnoredPath(f.filename, ignoreDirectories));
+          const ignoredFiles = rawFiles.filter((f) => isIgnoredPath(f.filename, ignoreDirectories));
+
+          changedFiles = trackedFiles.map((f) => f.filename);
+          fileDeltas = trackedFiles.map((f) => ({
+            filename: f.filename,
+            status: f.status || 'modified',
+            additions: f.additions || 0,
+            deletions: f.deletions || 0,
+            patch: f.patch,
+          }));
+
+          diffStat = fileDeltas
+            .map((f) => `${f.filename} (+${f.additions}, -${f.deletions}) [${f.status}]`)
+            .join('\n');
+
+          console.log(`[GitHubContext] Commit File Analysis (${rawFiles.length} total files):`);
+          if (changedFiles.length > 0) {
+            console.log(`[GitHubContext] Tracked files sent to AI Agent (${changedFiles.length}):`);
+            changedFiles.forEach((file: string) => console.log(`   + [TRACKED] ${file}`));
+          } else {
+            console.log(`[GitHubContext] Tracked files sent to AI Agent: (None)`);
+          }
+
+          if (ignoredFiles.length > 0) {
+            console.log(`[GitHubContext] Ignored/excluded files (${ignoredFiles.length}):`);
+            ignoredFiles.forEach((f) => console.log(`   - [IGNORED] ${f.filename}`));
+          }
         }
       }
     }
   } catch (err) {
-    console.warn(`[GitHubContext] Failed to fetch commit metadata:`, err);
+    console.warn(`[GitHubContext] Failed to fetch commit or comparison metadata:`, err);
   }
 
-  // 3. Fetch raw git diff
+  // 3. Fetch raw git diff (either comparison range or single commit)
   try {
-    console.log(`[GitHubContext] Fetching raw git diff for ${commitSha.slice(0, 7)}...`);
-    const diffRes = await fetch(`https://api.github.com/repos/${targetRepo}/commits/${commitSha}`, {
+    const diffUrl = isComparisonRange
+      ? `https://api.github.com/repos/${targetRepo}/compare/${baseSha}...${commitSha}`
+      : `https://api.github.com/repos/${targetRepo}/commits/${commitSha}`;
+
+    console.log(
+      `[GitHubContext] Fetching raw git diff for ${isComparisonRange ? `${baseSha?.slice(0, 7)}...${commitSha.slice(0, 7)}` : commitSha.slice(0, 7)}...`
+    );
+    const diffRes = await fetch(diffUrl, {
       headers: { ...headers, Accept: 'application/vnd.github.v3.diff' },
       signal: AbortSignal.timeout(30000), // Balanced 30s timeout
     });

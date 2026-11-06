@@ -11,7 +11,7 @@
 | :--- | :--- |
 | `GITHUB_WEBHOOK_HANDLER.md` | Web Crypto HMAC-SHA256 signature verification, GitHub `push`/`release` payload extraction, branch filtering, and fast-ack response budgets. |
 | `RECAPTCHA_VERIFICATION.md` | Google reCAPTCHA v3 client execution, server-side `siteverify` checks, risk score thresholds, and defense across chat and contact routes. |
-| `GEMINI_STRUCTURED_GENERATOR.md` | Gemini 2.5-flash integration via Google Gen AI SDK, diff pre-processing, balanced temperature settings, and strict `responseSchema` JSON synthesis. |
+| `GEMINI_STRUCTURED_GENERATOR.md` | Gemini 3.5-flash-lite integration via Google Gen AI SDK, diff pre-processing, balanced temperature settings, and strict `responseSchema` JSON synthesis. |
 | `STREAMING_CHAT_RAG.md` | Conversational portfolio assistant, real-time GROQ grounding projections, citation deep linking, and low-latency token streaming handlers. |
 | `MERMAID_SYNTAX_VALIDATOR.md` | Generation prompts for top-down flowcharts and sequence diagrams, server-side syntax sanitization, and client-side safe SVG rendering with error fallbacks. |
 | `SANITY_GROQ_MUTATIONS.md` | Parameterized GROQ queries, descending `priority` field ordering, `useCdn: false` real-time ingestion, on-demand Next.js cache revalidation, and idempotent patches. |

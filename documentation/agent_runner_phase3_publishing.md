@@ -21,7 +21,7 @@ To protect curated portfolio identity, the agent enforces runtime schema boundar
 sequenceDiagram
     autonumber
     participant GHA as GitHub Actions Runner
-    participant Gemini as Gemini 2.5-Flash (Map-Reduce)
+    participant Gemini as Gemini 3.5-flash-lite (Map-Reduce)
     participant Sanity as Sanity Content Lake
     participant Webhook as /api/webhook/sanity/revalidate
     participant Cache as Next.js Cache (revalidateTag)

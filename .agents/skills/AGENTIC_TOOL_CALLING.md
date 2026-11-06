@@ -1,6 +1,6 @@
 ## **Agentic Tool Calling**
 
-Beyond linear commit-to-article synthesis, the Knowledge Layer operates as an autonomous, tool-calling agent powered by Gemini 2.5 Flash. Rather than relying solely on isolated code diffs, the agent dynamically invokes native capabilities within the monorepo to inspect surrounding repository architecture, trace historical git context, manage the lifecycle of existing articles, embed supplementary video media, and enforce human-in-the-loop publishing governance.
+Beyond linear commit-to-article synthesis, the Knowledge Layer operates as an autonomous, tool-calling agent powered by Gemini 3.5 Flash Lite. Rather than relying solely on isolated code diffs, the agent dynamically invokes native capabilities within the monorepo to inspect surrounding repository architecture, trace historical git context, manage the lifecycle of existing articles, embed supplementary video media, and enforce human-in-the-loop publishing governance.
 
 ### **Tool Matrix: Feasibility, Necessity, Complexity, and Engineering Value**
 

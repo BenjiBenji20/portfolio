@@ -30,6 +30,6 @@ flowchart LR
 - Subsequent batches receive prior module summaries to connect cross-module imports without context loss.
 
 ### D. Model Failover & Daily Quota Resilience
-- **Production Model Default:** Defaults to `gemini-1.5-flash` for **1,500 requests/day** free tier stability.
+- **Production Model Default:** Defaults to `gemini-3.5-flash-lite` for **1,500 requests/day** free tier stability.
 - **Instant Quota Failover:** When `DAILY_QUOTA_EXHAUSTED` or persistent 503 errors occur, the runner immediately switches to `gemini-2.0-flash` without multi-hour sleeps.
 - **Quota Rollback:** 503 surges invoke `rollbackSlot()` to avoid burning client RPM quotas on server errors.

@@ -1,6 +1,6 @@
 # Real-Time Conversational Grounding & Streaming Chat (RAG)
 
-> **Overview:** Procedural instructions for the Agentic Dev to implement the portfolio's RAG-backed interactive chat assistant using Gemini 2.5-flash, dynamic GROQ projections from Sanity, and low-latency token streaming.  
+> **Overview:** Procedural instructions for the Agentic Dev to implement the portfolio's RAG-backed interactive chat assistant using Gemini 3.5-flash-lite, dynamic GROQ projections from Sanity, and low-latency token streaming.  
 > **When to Use:** Consult when building `/app/api/chat/route.ts`, structuring real-time conversational retrieval pipelines, managing token-efficient system prompts, or wiring the client-side streaming UI.
 
 ---
@@ -26,7 +26,7 @@
 
 ## 3. Streaming Engine & Route Handler Pattern
 - **Streaming Execution:**
-  - Initialize the Google Gen AI SDK stream with `gemini-2.5-flash` passing the conversation history, the freshly retrieved context block, and the latest user turn.
+  - Initialize the Google Gen AI SDK stream with `gemini-3.5-flash-lite` passing the conversation history, the freshly retrieved context block, and the latest user turn.
   - Return a standards-compliant streaming response (e.g., using Web Streams API `ReadableStream` or the Vercel AI SDK protocol) to achieve instant time-to-first-token (< 500ms).
 - **Session & History Windowing:**
   - Limit multi-turn conversation memory passed in the payload to the last 6–8 messages to prevent context bloat and control latency.

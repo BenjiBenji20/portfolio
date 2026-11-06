@@ -6,7 +6,7 @@ import { validateAndSanitizeMermaid } from '../utils/mermaidSyntaxValidator';
  * AI Response Parser & Zod Verification Engine
  * 
  * Provides strict structural validation, diagnostic extraction, and schema enforcement
- * for all deterministic Gemini 2.5-flash responses.
+ * for all deterministic Gemini 3.5-flash-lite responses.
  */
 
 // 1. Schema for Prompt 1: Tier 3 Editorial Triage

@@ -49,6 +49,7 @@ graph TD
 | [tracked_repository_setup_guide.md](./tracked_repository_setup_guide.md) | Repo Onboarding | Operational steps for env vars, GitHub Webhook setup, and .portfolio.json. |
 | [resend_and_recaptcha_contact_system.md](./resend_and_recaptcha_contact_system.md) | Security & Delivery | Google reCAPTCHA v3 bot filtering, token rate limiting, and Resend email templates. |
 | [mermaid_diagram_syntax_guide.md](./mermaid_diagram_syntax_guide.md) | Diagram Standards | DFD, flowchart, sequence, and state diagram specifications for Gemini/AI and humans. |
+| [sanity_schema_grounding_and_mermaid_validator.md](./sanity_schema_grounding_and_mermaid_validator.md) | Schema & Diagram Safety | Complete field builders, hidden: true review gate, and stringent Mermaid grammar engine. |
 
 
 ## 4. Ingestion Guidelines for Agentic Writer

@@ -67,7 +67,7 @@ export function ProjectCard({
               </div>
             )}
             <Link
-              href={`/blogs/${slug}`}
+              href={`/blog/${slug}`}
               className="group/link flex-1 min-w-0"
             >
               <h3 className="text-xs sm:text-sm md:text-base font-bold uppercase tracking-tight text-zinc-100 group-hover/link:text-sky-400 transition-colors line-clamp-1">

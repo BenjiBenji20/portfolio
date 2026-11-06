@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { VALID_BADGES } from '../utils/schemaContext';
+import { validateAndSanitizeMermaid } from '../utils/mermaidSyntaxValidator';
 
 /**
  * AI Response Parser & Zod Verification Engine
@@ -44,7 +46,9 @@ export const GEMINI_TRIAGE_RESPONSE_SCHEMA = {
 // 2. Schema for Prompt 2 & 3: DevLog Narrative Synthesis & Mermaid Diagram
 export const DevLogSynthesisSchema = z.object({
   title: z.string().min(3, 'title must be at least 3 characters'),
-  badge: z.string().min(2, 'badge must be at least 2 characters'),
+  badge: z.enum(VALID_BADGES, {
+    message: `badge must be one of: ${VALID_BADGES.join(', ')}`,
+  }),
   description: z.string().min(10, 'description must be at least 10 characters'),
   highlights: z.array(z.string().min(5)).min(1, 'highlights array must contain at least 1 bullet point'),
   affectedSubsystems: z.array(z.string()).default([]),
@@ -52,7 +56,21 @@ export const DevLogSynthesisSchema = z.object({
     .string()
     .optional()
     .nullable()
-    .transform((val) => sanitizeMermaid(val)),
+    .superRefine((val, ctx) => {
+      if (!val) return;
+      const res = validateAndSanitizeMermaid(val);
+      if (!res.valid) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: res.errorReport || 'Invalid Mermaid syntax',
+        });
+      }
+    })
+    .transform((val) => {
+      if (!val) return undefined;
+      const res = validateAndSanitizeMermaid(val);
+      return res.valid ? res.sanitized : undefined;
+    }),
 });
 
 export type ValidatedDevLogSynthesis = z.infer<typeof DevLogSynthesisSchema>;
@@ -119,7 +137,8 @@ export const GEMINI_DEVLOG_SYNTHESIS_SCHEMA = {
     },
     badge: {
       type: 'STRING',
-      description: 'Category badge e.g. Architecture, Security, Backend, AI Pipeline',
+      enum: Array.from(VALID_BADGES),
+      description: `Category badge strictly matching one of: ${VALID_BADGES.join(', ')}`,
     },
     description: {
       type: 'STRING',
@@ -142,29 +161,6 @@ export const GEMINI_DEVLOG_SYNTHESIS_SCHEMA = {
   },
   required: ['title', 'badge', 'description', 'highlights', 'affectedSubsystems'],
 };
-
-/**
- * Sanitizes Mermaid output (stripping markdown fences if present and checking header)
- */
-function sanitizeMermaid(raw?: string | null): string | undefined {
-  if (!raw || typeof raw !== 'string') return undefined;
-
-  let cleaned = raw
-    .replace(/^```(?:mermaid)?\r?\n?/i, '')
-    .replace(/\r?\n?```$/i, '')
-    .trim();
-
-  if (!cleaned) return undefined;
-
-  const validHeaders = ['flowchart', 'graph', 'sequenceDiagram', 'stateDiagram-v2'];
-  const hasValidHeader = validHeaders.some((h) => cleaned.startsWith(h));
-
-  if (!hasValidHeader) {
-    cleaned = `flowchart TD\n  ${cleaned}`;
-  }
-
-  return cleaned;
-}
 
 export interface DiagnosticsResult<T> {
   valid: boolean;

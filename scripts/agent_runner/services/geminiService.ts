@@ -11,6 +11,7 @@ import {
   extractZodDiagnostics,
 } from '../parsers/aiResponseParser';
 import { geminiQuotaGuardrail } from '../utils/geminiQuotaGuardrail';
+import { SANITY_SCHEMA_CONTEXT_PROMPT, VALID_BADGES } from '../utils/schemaContext';
 
 /**
  * Service to execute Gemini 3-Stage Map-Reduce Pipeline with strict SDK-level responseSchema,
@@ -440,14 +441,23 @@ MERMAID ARCHITECTURAL DIAGRAM INSTRUCTIONS:
 - NEVER include inline CSS styles, colors, classDef, or style attributes.
 - Return raw diagram string with newlines. Do NOT enclose in markdown backticks (\`\`\`mermaid) inside JSON value.
 
-Example Flowchart:
+Literal Flowchart Example:
 flowchart TD
-  Client["Web Browser"] -->|"HTTPS POST /api"| Gateway["API Gateway"]
-  Gateway -->|"Validate Session"| Check{"Authorized?"}
-  Check -->|"Yes"| Worker["Task Worker"]
-  Check -->|"No"| Deny["401 Unauthorized"]
-  Worker -->|"Store Vectors"| DB[("Qdrant / Postgres")]
-  DB -.->|"Stream Response"| Client
+  Client["Web Browser"] -->|"HTTPS GET"| AppServer["Next.js App Server"]
+  AppServer -->|"Sanity Client CDN"| Lake[("Sanity Content Lake")]
+  Lake -.->|"Webhook Invalidation"| AppServer
+
+Literal Sequence Diagram Example:
+sequenceDiagram
+  autonumber
+  actor Dev as Developer
+  participant Studio as Sanity Studio
+  participant CDN as Sanity Lake
+  participant Web as Next.js Site
+  Dev->>Studio: Publish Document
+  Studio->>CDN: Ingest Mutation
+  CDN-->>Web: Webhook Event
+  Web->>Web: Revalidate Cache Tag
 `
     : 'Do not generate a mermaid diagram (set mermaidDiagram to null).';
 
@@ -463,11 +473,11 @@ flowchart TD
     : `Changed Files: ${gitContext.changedFiles.join(', ')}\nRaw Diff Excerpt:\n${gitContext.rawDiff.slice(0, 10000)}`;
 
   const prompt = `
-Synthesize a structured engineering DevLog entry for project "${config.projectTitle}".
+Synthesize a structured engineering DevLog entry for project "${config.projectTitle}" (slug: "${config.projectSlug}").
 
 CHANGE CONTEXT:
 - PR / Commit Title: ${prTitle}
-- Suggested Badge: ${triage.suggestedBadge || 'Engineering'}
+- Suggested Badge: ${triage.suggestedBadge || 'Feature'}
 - PR Description: ${gitContext.prBody || 'None provided'}
 - Commit Message: ${gitContext.commitMessage}
 ${authorNote}
@@ -477,7 +487,7 @@ ${summariesBlock}
 
 SYNTHESIS REQUIREMENTS:
 1. Title: Concise, outcome-oriented engineering title without commit hashes.
-2. Badge: Single category badge (e.g. "Architecture", "Security", "Backend", "Feature", "Optimization").
+2. Badge: MUST BE EXACTLY ONE OF: [${VALID_BADGES.map((b) => `"${b}"`).join(', ')}].
 3. Description: 2-3 sentence overview highlighting practical value, problem solved, and technical approach. Connect how the modules interact.
 4. Highlights: 3-4 bullet points detailing concrete patterns, affected systems, or performance improvements.
 5. Affected Subsystems: Array of short system names (e.g. ["Ingestion Pipeline", "Redis Cache", "CLI Framework"]).
@@ -486,6 +496,8 @@ ${mermaidInstructions}
 
   const systemInstruction = `
 You are my proxy — a Senior Technical Writer and Software Architect. Write as an authentic human engineer documenting real production momentum.
+
+${SANITY_SCHEMA_CONTEXT_PROMPT}
 
 STRICT VOICE & VOCABULARY INVARIANTS:
 - FORBIDDEN AI BUZZWORDS: Never use "In this modern landscape", "Delve into", "Pivotal", "Testament to", "Beacon", "A game-changer", "Revolutionary", "Let's explore", "In today's fast-paced world", "Exciting new feature".

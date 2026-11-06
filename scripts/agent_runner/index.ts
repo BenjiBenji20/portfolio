@@ -124,7 +124,7 @@ export async function runAgenticDevlog() {
   console.log(`Autonomous DevLog Pipeline Successfully Completed!`);
   console.log(`Sanity Document: ${docId}`);
   if (reviewAlertRequired) {
-    console.log(`Status: PENDING HUMAN REVIEW (Saved as DRAFT in Sanity Studio)`);
+    console.log(`Status: PENDING HUMAN REVIEW (Published to Sanity Lake with hidden: true for audit)`);
   } else {
     console.log(`Status: PUBLISHED LIVE (Triggering instant Next.js ISR revalidation)`);
   }

@@ -1,9 +1,10 @@
 import { createClient } from 'next-sanity';
 import type { ValidatedPortfolioConfig, DevLogSynthesisResult } from '../types';
+import { buildProjectPayload, buildWorkLogPayload } from '../utils/sanitySchemaBuilders';
 
 /**
  * Service to upload assets and persist DevLogs to Sanity Content Lake
- * with strict schema grounding and human review escalation.
+ * with strict schema grounding, zero field omissions, and human review escalation via hidden: true.
  */
 
 // 1. Invariant Schema Access Control (Principle of Least Privilege)
@@ -73,31 +74,22 @@ export async function persistDevLogToSanity(
       projectIdRef = parent._id.replace(/^drafts\./, '');
       console.log(`[SanityService] Found parent project ID: ${projectIdRef}`);
     } else {
-      // Accessible Schemas Rule: Projects are ALWAYS draft when created. Human review is required.
+      // Human Review Gate: Project is published to Content Lake to establish solid referential integrity,
+      // but flagged with 'hidden: true' so it is completely invisible on the public site until reviewed.
       console.log(`[SanityService] No project found matching slug '${config.projectSlug}'.`);
-      console.log(`[SanityService] Creating new Project as DRAFT ('drafts.project-${config.projectSlug}') for mandatory human review...`);
+      console.log(`[SanityService] Creating new Project ('project-${config.projectSlug}') with hidden: true for human review...`);
 
-      const draftProjectPayload = {
-        _id: `drafts.project-${config.projectSlug}`,
-        _type: 'project',
-        title: config.projectTitle,
-        slug: { _type: 'slug', current: config.projectSlug },
-        shortDescription: config.note || `Autonomous engineering project: ${config.projectTitle}`,
-        projectType: config.category || 'Engineering',
-        ...(config.liveUrl ? { website: config.liveUrl } : {}),
-        ...(targetRepo ? { repository: `https://github.com/${targetRepo}` } : {}),
-      };
-
-      await client.createOrReplace(draftProjectPayload);
-      projectIdRef = `project-${config.projectSlug}`;
+      const projectPayload = buildProjectPayload(config, targetRepo, synthesis.description);
+      await client.createOrReplace(projectPayload);
+      projectIdRef = projectPayload._id;
       reviewAlertRequired = true;
 
       console.log(
-        `[SanityService] [Human Review Required] Draft Project created: drafts.project-${config.projectSlug}. Raised alert for human review.`
+        `[SanityService] [Human Review Required] Project created: ${projectPayload._id} with hidden: true.`
       );
     }
   } catch (err) {
-    console.warn(`[SanityService] Project reference query/draft creation error:`, err);
+    console.warn(`[SanityService] Project reference query/creation error:`, err);
   }
 
   // 3. Upload Playwright screenshot if present
@@ -193,51 +185,29 @@ export async function persistDevLogToSanity(
     });
   }
 
-  // 5. Construct idempotent document ID & Draft determination
+  // 5. Construct complete WorkLog document payload using factory builder
   const cleanSha = commitSha.slice(0, 10);
   const isDraft = Boolean(config.requireHumanApproval);
-  const docId = isDraft
-    ? `drafts.devlog-${config.projectSlug}-${cleanSha}`
-    : `devlog-${config.projectSlug}-${cleanSha}`;
+  const docPayload = buildWorkLogPayload(
+    config,
+    commitSha,
+    synthesis,
+    contentBlocks,
+    sender,
+    targetRepo
+  );
 
   if (isDraft) {
+    docPayload._id = `drafts.devlog-${config.projectSlug}-${cleanSha}`;
     reviewAlertRequired = true;
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  // Ensure project reference is set
+  if (projectIdRef) {
+    docPayload.project._ref = projectIdRef;
+  }
 
-  const docPayload = {
-    _id: docId,
-    _type: 'workLog',
-    title: synthesis.title,
-    badge: synthesis.badge,
-    date: today,
-    description: synthesis.description,
-    commitSha: commitSha,
-    author: 'Agentic Writer',
-    developers: [sender, 'Agentic Writer'],
-    content: contentBlocks,
-    ...(projectIdRef
-      ? {
-          project: {
-            _type: 'reference',
-            _ref: projectIdRef,
-            _weak: true, // Allows referencing draft projects awaiting human review
-          },
-        }
-      : {}),
-    backlinks: targetRepo
-      ? [
-          {
-            _key: 'bl-gh',
-            platform: 'GitHub Commit',
-            url: `https://github.com/${targetRepo}/commit/${commitSha}`,
-          },
-        ]
-      : [],
-  };
-
-  console.log(`[SanityService] Persisting DevLog document [${docId}] (isDraft: ${isDraft})...`);
+  console.log(`[SanityService] Persisting DevLog document [${docPayload._id}] (isDraft: ${isDraft})...`);
   const result = await client.createOrReplace(docPayload);
   console.log(`[SanityService] Successfully persisted document ${result._id}`);
 

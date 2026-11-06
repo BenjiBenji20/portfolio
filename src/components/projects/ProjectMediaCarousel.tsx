@@ -59,31 +59,32 @@ export function ProjectMediaCarousel({
   className = '',
   aspectClass = 'aspect-[16/10]',
 }: ProjectMediaCarouselProps) {
+  const safeMedia = Array.isArray(media) ? media : [];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [playingKey, setPlayingKey] = useState<string | null>(null);
 
-  const hasMedia = media && media.length > 0;
-  const currentItem = hasMedia ? media[currentIndex] : null;
+  const hasMedia = safeMedia.length > 0;
+  const currentItem = hasMedia ? safeMedia[currentIndex] : null;
   const itemKey = currentItem?._key || `slide-${currentIndex}`;
   const isPlaying = playingKey === itemKey;
 
   // Auto-swipe carousel every 5 seconds when multiple items exist and no video is playing
   useEffect(() => {
-    if (media.length <= 1 || playingKey !== null) return;
+    if (safeMedia.length <= 1 || playingKey !== null) return;
 
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % media.length);
+      setCurrentIndex((prev) => (prev + 1) % safeMedia.length);
     }, 5000);
 
     return () => clearInterval(timer);
-  }, [media.length, playingKey, currentIndex]);
+  }, [safeMedia.length, playingKey, currentIndex]);
 
   const nextSlide = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!hasMedia) return;
     setPlayingKey(null);
-    setCurrentIndex((prev) => (prev + 1) % media.length);
+    setCurrentIndex((prev) => (prev + 1) % safeMedia.length);
   };
 
   const prevSlide = (e: React.MouseEvent) => {
@@ -91,7 +92,7 @@ export function ProjectMediaCarousel({
     e.stopPropagation();
     if (!hasMedia) return;
     setPlayingKey(null);
-    setCurrentIndex((prev) => (prev - 1 + media.length) % media.length);
+    setCurrentIndex((prev) => (prev - 1 + safeMedia.length) % safeMedia.length);
   };
 
   if (!hasMedia || !currentItem) {
@@ -363,12 +364,12 @@ export function ProjectMediaCarousel({
       )}
 
       {/* Carousel Navigation Overlay (Only when multiple items exist) */}
-      {media.length > 1 && (
+      {safeMedia.length > 1 && (
         <>
           {/* Top-Right Index Pill */}
           <div className="absolute top-2.5 right-2.5 z-20 pointer-events-none">
             <span className="font-mono text-[10px] tracking-widest text-zinc-300 bg-zinc-950/85 px-2 py-0.5 border border-zinc-800/80 rounded-none backdrop-blur-sm shadow-sm">
-              {currentIndex + 1} / {media.length}
+              {currentIndex + 1} / {safeMedia.length}
             </span>
           </div>
 
@@ -394,7 +395,7 @@ export function ProjectMediaCarousel({
 
           {/* Dot Indicators */}
           <div className="absolute top-3 left-3 z-20 flex items-center gap-1">
-            {media.map((item, idx) => (
+            {safeMedia.map((item, idx) => (
               <span
                 key={item._key || idx}
                 className={`h-1 transition-all rounded-none ${

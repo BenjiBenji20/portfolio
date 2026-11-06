@@ -21,8 +21,8 @@ import { SANITY_SCHEMA_CONTEXT_PROMPT, VALID_BADGES } from '../utils/schemaConte
  * - Stage 3: Cross-Referenced Holistic Synthesis (Reduce Stage: correlate modules into devlog + Mermaid)
  */
 
-const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-const FALLBACK_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const FALLBACK_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash'];
 
 async function callGemini(
   prompt: string,
@@ -186,14 +186,22 @@ CORRECTION INSTRUCTIONS:
         throw networkOrApiError;
       }
 
-      if (is503HighDemand) {
-        // If high demand persists, failover to the next available fallback model
+      const isDailyQuotaExhausted = errString.includes('DAILY_QUOTA_EXHAUSTED');
+
+      if (isDailyQuotaExhausted || is503HighDemand) {
+        // If daily quota exhausted or high demand, failover to the next available fallback model
         if (fallbackIndex < FALLBACK_MODELS.length) {
           const nextModel = FALLBACK_MODELS[fallbackIndex++];
           console.warn(
-            `[GeminiService] [${taskName}] ⚡ High demand detected on '${activeModel}'. Failing over to fallback model: '${nextModel}'`
+            `[GeminiService] [${taskName}] ⚡ ${isDailyQuotaExhausted ? 'Daily quota exhausted' : 'High demand detected'} on '${activeModel}'. Failing over immediately to: '${nextModel}'`
           );
           activeModel = nextModel;
+        }
+
+        if (isDailyQuotaExhausted) {
+          // Immediate retry with the next model (no backoff needed since switching to fresh quota pool)
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          continue;
         }
 
         // Jittered backoff delay for 503 server congestion

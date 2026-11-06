@@ -5,6 +5,8 @@
  * Free Tier 5 Requests Per Minute (5 RPM) limit, and handles HTTP 429 RetryInfo dynamically.
  */
 
+export const MAX_RATE_LIMIT_WAIT_SECONDS = 60;
+
 export class GeminiQuotaGuardrail {
   private readonly maxRequestsPerWindow: number;
   private readonly windowMs: number;
@@ -57,24 +59,33 @@ export class GeminiQuotaGuardrail {
    * and pauses for the exact duration required by Google's quota engine.
    */
   async handleRateLimitResponse(rawErrorText: string, defaultBackoffSeconds = 60): Promise<void> {
-    let delayMs = defaultBackoffSeconds * 1000;
+    let parsedSeconds = defaultBackoffSeconds;
 
     try {
       const match = rawErrorText.match(/"retryDelay":\s*"(\d+(?:\.\d+)?)s"/i);
       if (match && match[1]) {
-        const parsedSeconds = Math.ceil(parseFloat(match[1]));
-        delayMs = (parsedSeconds + 2) * 1000; // +2s safety buffer
+        parsedSeconds = Math.ceil(parseFloat(match[1]));
       } else {
         const textMatch = rawErrorText.match(/retry in (\d+(?:\.\d+)?)s/i);
         if (textMatch && textMatch[1]) {
-          const parsedSeconds = Math.ceil(parseFloat(textMatch[1]));
-          delayMs = (parsedSeconds + 2) * 1000;
+          parsedSeconds = Math.ceil(parseFloat(textMatch[1]));
         }
       }
     } catch {
       // Fallback to default
     }
 
+    if (parsedSeconds > MAX_RATE_LIMIT_WAIT_SECONDS) {
+      console.warn(
+        `[GeminiQuotaGuardrail] Daily quota exhausted: Google requested ${(parsedSeconds / 3600).toFixed(2)}h (${parsedSeconds}s) backoff. Exceeds ${MAX_RATE_LIMIT_WAIT_SECONDS}s ceiling. Aborting sleep for instant model failover.`
+      );
+      this.rollbackSlot();
+      throw new Error(
+        `DAILY_QUOTA_EXHAUSTED: Google requested backoff of ${parsedSeconds}s (exceeds ${MAX_RATE_LIMIT_WAIT_SECONDS}s ceiling)`
+      );
+    }
+
+    const delayMs = (parsedSeconds + 2) * 1000; // +2s safety buffer
     console.warn(
       `[GeminiQuotaGuardrail] HTTP 429 encountered. Google requested backoff of ${(delayMs / 1000).toFixed(1)}s. Pausing...`
     );

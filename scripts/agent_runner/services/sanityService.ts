@@ -179,7 +179,7 @@ export async function persistDevLogToSanity(
           _key: 'mm-code-span',
           _type: 'span',
           text: synthesis.mermaidDiagram,
-          marks: ['code'],
+          marks: [],
         },
       ],
     });

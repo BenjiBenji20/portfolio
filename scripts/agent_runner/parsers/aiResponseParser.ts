@@ -71,6 +71,8 @@ export const DevLogSynthesisSchema = z.object({
       const res = validateAndSanitizeMermaid(val);
       return res.valid ? res.sanitized : undefined;
     }),
+  projectOverview: z.string().optional(),
+  techStacks: z.array(z.string()).optional().default([]),
 });
 
 export type ValidatedDevLogSynthesis = z.infer<typeof DevLogSynthesisSchema>;
@@ -157,6 +159,15 @@ export const GEMINI_DEVLOG_SYNTHESIS_SCHEMA = {
     mermaidDiagram: {
       type: 'STRING',
       description: 'Raw Mermaid diagram string with double-quoted node labels without markdown backticks',
+    },
+    projectOverview: {
+      type: 'STRING',
+      description: 'Professional 1-2 sentence overview of the parent project and its domain',
+    },
+    techStacks: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'List of relevant technical tools, languages, or frameworks used (e.g. Python, Requests, Next.js)',
     },
   },
   required: ['title', 'badge', 'description', 'highlights', 'affectedSubsystems'],

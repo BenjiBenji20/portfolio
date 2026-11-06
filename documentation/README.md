@@ -50,6 +50,7 @@ graph TD
 | [resend_and_recaptcha_contact_system.md](./resend_and_recaptcha_contact_system.md) | Security & Delivery | Google reCAPTCHA v3 bot filtering, token rate limiting, and Resend email templates. |
 | [mermaid_diagram_syntax_guide.md](./mermaid_diagram_syntax_guide.md) | Diagram Standards | DFD, flowchart, sequence, and state diagram specifications for Gemini/AI and humans. |
 | [sanity_schema_grounding_and_mermaid_validator.md](./sanity_schema_grounding_and_mermaid_validator.md) | Schema & Diagram Safety | Complete field builders, hidden: true review gate, and stringent Mermaid grammar engine. |
+| [agentic_pipeline_schema_and_mermaid_fixes.md](./agentic_pipeline_schema_and_mermaid_fixes.md) | Pipeline Hardening | Edge label quote sanitization, _weak: true, dynamic author directives, and direct publishing. |
 
 
 ## 4. Ingestion Guidelines for Agentic Writer

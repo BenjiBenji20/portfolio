@@ -79,7 +79,12 @@ export async function persistDevLogToSanity(
       console.log(`[SanityService] No project found matching slug '${config.projectSlug}'.`);
       console.log(`[SanityService] Creating new Project ('project-${config.projectSlug}') with hidden: true for human review...`);
 
-      const projectPayload = buildProjectPayload(config, targetRepo, synthesis.description);
+      const projectPayload = buildProjectPayload(
+        config,
+        targetRepo,
+        synthesis.projectOverview || synthesis.description,
+        synthesis.techStacks || []
+      );
       await client.createOrReplace(projectPayload);
       projectIdRef = projectPayload._id;
       reviewAlertRequired = true;
@@ -186,33 +191,28 @@ export async function persistDevLogToSanity(
   }
 
   // 5. Construct complete WorkLog document payload using factory builder
-  const cleanSha = commitSha.slice(0, 10);
-  const isDraft = Boolean(config.requireHumanApproval);
+  // WorkLogs are always published directly to Sanity Lake to maintain referential integrity.
+  // Privacy and gating are controlled at the project level via 'hidden: true'.
   const docPayload = buildWorkLogPayload(
     config,
     commitSha,
     synthesis,
     contentBlocks,
     sender,
-    targetRepo
+    targetRepo,
+    projectIdRef || undefined
   );
 
-  if (isDraft) {
-    docPayload._id = `drafts.devlog-${config.projectSlug}-${cleanSha}`;
+  if (config.requireHumanApproval) {
     reviewAlertRequired = true;
   }
 
-  // Ensure project reference is set
-  if (projectIdRef) {
-    docPayload.project._ref = projectIdRef;
-  }
-
-  console.log(`[SanityService] Persisting DevLog document [${docPayload._id}] (isDraft: ${isDraft})...`);
+  console.log(`[SanityService] Persisting DevLog document [${docPayload._id}] (Published to Lake, requireHumanApproval: ${Boolean(config.requireHumanApproval)})...`);
   const result = await client.createOrReplace(docPayload);
   console.log(`[SanityService] Successfully persisted document ${result._id}`);
 
   if (reviewAlertRequired) {
-    console.log(`[SanityService] [Notification] Document '${result._id}' requires human review before live release.`);
+    console.log(`[SanityService] [Notification] Document '${result._id}' published to Lake under human review gate (hidden: true on project).`);
   }
 
   return { docId: result._id, assetId: uploadedAssetId, reviewAlertRequired };

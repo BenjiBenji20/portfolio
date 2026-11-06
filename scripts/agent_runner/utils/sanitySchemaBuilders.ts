@@ -37,8 +37,7 @@ export interface SanityWorkLogDocument {
   author: 'Agentic Writer';
   developers: string[];
   content: unknown[];
-  project: { _type: 'reference'; _ref: string; _weak?: boolean };
-  projectSlug: string;
+  project: { _type: 'reference'; _ref: string; _weak: true };
   backlinks: Array<{
     _key: string;
     platform: string;
@@ -55,12 +54,15 @@ export interface SanityWorkLogDocument {
 export function buildProjectPayload(
   config: ValidatedPortfolioConfig,
   targetRepo?: string,
-  initialDescription?: string
+  initialDescription?: string,
+  synthesizedTechStacks: string[] = []
 ): SanityProjectDocument {
-  const shortDesc = (config.note || initialDescription || `Autonomous engineering project: ${config.projectTitle}`).slice(
-    0,
-    280
-  );
+  const rawDesc =
+    initialDescription ||
+    (typeof config.userMessage === 'string' ? config.userMessage : '') ||
+    config.note ||
+    `Autonomous engineering project: ${config.projectTitle}`;
+  const shortDesc = rawDesc.slice(0, 280);
 
   return {
     _id: `project-${config.projectSlug}`,
@@ -76,7 +78,7 @@ export function buildProjectPayload(
     hidden: true, // Human Review Gate: published to Lake for referential integrity, hidden from public UI
     ...(config.liveUrl ? { website: config.liveUrl } : {}),
     ...(targetRepo ? { repository: `https://github.com/${targetRepo}` } : {}),
-    techStacks: [],
+    techStacks: synthesizedTechStacks,
     collaborators: [],
     media: [],
     content: [
@@ -99,7 +101,7 @@ export function buildProjectPayload(
 
 /**
  * Builds a complete WorkLog document payload for automated creation.
- * Strongly binds to project-${config.projectSlug} and writes denormalized projectSlug.
+ * Sets _weak: true to conform strictly to Sanity schema weak reference.
  */
 export function buildWorkLogPayload(
   config: ValidatedPortfolioConfig,
@@ -107,7 +109,8 @@ export function buildWorkLogPayload(
   synthesis: DevLogSynthesisResult,
   contentBlocks: unknown[],
   sender = 'Developer',
-  targetRepo = ''
+  targetRepo = '',
+  projectIdRef?: string
 ): SanityWorkLogDocument {
   const cleanSha = commitSha.slice(0, 10);
   const today = new Date().toISOString().split('T')[0];
@@ -130,9 +133,9 @@ export function buildWorkLogPayload(
     content: contentBlocks,
     project: {
       _type: 'reference',
-      _ref: `project-${config.projectSlug}`,
+      _ref: projectIdRef || `project-${config.projectSlug}`,
+      _weak: true,
     },
-    projectSlug: config.projectSlug, // Denormalized anchor for fail-safe GROQ indexing
     backlinks: targetRepo
       ? [
           {

@@ -426,7 +426,37 @@ export async function synthesizeDevLog(
   console.log('[GeminiService] Running Stage 3: Cross-Referenced Narrative Synthesis & Mermaid Diagram...');
 
   const generateDiagram = config.mediaPreferences?.generateArchitectureDiagrams !== false;
-  const authorNote = config.note ? `CRITICAL AUTHOR NOTE FOR THIS PROJECT: "${config.note}"` : '';
+
+  // Collect all author directives and dynamic custom keys from .portfolio.json
+  const standardConfigKeys = new Set([
+    'track',
+    'schema',
+    '$schema',
+    'requireHumanApproval',
+    'note',
+    'ignoreDirectory',
+    'projectTitle',
+    'projectSlug',
+    'category',
+    'liveUrl',
+    'primaryBranch',
+    'mediaPreferences',
+  ]);
+
+  const dynamicDirectives: string[] = [];
+  if (config.note) {
+    dynamicDirectives.push(`- Project Note: "${config.note}"`);
+  }
+  for (const [key, value] of Object.entries(config)) {
+    if (!standardConfigKeys.has(key) && value !== undefined && value !== null) {
+      const displayVal = typeof value === 'object' ? JSON.stringify(value) : String(value);
+      dynamicDirectives.push(`- Dynamic Directive [${key}]: "${displayVal}"`);
+    }
+  }
+
+  const dynamicDirectivesBlock = dynamicDirectives.length > 0
+    ? `CRITICAL AUTHOR DIRECTIVES (.portfolio.json):\n${dynamicDirectives.join('\n')}\n(IMPORTANT: If "userMessage" or custom guidance is provided above, you MUST strictly follow it over default notes.)`
+    : '';
 
   const mermaidInstructions = generateDiagram
     ? `
@@ -437,7 +467,9 @@ MERMAID ARCHITECTURAL DIAGRAM INSTRUCTIONS:
   * Database / persistent storage: DB[("Database or Lake")]
   * Terminal / Client: Client("Web Browser / Client")
   * Decision / Condition: Check{"Condition?"}
-- Edge labels MUST use pipe notation: A -->|"HTTPS GET"| B or A -.->|"Async Event"| B
+- Edge labels MUST use pipe notation with double quotes: A -->|"HTTPS GET"| B or A -.->|"Async Event"| B
+- CRITICAL EDGE LABEL RULE: NEVER use unescaped nested double quotes inside edge labels. If you need quotes inside a label, use single quotes: e.g. A -->|"Display Report ('stdout')"| B.
+- NEVER use Unicode arrow characters (e.g. "→"). Always use valid ASCII connectors: "-->", "-.->", "==>".
 - NEVER include inline CSS styles, colors, classDef, or style attributes.
 - Return raw diagram string with newlines. Do NOT enclose in markdown backticks (\`\`\`mermaid) inside JSON value.
 
@@ -480,7 +512,7 @@ CHANGE CONTEXT:
 - Suggested Badge: ${triage.suggestedBadge || 'Feature'}
 - PR Description: ${gitContext.prBody || 'None provided'}
 - Commit Message: ${gitContext.commitMessage}
-${authorNote}
+${dynamicDirectivesBlock}
 
 DISTILLED FILE MODULES & CROSS-REFERENCES:
 ${summariesBlock}
@@ -491,6 +523,9 @@ SYNTHESIS REQUIREMENTS:
 3. Description: 2-3 sentence overview highlighting practical value, problem solved, and technical approach. Connect how the modules interact.
 4. Highlights: 3-4 bullet points detailing concrete patterns, affected systems, or performance improvements.
 5. Affected Subsystems: Array of short system names (e.g. ["Ingestion Pipeline", "Redis Cache", "CLI Framework"]).
+6. Parent Project Grounding:
+   - projectOverview: 1-2 professional sentences explaining the core purpose of project "${config.projectTitle}". (Strictly honor any userMessage directive).
+   - techStacks: Array of 2-5 relevant tools, libraries, or frameworks used (e.g. ["Python", "Requests", "CLI"]).
 ${mermaidInstructions}
 `;
 
@@ -504,7 +539,7 @@ STRICT VOICE & VOCABULARY INVARIANTS:
 - GROUNDING: Cite concrete filenames, architectural patterns (e.g. "HMAC-SHA256 handshake", "Zod safeParse", "sliding-window rate limiter"), and measurable outcomes.
 - ZERO FABRICATION: Do not invent dependencies or link random external images.
 - Follow the required JSON schema strictly.
-${authorNote}
+${dynamicDirectivesBlock}
 `;
 
   const validated = await executeWithSelfHealing(
@@ -523,5 +558,7 @@ ${authorNote}
     highlights: validated.highlights,
     affectedSubsystems: validated.affectedSubsystems,
     mermaidDiagram: validated.mermaidDiagram || undefined,
+    projectOverview: validated.projectOverview,
+    techStacks: validated.techStacks,
   };
 }

@@ -30,6 +30,28 @@ const VALID_HEADERS = [
 ];
 
 /**
+ * Sanitizes edge labels inside pipe notation |"..."| or |...|:
+ * - Replaces any inner double quotes with single quotes.
+ * e.g. |"Display Report("stdout")"| -> |"Display Report ('stdout')"|
+ *      |"Export Report("JSON")"| -> |"Export Report ('JSON')"|
+ */
+function sanitizeEdgeLabels(line: string): string {
+  return line.replace(/\|([^|\r\n]+)\|/g, (match, inner) => {
+    let content = inner.trim();
+    const hasOuterQuotes = content.startsWith('"') && content.endsWith('"') && content.length >= 2;
+    if (hasOuterQuotes) {
+      const body = content.slice(1, -1).replace(/"/g, "'");
+      return `|"${body}"|`;
+    }
+    if (content.includes('"')) {
+      content = content.replace(/"/g, "'");
+      return `|"${content}"|`;
+    }
+    return match;
+  });
+}
+
+/**
  * Auto-wraps unquoted text inside node shapes with double quotes to prevent parser crashes.
  * e.g. NodeA[Web Browser (Client)] -> NodeA["Web Browser (Client)"]
  *      DB[(Sanity Content Lake)] -> DB[("Sanity Content Lake")]
@@ -144,8 +166,12 @@ export function validateAndSanitizeMermaid(rawInput?: string | null): MermaidVal
     };
   }
 
-  // 3. Delimiter Balance Check
-  const balanceError = checkDelimiterBalance(rawClean);
+  // 3. Auto-sanitize edge labels (replaces nested quotes in |"..."| with single quotes)
+  const edgeSanitizedLines = lines.map(sanitizeEdgeLabels);
+  const intermediateCode = edgeSanitizedLines.join('\n');
+
+  // 4. Delimiter Balance Check
+  const balanceError = checkDelimiterBalance(intermediateCode);
   if (balanceError) {
     return {
       valid: false,
@@ -153,11 +179,11 @@ export function validateAndSanitizeMermaid(rawInput?: string | null): MermaidVal
     };
   }
 
-  // 4. Auto-sanitize line by line (auto-quote unquoted labels and strip inline styles)
-  const sanitizedLines: string[] = [lines[0]];
+  // 5. Auto-sanitize line by line (auto-quote unquoted labels and strip inline styles)
+  const sanitizedLines: string[] = [edgeSanitizedLines[0]];
 
-  for (let i = 1; i < lines.length; i++) {
-    let line = lines[i];
+  for (let i = 1; i < edgeSanitizedLines.length; i++) {
+    let line = edgeSanitizedLines[i];
 
     // Strip forbidden inline css/classes (e.g. style A fill:#fff, classDef ...)
     if (/^\s*(?:style\s+|classDef\s+|class\s+\w+\s+\w+)/i.test(line)) {
@@ -165,7 +191,7 @@ export function validateAndSanitizeMermaid(rawInput?: string | null): MermaidVal
     }
 
     // Auto-quote shape labels for flowchart diagrams
-    if (lines[0].toLowerCase().startsWith('flowchart') || lines[0].toLowerCase().startsWith('graph')) {
+    if (edgeSanitizedLines[0].toLowerCase().startsWith('flowchart') || edgeSanitizedLines[0].toLowerCase().startsWith('graph')) {
       line = autoQuoteNodeLabels(line);
     }
 

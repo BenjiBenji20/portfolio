@@ -63,4 +63,6 @@ export interface DevLogSynthesisResult {
   affectedSubsystems: string[];
   mermaidDiagram?: string;
   rawBlocks?: unknown[];
+  projectOverview?: string;
+  techStacks?: string[];
 }

@@ -30,34 +30,30 @@ const VALID_HEADERS = [
 ];
 
 /**
- * Sanitizes edge labels inside pipe notation |"..."| or |...|:
- * - Replaces any inner double quotes with single quotes.
- * e.g. |"Display Report("stdout")"| -> |"Display Report ('stdout')"|
- *      |"Export Report("JSON")"| -> |"Export Report ('JSON')"|
+ * Sanitizes edge labels inside pipe notation |...|:
+ * - Strips all double and single quotes from edge labels so Mermaid parses them as clean text.
+ * e.g. |"Display Report(" 'stdout' ")"| -> |Display Report (stdout)|
+ *      |"Execute 'deadlink'"| -> |Execute deadlink|
  */
 function sanitizeEdgeLabels(line: string): string {
-  return line.replace(/\|([^|\r\n]+)\|/g, (match, inner) => {
-    let content = inner.trim();
-    const hasOuterQuotes = content.startsWith('"') && content.endsWith('"') && content.length >= 2;
-    if (hasOuterQuotes) {
-      const body = content.slice(1, -1).replace(/"/g, "'");
-      return `|"${body}"|`;
-    }
-    if (content.includes('"')) {
-      content = content.replace(/"/g, "'");
-      return `|"${content}"|`;
-    }
-    return match;
+  return line.replace(/\|([^|\r\n]+)\|/g, (_match, inner) => {
+    // Strip all quotes and normalize whitespace
+    const cleanText = inner.replace(/["']/g, '').replace(/\s+/g, ' ').trim();
+    return `|${cleanText}|`;
   });
 }
 
 /**
- * Auto-wraps unquoted text inside node shapes with double quotes to prevent parser crashes.
+ * Auto-wraps unquoted text inside node shapes with double quotes to prevent parser crashes,
+ * and sanitizes special characters like '::' (class binding operator) inside node labels.
  * e.g. NodeA[Web Browser (Client)] -> NodeA["Web Browser (Client)"]
  *      DB[(Sanity Content Lake)] -> DB[("Sanity Content Lake")]
  */
 function autoQuoteNodeLabels(line: string): string {
   let result = line;
+
+  // Sanitize double colons '::' inside brackets to single colons ': ' to avoid Mermaid class operator confusion
+  result = result.replace(/(\[[^\]]*?)::([^\]]*?\])/g, '$1: $2');
 
   // 1. Cylinder: ID[(Label)] -> ID[("Label")]
   result = result.replace(/(\b\w+)\s*\[\(\s*([^"\]\)]+?)\s*\)\]/g, '$1[("$2")]');

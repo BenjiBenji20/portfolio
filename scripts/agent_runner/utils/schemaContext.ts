@@ -62,12 +62,19 @@ SANITY SCHEMA FIELD CONTRACTS & VALUE BOUNDARIES:
 - slug (slug, required): URL identifier
 - projectType (string): Domain classification (e.g. "Automation", "Edge AI", "RAG", "Engineering")
 - shortDescription (text, required, MAX 280 chars): Concise summary displayed on project and home cards
+- dateStarted (date, format: YYYY-MM-DD): The project inception or development start date
 - status (string, required): MUST BE EXACTLY ONE OF: [${VALID_PROJECT_STATUSES.map((s) => `"${s}"`).join(', ')}]
 - author (string, required): "Agentic Writer"
 - hidden (boolean, default: true): Approval Gate. When true, hides project from public portfolio until reviewed.
 - priorityValue (number, default: 0): Weight for display ordering
 - repository (url): Source GitHub repository URL
 - website (url): Live deployed site URL
-- content (array of Portable Text blocks): Deep technical narrative, architecture breakdown, media gallery, diagrams, and video embeds
+- content (array of Portable Text blocks): Full comprehensive technical narrative with NO character limit. Supports rich typography, architecture breakdowns, diagrams, and media.
+
+3. MERMAID DIAGRAM GRAMMAR CONTRACT:
+- Diagram Types: ONLY "flowchart TD", "flowchart LR", or "sequenceDiagram".
+- Edge Labels: MUST be clean plain text inside pipes WITHOUT ANY QUOTES: e.g. A -->|Execute Command| B or A -->|Display Report (stdout)| B. NEVER wrap edge labels in quotes or place quotes inside pipes.
+- Connectors: Use standard ASCII arrows (--> , -.-> , ==>). NEVER use Unicode arrow glyphs (→ , ⇒).
+- Node Labels: Always wrap node text in double quotes inside shape delimiters: ID["Step Name"], DB[("Database")], Client("User Input"). Avoid '::' inside labels.
 `;
 

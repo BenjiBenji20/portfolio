@@ -18,6 +18,7 @@ export interface SanityProjectDocument {
   priorityValue: number;
   featured: boolean;
   hidden: boolean;
+  dateStarted?: string;
   website?: string;
   repository?: string;
   techStacks: string[];
@@ -76,6 +77,7 @@ export function buildProjectPayload(
     priorityValue: 0,
     featured: false,
     hidden: true, // Human Review Gate: published to Lake for referential integrity, hidden from public UI
+    dateStarted: new Date().toISOString().split('T')[0],
     ...(config.liveUrl ? { website: config.liveUrl } : {}),
     ...(targetRepo ? { repository: `https://github.com/${targetRepo}` } : {}),
     techStacks: synthesizedTechStacks,
@@ -90,7 +92,7 @@ export function buildProjectPayload(
           {
             _key: 'intro-span',
             _type: 'span',
-            text: shortDesc,
+            text: rawDesc, // Full untruncated narrative in Portable Text
             marks: [],
           },
         ],

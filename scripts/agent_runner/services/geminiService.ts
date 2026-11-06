@@ -467,17 +467,18 @@ MERMAID ARCHITECTURAL DIAGRAM INSTRUCTIONS:
   * Database / persistent storage: DB[("Database or Lake")]
   * Terminal / Client: Client("Web Browser / Client")
   * Decision / Condition: Check{"Condition?"}
-- Edge labels MUST use pipe notation with double quotes: A -->|"HTTPS GET"| B or A -.->|"Async Event"| B
-- CRITICAL EDGE LABEL RULE: NEVER use unescaped nested double quotes inside edge labels. If you need quotes inside a label, use single quotes: e.g. A -->|"Display Report ('stdout')"| B.
+- Edge labels MUST use clean pipe notation WITHOUT ANY QUOTES: A -->|HTTPS GET| B or A -.->|Async Event| B
+- CRITICAL EDGE LABEL RULE: NEVER place double quotes or single quotes inside or around edge labels. For example, write A -->|Display Report (stdout)| B, NEVER A -->|"Display Report ('stdout')"| B.
 - NEVER use Unicode arrow characters (e.g. "→"). Always use valid ASCII connectors: "-->", "-.->", "==>".
+- Node labels MUST NOT use "::" (use single colon ":" instead to prevent Mermaid class operator conflicts).
 - NEVER include inline CSS styles, colors, classDef, or style attributes.
 - Return raw diagram string with newlines. Do NOT enclose in markdown backticks (\`\`\`mermaid) inside JSON value.
 
 Literal Flowchart Example:
 flowchart TD
-  Client["Web Browser"] -->|"HTTPS GET"| AppServer["Next.js App Server"]
-  AppServer -->|"Sanity Client CDN"| Lake[("Sanity Content Lake")]
-  Lake -.->|"Webhook Invalidation"| AppServer
+  Client("Web Browser") -->|HTTPS GET| AppServer["Next.js App Server"]
+  AppServer -->|Sanity Client CDN| Lake[("Sanity Content Lake")]
+  Lake -.->|Webhook Invalidation| AppServer
 
 Literal Sequence Diagram Example:
 sequenceDiagram
@@ -524,7 +525,7 @@ SYNTHESIS REQUIREMENTS:
 4. Highlights: 3-4 bullet points detailing concrete patterns, affected systems, or performance improvements.
 5. Affected Subsystems: Array of short system names (e.g. ["Ingestion Pipeline", "Redis Cache", "CLI Framework"]).
 6. Parent Project Grounding:
-   - projectOverview: 1-2 professional sentences explaining the core purpose of project "${config.projectTitle}". (Strictly honor any userMessage directive).
+   - projectOverview: A comprehensive, professional technical description explaining the core architecture, purpose, and problem solved by project "${config.projectTitle}". (Do NOT truncate or constrain to 280 characters; this is used for the project body narrative. Strictly prioritize any userMessage directive).
    - techStacks: Array of 2-5 relevant tools, libraries, or frameworks used (e.g. ["Python", "Requests", "CLI"]).
 ${mermaidInstructions}
 `;

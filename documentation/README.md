@@ -52,6 +52,7 @@ graph TD
 | [sanity_schema_grounding_and_mermaid_validator.md](./sanity_schema_grounding_and_mermaid_validator.md) | Schema & Diagram Safety | Complete field builders, hidden: true review gate, and stringent Mermaid grammar engine. |
 | [agentic_pipeline_schema_and_mermaid_fixes.md](./agentic_pipeline_schema_and_mermaid_fixes.md) | Pipeline Hardening | Edge label quote sanitization, _weak: true, dynamic author directives, and direct publishing. |
 | [dynamic_portfolio_json_specification.md](./dynamic_portfolio_json_specification.md) | Config Directives | Dynamic schema passthrough, author prompt directives, and file discovery rules. |
+| [sanity_schema_agent_permissions.md](./sanity_schema_agent_permissions.md) | Agent Access Control | Schema permission matrix, zero-delete invariant, and RBAC guardrail boundary. |
 
 
 ## 4. Ingestion Guidelines for Agentic Writer

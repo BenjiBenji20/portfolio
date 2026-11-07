@@ -57,7 +57,7 @@ export interface SanityArticleDocument {
   _type: 'article';
   title: string;
   slug: { _type: 'slug'; current: string };
-  project: { _type: 'reference'; _ref: string; _weak: true };
+  project: { _type: 'reference'; _ref: string; _weak?: boolean };
   excerpt: string;
   publishedAt: string;
   readTime: string;
@@ -345,7 +345,6 @@ export function buildArticleDraftPayload(
     project: {
       _type: 'reference',
       _ref: projectIdRef || `project-${projectSlug}`,
-      _weak: true,
     },
     excerpt: synthesis.excerpt.slice(0, 300),
     publishedAt,

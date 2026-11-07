@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useId, useState, useCallback } from 'react';
-import { FiMaximize2, FiX, FiZoomIn, FiZoomOut, FiRotateCcw } from 'react-icons/fi';
+import { useEffect, useId, useState } from 'react';
+import { FiMaximize2 } from 'react-icons/fi';
 
 interface MermaidRendererProps {
   chart: string;
@@ -19,6 +19,15 @@ function autoFormatMermaid(input: string): string {
     .replace(/\\n/g, '\n')
     .replace(/\\t/g, '  ')
     .trim();
+
+  // Self-heal corrupted cylinder syntax: ID["("Label")"] -> ID[("Label")]
+  s = s.replace(/(\b\w+)\s*\[\s*"\(\s*"([^"]+?)"\s*\)"\s*\]/g, '$1[("$2")]');
+
+  // Strip forbidden quotes and brackets from edge labels: |Run Audit Command("-b")| -> |Run Audit Command -b|
+  s = s.replace(/\|([^|\r\n]+)\|/g, (_match, inner) => {
+    const clean = inner.replace(/["'()\[\]{}]/g, ' ').replace(/\s+/g, ' ').trim();
+    return `|${clean}|`;
+  });
 
   // If already multiline, return directly
   if (s.includes('\n')) return s;
@@ -63,6 +72,7 @@ export function MermaidRenderer({
     async function renderChart() {
       if (!chart || !chart.trim()) return;
 
+      let id = '';
       try {
         const mermaid = (await import('mermaid')).default;
         mermaid.initialize({
@@ -82,10 +92,24 @@ export function MermaidRenderer({
           securityLevel: 'loose',
         });
 
+        if (typeof mermaid.setParseErrorHandler === 'function') {
+          mermaid.setParseErrorHandler(() => {});
+        }
+
         const sanitized = autoFormatMermaid(chart);
         if (!sanitized) return;
 
-        const id = `mermaid_${uniqueId}_${Math.random().toString(36).substring(2, 9)}`;
+        if (typeof mermaid.parse === 'function') {
+          const valid = await mermaid.parse(sanitized, { suppressErrors: true });
+          if (!valid) {
+            if (isMounted) {
+              setError('Invalid Mermaid syntax');
+            }
+            return;
+          }
+        }
+
+        id = `mermaid_${uniqueId}_${Math.random().toString(36).substring(2, 9)}`;
         const { svg } = await mermaid.render(id, sanitized);
 
         if (isMounted) {
@@ -93,6 +117,10 @@ export function MermaidRenderer({
           setError(null);
         }
       } catch (err) {
+        if (typeof document !== 'undefined') {
+          const strayError = document.getElementById('d' + id) || document.querySelector('[id^="dmermaid"]');
+          strayError?.remove();
+        }
         if (isMounted) {
           console.warn('[MermaidRenderer] Diagram render failed:', err);
           setError(err instanceof Error ? err.message : 'Invalid Mermaid syntax');

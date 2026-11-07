@@ -475,8 +475,8 @@ MERMAID ARCHITECTURAL DIAGRAM INSTRUCTIONS:
   * Database / persistent storage: DB[("Database or Lake")]
   * Terminal / Client: Client("Web Browser / Client")
   * Decision / Condition: Check{"Condition?"}
-- Edge labels MUST use clean pipe notation WITHOUT ANY QUOTES: A -->|HTTPS GET| B or A -.->|Async Event| B
-- CRITICAL EDGE LABEL RULE: NEVER place double quotes or single quotes inside or around edge labels. For example, write A -->|Display Report (stdout)| B, NEVER A -->|"Display Report ('stdout')"| B.
+- Edge labels MUST use clean pipe notation with plain words: A -->|HTTPS GET| B or A -.->|Async Event| B
+- CRITICAL EDGE LABEL RULE: NEVER place quotes (" or ') or parentheses ( or ) inside edge labels. For example, write A -->|Run Audit Command -b| B, NEVER A -->|Run Audit Command("-b")| B.
 - NEVER use Unicode arrow characters (e.g. "→"). Always use valid ASCII connectors: "-->", "-.->", "==>".
 - Node labels MUST NOT use "::" (use single colon ":" instead to prevent Mermaid class operator conflicts).
 - NEVER include inline CSS styles, colors, classDef, or style attributes.

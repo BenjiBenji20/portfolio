@@ -31,14 +31,16 @@ const VALID_HEADERS = [
 
 /**
  * Sanitizes edge labels inside pipe notation |...|:
- * - Strips all double and single quotes from edge labels so Mermaid parses them as clean text.
- * e.g. |"Display Report(" 'stdout' ")"| -> |Display Report (stdout)|
+ * - Strips all quotes (" and ') and shape delimiters (parentheses, brackets, curly braces)
+ *   from edge labels so Mermaid parses them as clean, valid plain text.
+ * e.g. |Run Audit Command("-b")| -> |Run Audit Command -b|
+ *      |"Display Report(" 'stdout' ")"| -> |Display Report stdout|
  *      |"Execute 'deadlink'"| -> |Execute deadlink|
  */
 function sanitizeEdgeLabels(line: string): string {
   return line.replace(/\|([^|\r\n]+)\|/g, (_match, inner) => {
-    // Strip all quotes and normalize whitespace
-    const cleanText = inner.replace(/["']/g, '').replace(/\s+/g, ' ').trim();
+    // Strip quotes and shape delimiter characters that trigger Mermaid tokenizer crashes
+    const cleanText = inner.replace(/["'()\[\]{}]/g, ' ').replace(/\s+/g, ' ').trim();
     return `|${cleanText}|`;
   });
 }
@@ -64,17 +66,31 @@ function autoQuoteNodeLabels(line: string): string {
   // 3. Circle: ID((Label)) -> ID(("Label"))
   result = result.replace(/(\b\w+)\s*\(\(\s*([^"\]\)]+?)\s*\)\)/g, '$1(("$2"))');
 
-  // 4. Rectangle: ID[Label] -> ID["Label"] (ignoring already quoted)
+  // 4. Rectangle: ID[Label] -> ID["Label"] (ignoring already quoted or cylinder [(...)])
   result = result.replace(/(\b\w+)\s*\[\s*([^"\]|]+?)\s*\]/g, (match, id, text) => {
-    // If text already has double quotes or is a shape delimiter, leave alone
-    if (text.startsWith('"') && text.endsWith('"')) return match;
-    return `${id}["${text.trim()}"]`;
+    const trimmed = text.trim();
+    // If text already has double quotes or is a cylinder/stadium delimiter, leave alone
+    if (
+      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      trimmed.startsWith('(') ||
+      trimmed.endsWith(')')
+    ) {
+      return match;
+    }
+    return `${id}["${trimmed}"]`;
   });
 
   // 5. Rounded: ID(Label) -> ID("Label")
   result = result.replace(/(\b\w+)\s*\(\s*([^"\)\(]+?)\s*\)/g, (match, id, text) => {
-    if (text.startsWith('"') && text.endsWith('"')) return match;
-    return `${id}("${text.trim()}")`;
+    const trimmed = text.trim();
+    if (
+      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      trimmed.startsWith('[') ||
+      trimmed.endsWith(']')
+    ) {
+      return match;
+    }
+    return `${id}("${trimmed}")`;
   });
 
   // 6. Rhombus / Decision: ID{Label} -> ID{"Label"}

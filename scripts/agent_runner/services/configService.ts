@@ -66,9 +66,15 @@ export async function fetchPortfolioConfig(
     }
 
     // Strip single-line and multi-line comments (JSONC support) while preserving string literals
-    const cleanedConfigString = rawConfigString.replace(
+    const withoutComments = rawConfigString.replace(
       /\\"|"(?:\\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g,
       (m, g) => (g ? '' : m)
+    );
+
+    // Strip trailing commas before closing braces/brackets (JSON5 / relaxed JSON tolerance)
+    const cleanedConfigString = withoutComments.replace(
+      /\\"|"(?:\\"|[^"])*"|(,\s*([}\]]))/g,
+      (m, g, closing) => (g ? closing : m)
     );
 
     const rawJson = JSON.parse(cleanedConfigString);

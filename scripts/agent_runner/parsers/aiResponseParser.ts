@@ -130,7 +130,10 @@ export const ArticleSynthesisSchema = z.object({
     .min(3)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'slug must be lowercase kebab-case')
     .or(z.string().min(3).transform((s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''))),
-  excerpt: z.string().min(10).max(300, 'excerpt must be at most 300 characters'),
+  excerpt: z
+    .string()
+    .min(10, 'excerpt must be at least 10 characters')
+    .transform((val) => (val.length > 300 ? val.slice(0, 297) + '...' : val)),
   readTime: z.string().default('5 min read'),
   priorityValue: z.number().int().default(0),
   sections: z.array(ArticleSectionSchema).min(2, 'Article must have at least 2 structured sections'),

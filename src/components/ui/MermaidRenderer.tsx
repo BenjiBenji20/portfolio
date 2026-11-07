@@ -29,6 +29,12 @@ function autoFormatMermaid(input: string): string {
     return `|${clean}|`;
   });
 
+  // Self-heal nested quotes inside node labels: ID["Terminal Output("-b flag")"] -> ID["Terminal Output(-b flag)"]
+  s = s.replace(/(\b\w+)\s*\[\s*"([^\]\r\n]+?)"\s*\]/g, (_match, id, inner) => {
+    const clean = inner.replace(/["']/g, '').trim();
+    return `${id}["${clean}"]`;
+  });
+
   // If already multiline, return directly
   if (s.includes('\n')) return s;
 

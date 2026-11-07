@@ -144,8 +144,8 @@ export async function persistDevLogToSanity(
     });
   }
 
-  // Embed Mermaid diagram if present
-  if (synthesis.mermaidDiagram) {
+  // Embed Mermaid diagram if present AND enabled in mediaPreferences
+  if (synthesis.mermaidDiagram && config.mediaPreferences?.generateArchitectureDiagrams !== false) {
     contentBlocks.push({
       _key: 'mermaid-diagram',
       _type: 'block',

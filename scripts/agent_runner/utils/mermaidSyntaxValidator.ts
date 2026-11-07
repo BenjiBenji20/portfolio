@@ -66,37 +66,44 @@ function autoQuoteNodeLabels(line: string): string {
   // 3. Circle: ID((Label)) -> ID(("Label"))
   result = result.replace(/(\b\w+)\s*\(\(\s*([^"\]\)]+?)\s*\)\)/g, '$1(("$2"))');
 
-  // 4. Rectangle: ID[Label] -> ID["Label"] (ignoring already quoted or cylinder [(...)])
-  result = result.replace(/(\b\w+)\s*\[\s*([^"\]|]+?)\s*\]/g, (match, id, text) => {
+  // 4. Rectangle: ID[Label] or ID["Label with ("inner") quotes"] -> ID["Clean Label"]
+  result = result.replace(/(\b\w+)\s*\[\s*([^\]|]+?)\s*\]/g, (match, id, text) => {
     const trimmed = text.trim();
-    // If text already has double quotes or is a cylinder/stadium delimiter, leave alone
-    if (
-      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-      trimmed.startsWith('(') ||
-      trimmed.endsWith(')')
-    ) {
+    // If text is a cylinder or stadium delimiter, leave alone
+    if (trimmed.startsWith('(') || trimmed.endsWith(')')) {
       return match;
     }
-    return `${id}["${trimmed}"]`;
+    let inner = trimmed;
+    if (inner.startsWith('"') && inner.endsWith('"')) {
+      inner = inner.slice(1, -1);
+    }
+    // Strip all inner quotes from node label to prevent Mermaid tokenizer crashes
+    const clean = inner.replace(/["']/g, '').trim();
+    return `${id}["${clean}"]`;
   });
 
   // 5. Rounded: ID(Label) -> ID("Label")
-  result = result.replace(/(\b\w+)\s*\(\s*([^"\)\(]+?)\s*\)/g, (match, id, text) => {
+  result = result.replace(/(\b\w+)\s*\(\s*([^)\(]+?)\s*\)/g, (match, id, text) => {
     const trimmed = text.trim();
-    if (
-      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-      trimmed.startsWith('[') ||
-      trimmed.endsWith(']')
-    ) {
+    if (trimmed.startsWith('[') || trimmed.endsWith(']')) {
       return match;
     }
-    return `${id}("${trimmed}")`;
+    let inner = trimmed;
+    if (inner.startsWith('"') && inner.endsWith('"')) {
+      inner = inner.slice(1, -1);
+    }
+    const clean = inner.replace(/["']/g, '').trim();
+    return `${id}("${clean}")`;
   });
 
   // 6. Rhombus / Decision: ID{Label} -> ID{"Label"}
-  result = result.replace(/(\b\w+)\s*\{\s*([^"\}\{]+?)\s*\}/g, (match, id, text) => {
-    if (text.startsWith('"') && text.endsWith('"')) return match;
-    return `${id}{"${text.trim()}"}`;
+  result = result.replace(/(\b\w+)\s*\{\s*([^}{]+?)\s*\}/g, (_match, id, text) => {
+    let inner = text.trim();
+    if (inner.startsWith('"') && inner.endsWith('"')) {
+      inner = inner.slice(1, -1);
+    }
+    const clean = inner.replace(/["']/g, '').trim();
+    return `${id}{"${clean}"}`;
   });
 
   return result;

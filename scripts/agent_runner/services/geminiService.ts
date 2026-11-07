@@ -527,7 +527,7 @@ sequenceDiagram
   CDN-->>Web: Webhook Event
   Web->>Web: Revalidate Cache Tag
 `
-    : 'Do not generate a mermaid diagram (set mermaidDiagram to null).';
+    : 'ARCHITECTURE DIAGRAMS ARE DISABLED ("generateArchitectureDiagrams": false). Do NOT generate any mermaid diagram. Do not output any mermaidDiagram content.';
 
   const summariesBlock = fileSummaries.length > 0
     ? fileSummaries
@@ -569,6 +569,10 @@ SYNTHESIS REQUIREMENTS:
 ${mermaidInstructions}
 `;
 
+  const diagramGovernanceInstruction = generateDiagram
+    ? ''
+    : '\nCRITICAL GOVERNANCE OVERRIDE: The developer explicitly disabled architecture diagrams ("generateArchitectureDiagrams": false). Do NOT output any mermaid diagram or mermaidDiagram property.';
+
   const systemInstruction = `
 You are my proxy — a Senior Technical Writer and Software Architect. Write as an authentic human engineer documenting real production momentum.
 
@@ -579,15 +583,24 @@ STRICT VOICE & VOCABULARY INVARIANTS:
 - GROUNDING: Cite concrete filenames, architectural patterns (e.g. "HMAC-SHA256 handshake", "Zod safeParse", "sliding-window rate limiter"), and measurable outcomes.
 - ZERO FABRICATION: Do not invent dependencies or link random external images.
 - Follow the required JSON schema strictly.
-${dynamicDirectivesBlock}
+${dynamicDirectivesBlock}${diagramGovernanceInstruction}
 `;
+
+  // Dynamically tailor the JSON responseSchema: omit mermaidDiagram if diagrams are disabled
+  const devlogResponseSchema = {
+    ...GEMINI_DEVLOG_SYNTHESIS_SCHEMA,
+    properties: { ...GEMINI_DEVLOG_SYNTHESIS_SCHEMA.properties },
+  };
+  if (!generateDiagram) {
+    delete (devlogResponseSchema.properties as Record<string, unknown>).mermaidDiagram;
+  }
 
   const validated = await executeWithSelfHealing(
     'DevLogSynthesis',
     prompt,
     systemInstruction,
     DevLogSynthesisSchema,
-    GEMINI_DEVLOG_SYNTHESIS_SCHEMA,
+    devlogResponseSchema,
     4
   );
 
@@ -597,7 +610,7 @@ ${dynamicDirectivesBlock}
     description: validated.description,
     highlights: validated.highlights,
     affectedSubsystems: validated.affectedSubsystems,
-    mermaidDiagram: validated.mermaidDiagram || undefined,
+    mermaidDiagram: generateDiagram ? (validated.mermaidDiagram || undefined) : undefined,
     projectOverview: validated.projectOverview,
     techStacks: validated.techStacks,
   };

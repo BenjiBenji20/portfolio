@@ -1,4 +1,10 @@
-import type { ValidatedPortfolioConfig, DevLogSynthesisResult } from '../types';
+import type {
+  ValidatedPortfolioConfig,
+  DevLogSynthesisResult,
+  ArticleSynthesisResult,
+  ArticlePatchResult,
+  ArticleSection,
+} from '../types';
 import { VALID_BADGES, type ValidBadge, type ValidProjectStatus } from './schemaContext';
 
 /**
@@ -44,6 +50,22 @@ export interface SanityWorkLogDocument {
     platform: string;
     url: string;
   }>;
+}
+
+export interface SanityArticleDocument {
+  _id: string;
+  _type: 'article';
+  title: string;
+  slug: { _type: 'slug'; current: string };
+  project: { _type: 'reference'; _ref: string; _weak: true };
+  excerpt: string;
+  publishedAt: string;
+  readTime: string;
+  priorityValue: number;
+  author: 'Agentic Writer';
+  developers: string[];
+  hidden: boolean;
+  content: unknown[];
 }
 
 /**
@@ -155,4 +177,226 @@ export function buildWorkLogPayload(
       : [],
   };
 }
+
+/**
+ * Transforms structured article sections into Sanity Portable Text blocks.
+ */
+export function convertArticleSectionsToBlocks(
+  sections: ArticleSection[],
+  includeMermaid = true,
+  takeaways?: string[]
+): unknown[] {
+  const blocks: unknown[] = [];
+
+  sections.forEach((sec, idx) => {
+    // 1. Heading block (h2)
+    blocks.push({
+      _key: `sec-h-${idx}`,
+      _type: 'block',
+      style: 'h2',
+      children: [
+        {
+          _key: `span-h-${idx}`,
+          _type: 'span',
+          text: sec.heading,
+          marks: [],
+        },
+      ],
+    });
+
+    // 2. Narrative paragraphs
+    const paragraphs = sec.body.split(/\n\n+/).filter((p) => p.trim().length > 0);
+    paragraphs.forEach((p, pIdx) => {
+      blocks.push({
+        _key: `sec-p-${idx}-${pIdx}`,
+        _type: 'block',
+        style: 'normal',
+        children: [
+          {
+            _key: `span-p-${idx}-${pIdx}`,
+            _type: 'span',
+            text: p.trim(),
+            marks: [],
+          },
+        ],
+      });
+    });
+
+    // 3. Code snippet block
+    if (sec.codeSnippet && sec.codeSnippet.code) {
+      const codeText = sec.codeSnippet.filename
+        ? `// ${sec.codeSnippet.filename}\n${sec.codeSnippet.code}`
+        : sec.codeSnippet.code;
+
+      blocks.push({
+        _key: `sec-code-${idx}`,
+        _type: 'block',
+        style: 'normal',
+        children: [
+          {
+            _key: `span-code-${idx}`,
+            _type: 'span',
+            text: codeText,
+            marks: ['code'],
+          },
+        ],
+      });
+    }
+
+    // 4. Mermaid Diagram block
+    if (includeMermaid && sec.mermaidDiagram) {
+      blocks.push({
+        _key: `sec-mm-head-${idx}`,
+        _type: 'block',
+        style: 'normal',
+        children: [
+          {
+            _key: `span-mm-head-${idx}`,
+            _type: 'span',
+            text: 'Architecture Diagram:',
+            marks: ['strong'],
+          },
+        ],
+      });
+      blocks.push({
+        _key: `sec-mm-diag-${idx}`,
+        _type: 'block',
+        style: 'normal',
+        children: [
+          {
+            _key: `span-mm-diag-${idx}`,
+            _type: 'span',
+            text: sec.mermaidDiagram,
+            marks: [],
+          },
+        ],
+      });
+    }
+  });
+
+  // 5. Takeaways bullet list (if present)
+  if (takeaways && takeaways.length > 0) {
+    blocks.push({
+      _key: 'takeaways-heading',
+      _type: 'block',
+      style: 'h2',
+      children: [
+        {
+          _key: 'tw-h-span',
+          _type: 'span',
+          text: 'Key Architectural Takeaways',
+          marks: [],
+        },
+      ],
+    });
+    takeaways.forEach((tw, twIdx) => {
+      blocks.push({
+        _key: `tw-${twIdx}`,
+        _type: 'block',
+        style: 'normal',
+        listItem: 'bullet',
+        children: [
+          {
+            _key: `tw-span-${twIdx}`,
+            _type: 'span',
+            text: tw,
+            marks: [],
+          },
+        ],
+      });
+    });
+  }
+
+  return blocks;
+}
+
+/**
+ * Builds a publication-ready Sanity Article document staged strictly as a DRAFT.
+ * Sets hidden: true to enforce the human editorial review gate.
+ */
+export function buildArticleDraftPayload(
+  config: ValidatedPortfolioConfig,
+  synthesis: ArticleSynthesisResult,
+  sender = 'Developer',
+  projectIdRef?: string
+): SanityArticleDocument {
+  const projectSlug =
+    config.projectSlug ||
+    (config.projectTitle
+      ? config.projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      : 'engineering-project');
+  const articleSlug =
+    synthesis.slug ||
+    synthesis.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const publishedAt = new Date().toISOString();
+
+  const includeMermaid = config.mediaPreferences?.generateArchitectureDiagrams !== false;
+  const contentBlocks = convertArticleSectionsToBlocks(
+    synthesis.sections,
+    includeMermaid,
+    synthesis.takeaways
+  );
+
+  return {
+    _id: `drafts.article-${projectSlug}-${articleSlug}`,
+    _type: 'article',
+    title: synthesis.title,
+    slug: { _type: 'slug', current: articleSlug },
+    project: {
+      _type: 'reference',
+      _ref: projectIdRef || `project-${projectSlug}`,
+      _weak: true,
+    },
+    excerpt: synthesis.excerpt.slice(0, 300),
+    publishedAt,
+    readTime: synthesis.readTime || '5 min read',
+    priorityValue: synthesis.priorityValue ?? 0,
+    author: 'Agentic Writer',
+    developers: [sender, 'Agentic Writer'],
+    hidden: true, // Strict Human Review Gate: All AI-authored articles are hidden drafts
+    content: contentBlocks,
+  };
+}
+
+/**
+ * Builds Portable Text blocks representing an architectural addendum for updating an existing article.
+ */
+export function buildArticlePatchBlocks(
+  patch: ArticlePatchResult,
+  includeMermaid = true
+): unknown[] {
+  const now = Date.now();
+  const blocks: unknown[] = [
+    {
+      _key: `addendum-h-${now}`,
+      _type: 'block',
+      style: 'h2',
+      children: [
+        {
+          _key: `addendum-h-span-${now}`,
+          _type: 'span',
+          text: patch.addendumTitle,
+          marks: ['strong'],
+        },
+      ],
+    },
+    {
+      _key: `addendum-sum-${now}`,
+      _type: 'block',
+      style: 'normal',
+      children: [
+        {
+          _key: `addendum-sum-span-${now}`,
+          _type: 'span',
+          text: patch.summary,
+          marks: ['em'],
+        },
+      ],
+    },
+    ...convertArticleSectionsToBlocks(patch.sections, includeMermaid),
+  ];
+
+  return blocks;
+}
+
 

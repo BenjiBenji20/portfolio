@@ -103,6 +103,64 @@ export const DevLogSynthesisSchema = z.object({
 
 export type ValidatedDevLogSynthesis = z.infer<typeof DevLogSynthesisSchema>;
 
+// 2b. Schemas for Article Synthesis & Patching
+export const ArticleSectionSchema = z.object({
+  heading: z.string().min(3, 'Section heading must be at least 3 characters'),
+  body: z.string().min(20, 'Section body narrative must be at least 20 characters'),
+  codeSnippet: z
+    .object({
+      code: z.string(),
+      language: z.string().default('typescript'),
+      filename: z.string().optional(),
+    })
+    .optional(),
+  mermaidDiagram: z
+    .string()
+    .optional()
+    .nullable()
+    .superRefine((val, ctx) => {
+      if (!val) return;
+      const res = validateAndSanitizeMermaid(val);
+      if (!res.valid) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: res.errorReport || 'Invalid Mermaid syntax',
+        });
+      }
+    })
+    .transform((val) => {
+      if (!val) return undefined;
+      const res = validateAndSanitizeMermaid(val);
+      return res.valid ? res.sanitized : undefined;
+    }),
+});
+
+export const ArticleSynthesisSchema = z.object({
+  title: z.string().min(5, 'title must be at least 5 characters'),
+  slug: z
+    .string()
+    .min(3)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'slug must be lowercase kebab-case')
+    .or(z.string().min(3).transform((s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''))),
+  excerpt: z.string().min(10).max(300, 'excerpt must be at most 300 characters'),
+  readTime: z.string().default('5 min read'),
+  priorityValue: z.number().int().default(0),
+  sections: z.array(ArticleSectionSchema).min(2, 'Article must have at least 2 structured sections'),
+  tags: z.array(z.string()).default([]),
+  takeaways: z.array(z.string()).default([]),
+});
+
+export type ValidatedArticleSynthesis = z.infer<typeof ArticleSynthesisSchema>;
+
+export const ArticlePatchSchema = z.object({
+  targetArticleSlug: z.string().min(1),
+  addendumTitle: z.string().min(5),
+  summary: z.string().min(10),
+  sections: z.array(ArticleSectionSchema).min(1, 'Patch must have at least 1 section'),
+});
+
+export type ValidatedArticlePatch = z.infer<typeof ArticlePatchSchema>;
+
 // 3. Schema for Stage 2: Per-File Semantic Distillation (Map Stage)
 export const FileSummarySchema = z.object({
   filename: z.string(),
@@ -197,6 +255,100 @@ export const GEMINI_DEVLOG_SYNTHESIS_SCHEMA = {
     },
   },
   required: ['title', 'badge', 'description', 'highlights', 'affectedSubsystems'],
+};
+
+export const GEMINI_ARTICLE_SECTION_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    heading: {
+      type: 'STRING',
+      description: 'Section heading (e.g. "Core Problem & Design Trade-offs", "Architectural Mechanics")',
+    },
+    body: {
+      type: 'STRING',
+      description: 'Detailed multi-paragraph technical narrative explaining engineering decisions, mechanics, or benchmarks',
+    },
+    codeSnippet: {
+      type: 'OBJECT',
+      properties: {
+        code: { type: 'STRING', description: 'Significant code or configuration snippet' },
+        language: { type: 'STRING', description: 'Language identifier (e.g. typescript, python, bash)' },
+        filename: { type: 'STRING', description: 'Optional relative path or filename' },
+      },
+      required: ['code'],
+    },
+    mermaidDiagram: {
+      type: 'STRING',
+      description: 'Architecture diagram (flowchart TD/LR or sequenceDiagram) illustrating this section with double-quoted node labels and plain unquoted pipe edge labels',
+    },
+  },
+  required: ['heading', 'body'],
+};
+
+export const GEMINI_ARTICLE_SYNTHESIS_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    title: {
+      type: 'STRING',
+      description: 'Authoritative, publication-grade engineering article title',
+    },
+    slug: {
+      type: 'STRING',
+      description: 'Clean kebab-case URL slug (e.g. autonomous-devlog-engine)',
+    },
+    excerpt: {
+      type: 'STRING',
+      description: 'Compelling teaser summary displayed in the article grid (maximum 300 characters)',
+    },
+    readTime: {
+      type: 'STRING',
+      description: 'Estimated reading time, e.g. "6 min read"',
+    },
+    priorityValue: {
+      type: 'NUMBER',
+      description: 'Display weight integer (default: 0)',
+    },
+    sections: {
+      type: 'ARRAY',
+      items: GEMINI_ARTICLE_SECTION_SCHEMA,
+      description: 'Array of at least 2 structured technical sections covering the milestone',
+    },
+    tags: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'Relevant tags and topic keywords',
+    },
+    takeaways: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'Bullet list of core engineering takeaways and learnings',
+    },
+  },
+  required: ['title', 'slug', 'excerpt', 'readTime', 'sections'],
+};
+
+export const GEMINI_ARTICLE_PATCH_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    targetArticleSlug: {
+      type: 'STRING',
+      description: 'Slug of the existing article being updated',
+    },
+    addendumTitle: {
+      type: 'STRING',
+      description: 'Title for the architectural update/addendum section',
+    },
+    summary: {
+      type: 'STRING',
+      description: 'Summary of the architectural shift or enhancement',
+    },
+    sections: {
+      type: 'ARRAY',
+      items: GEMINI_ARTICLE_SECTION_SCHEMA,
+      description: 'New or revised sections to append to the article',
+    },
+  },
+  required: ['targetArticleSlug', 'addendumTitle', 'summary', 'sections'],
 };
 
 export interface DiagnosticsResult<T> {

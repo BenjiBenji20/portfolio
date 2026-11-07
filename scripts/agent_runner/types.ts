@@ -100,7 +100,12 @@ export const DynamicPortfolioConfigSchema = z.preprocess((val) => {
 
 export type ValidatedPortfolioConfig = z.infer<typeof DynamicPortfolioConfigSchema> & PortfolioConfig;
 
-export type { ProjectHistoryDigest, ProjectMilestoneItem, ExistingArticleItem } from './agentic_tools/sanityGroqTool';
+export type {
+  ProjectHistoryDigest,
+  ProjectMilestoneItem,
+  ExistingArticleItem,
+  FullArticleData,
+} from './agentic_tools/sanityGroqTool';
 
 export interface RunnerInputs {
   targetRepo: string;
@@ -142,3 +147,33 @@ export interface DevLogSynthesisResult {
   projectOverview?: string;
   techStacks?: string[];
 }
+
+export interface ArticleSection {
+  heading: string;
+  body: string;
+  codeSnippet?: {
+    code: string;
+    language: string;
+    filename?: string;
+  };
+  mermaidDiagram?: string;
+}
+
+export interface ArticleSynthesisResult {
+  title: string;
+  slug: string;
+  excerpt: string;
+  readTime: string;
+  priorityValue?: number;
+  sections: ArticleSection[];
+  tags?: string[];
+  takeaways?: string[];
+}
+
+export interface ArticlePatchResult {
+  targetArticleSlug: string;
+  addendumTitle: string;
+  summary: string;
+  sections: ArticleSection[];
+}
+

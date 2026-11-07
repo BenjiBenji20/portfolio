@@ -1,8 +1,20 @@
 import { createClient } from 'next-sanity';
-import type { ValidatedPortfolioConfig, DevLogSynthesisResult, ProjectHistoryDigest } from '../types';
-import { buildProjectPayload, buildWorkLogPayload } from '../utils/sanitySchemaBuilders';
+import type {
+  ValidatedPortfolioConfig,
+  DevLogSynthesisResult,
+  ProjectHistoryDigest,
+  ArticleSynthesisResult,
+  ArticlePatchResult,
+  FullArticleData,
+} from '../types';
+import {
+  buildProjectPayload,
+  buildWorkLogPayload,
+  buildArticleDraftPayload,
+  buildArticlePatchBlocks,
+} from '../utils/sanitySchemaBuilders';
 import { createGuardedSanityClient } from '../utils/sanityClientGuardrail';
-import { fetchProjectHistoryDigest } from '../agentic_tools/sanityGroqTool';
+import { fetchProjectHistoryDigest, fetchArticleBySlug } from '../agentic_tools/sanityGroqTool';
 
 /**
  * Service to upload assets and persist DevLogs to Sanity Content Lake
@@ -222,4 +234,136 @@ export async function persistDevLogToSanity(
 
   return { docId: result._id, assetId: uploadedAssetId, reviewAlertRequired };
 }
+
+/**
+ * Retrieves full article details by slug for patch synthesis.
+ */
+export async function getArticleBySlug(slug: string): Promise<FullArticleData | null> {
+  try {
+    const client = getGuardedSanityClient();
+    return await fetchArticleBySlug(client, slug);
+  } catch (err) {
+    console.warn(`[SanityService] getArticleBySlug failed for "${slug}":`, err);
+    return null;
+  }
+}
+
+/**
+ * Persists a newly synthesized long-form Article to Sanity Content Lake.
+ * INVARIANT: Must be strictly staged as a draft ('drafts.article-...') with 'hidden: true'
+ * to enforce the mandatory human developer editorial review gate.
+ */
+export async function persistArticleDraftToSanity(
+  config: ValidatedPortfolioConfig,
+  synthesis: ArticleSynthesisResult,
+  sender = 'Developer',
+  targetRepo = '',
+  projectIdRef?: string
+): Promise<{ docId: string; reviewUrl: string }> {
+  const client = getGuardedSanityClient();
+  const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
+
+  // 1. Resolve or create parent project reference
+  let resolvedProjectRef = projectIdRef;
+  if (!resolvedProjectRef) {
+    try {
+      const parent = await client.fetch<{ _id: string } | null>(
+        `*[_type == "project" && (slug.current == $slug || _id == $projId || _id == $draftProjId)][0]{_id}`,
+        {
+          slug: config.projectSlug,
+          projId: `project-${config.projectSlug}`,
+          draftProjId: `drafts.project-${config.projectSlug}`,
+        }
+      );
+      if (parent?._id) {
+        resolvedProjectRef = parent._id.replace(/^drafts\./, '');
+      } else {
+        const projectPayload = buildProjectPayload(
+          config,
+          targetRepo,
+          `Autonomous engineering project: ${config.projectTitle || config.projectSlug}`
+        );
+        await client.createOrReplace(projectPayload);
+        resolvedProjectRef = projectPayload._id;
+      }
+    } catch (err) {
+      console.warn(`[SanityService] Project reference resolution for article:`, err);
+    }
+  }
+
+  // 2. Build Article Draft Payload (drafts.article-${projectSlug}-${articleSlug})
+  const articlePayload = buildArticleDraftPayload(
+    config,
+    synthesis,
+    sender,
+    resolvedProjectRef || `project-${config.projectSlug}`
+  );
+
+  console.log(`[SanityService] Persisting Article DRAFT [${articlePayload._id}] (hidden: true)...`);
+  const result = await client.createOrReplace(articlePayload);
+  console.log(`[SanityService] Successfully staged Article draft: ${result._id}`);
+
+  const reviewUrl = `https://${projectId}.sanity.studio/structure/article;${result._id}`;
+  return { docId: result._id, reviewUrl };
+}
+
+/**
+ * Persists an architectural addendum to update an existing article in Sanity Lake.
+ * INVARIANT: Stages the mutation into a draft document so changes require human review.
+ */
+export async function persistArticlePatchToSanity(
+  targetArticleSlug: string,
+  patch: ArticlePatchResult,
+  config: ValidatedPortfolioConfig
+): Promise<{ docId: string; reviewUrl: string }> {
+  const client = getGuardedSanityClient();
+  const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
+
+  // 1. Find existing article or existing draft
+  const existing = await client.fetch<{ _id: string; content?: unknown[] } | null>(
+    `*[_type == "article" && slug.current == $slug][0]{ _id, content }`,
+    { slug: targetArticleSlug }
+  );
+
+  if (!existing?._id) {
+    throw new Error(`[SanityService] Cannot patch article: No article found for slug "${targetArticleSlug}"`);
+  }
+
+  // Draft ID ensures any patch targets drafts exclusively
+  const draftDocId = existing._id.startsWith('drafts.') ? existing._id : `drafts.${existing._id}`;
+
+  const includeMermaid = config.mediaPreferences?.generateArchitectureDiagrams !== false;
+  const patchBlocks = buildArticlePatchBlocks(patch, includeMermaid);
+
+  // If the draft document doesn't exist yet, clone published document into drafts
+  if (!existing._id.startsWith('drafts.')) {
+    try {
+      const fullDoc = await client.getDocument(existing._id);
+      if (fullDoc) {
+        const draftDoc = {
+          ...fullDoc,
+          _id: draftDocId,
+          hidden: true, // Escalate to human review
+        };
+        await client.createOrReplace(draftDoc);
+      }
+    } catch (cloneErr) {
+      console.warn(`[SanityService] Draft initialization for patch:`, cloneErr);
+    }
+  }
+
+  console.log(`[SanityService] Appending Architecture Addendum to Article Draft [${draftDocId}]...`);
+  await client
+    .patch(draftDocId)
+    .setIfMissing({ content: [] })
+    .append('content', patchBlocks)
+    .set({ hidden: true })
+    .commit();
+
+  console.log(`[SanityService] Successfully patched Article Draft: ${draftDocId}`);
+
+  const reviewUrl = `https://${projectId}.sanity.studio/structure/article;${draftDocId}`;
+  return { docId: draftDocId, reviewUrl };
+}
+
 

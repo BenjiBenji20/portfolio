@@ -14,6 +14,15 @@ export interface ExistingArticleItem {
   leadParagraph?: string;
 }
 
+export interface FullArticleData {
+  _id: string;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  content?: unknown[];
+  hidden?: boolean;
+}
+
 export interface ProjectHistoryDigest {
   recentWorkLogs: ProjectMilestoneItem[];
   existingArticles: ExistingArticleItem[];
@@ -59,6 +68,36 @@ export async function fetchProjectHistoryDigest(
   } catch (err) {
     console.warn(`[SanityGroqTool] History digest query failed for "${projectSlug}":`, err);
     return { recentWorkLogs: [], existingArticles: [] };
+  }
+}
+
+/**
+ * Extensible GROQ Tool: Retrieve Full Article by Slug for Patching & Context
+ * 
+ * Fetches an existing article's metadata and content blocks by its unique slug
+ * so the AI agent can synthesize coherent, non-redundant architectural addendums.
+ */
+export async function fetchArticleBySlug(
+  client: SanityClient,
+  slug: string
+): Promise<FullArticleData | null> {
+  if (!slug) return null;
+
+  const query = `*[_type == "article" && slug.current == $slug][0] {
+    _id,
+    title,
+    "slug": slug.current,
+    excerpt,
+    content,
+    hidden
+  }`;
+
+  try {
+    const article = await client.fetch<FullArticleData | null>(query, { slug });
+    return article || null;
+  } catch (err) {
+    console.warn(`[SanityGroqTool] fetchArticleBySlug failed for "${slug}":`, err);
+    return null;
   }
 }
 

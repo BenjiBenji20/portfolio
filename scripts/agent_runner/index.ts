@@ -5,8 +5,16 @@ import {
   evaluateEditorialTriage,
   distillFileSummaries,
   synthesizeDevLog,
+  synthesizeArticle,
+  synthesizeArticlePatch,
 } from './services/geminiService';
-import { persistDevLogToSanity, getProjectHistory } from './services/sanityService';
+import {
+  persistDevLogToSanity,
+  getProjectHistory,
+  persistArticleDraftToSanity,
+  persistArticlePatchToSanity,
+  getArticleBySlug,
+} from './services/sanityService';
 import type { RunnerInputs } from './types';
 
 /**
@@ -169,9 +177,70 @@ export async function runAgenticDevlog() {
     inputs.targetRepo
   );
 
+  // 9. Article Generation Gate: Long-Form Technical Deep Dive or Architecture Addendum
+  let generatedArticleDocId: string | undefined;
+  let articleReviewUrl: string | undefined;
+
+  if (triage.articleAction === 'create_article') {
+    console.log('\n[Runner] 🚀 Landmark Milestone Detected -> Triggering Autonomous Long-Form Article Creation...');
+    try {
+      const articleSynthesis = await synthesizeArticle(
+        effectiveTitle,
+        gitContext,
+        config,
+        triage,
+        fileSummaries,
+        historyDigest
+      );
+      const articleResult = await persistArticleDraftToSanity(
+        config,
+        articleSynthesis,
+        inputs.sender,
+        inputs.targetRepo
+      );
+      generatedArticleDocId = articleResult.docId;
+      articleReviewUrl = articleResult.reviewUrl;
+      console.log(`[Runner] 📰 Staged New Article Draft: ${generatedArticleDocId}`);
+      console.log(`[Runner] 🔗 Review in Sanity Studio: ${articleReviewUrl}`);
+    } catch (articleErr) {
+      console.error('[Runner] Article synthesis or staging failed:', articleErr);
+    }
+  } else if (triage.articleAction === 'update_article' && triage.targetArticleSlug) {
+    console.log(`\n[Runner] 🔄 Architectural Delta Detected -> Updating Article "${triage.targetArticleSlug}"...`);
+    try {
+      const existingArticle = await getArticleBySlug(triage.targetArticleSlug);
+      const patchSynthesis = await synthesizeArticlePatch(
+        triage.targetArticleSlug,
+        existingArticle,
+        effectiveTitle,
+        gitContext,
+        config,
+        triage,
+        fileSummaries
+      );
+      const patchResult = await persistArticlePatchToSanity(
+        triage.targetArticleSlug,
+        patchSynthesis,
+        config
+      );
+      generatedArticleDocId = patchResult.docId;
+      articleReviewUrl = patchResult.reviewUrl;
+      console.log(`[Runner] 📰 Staged Article Update Patch: ${generatedArticleDocId}`);
+      console.log(`[Runner] 🔗 Review in Sanity Studio: ${articleReviewUrl}`);
+    } catch (patchErr) {
+      console.error('[Runner] Article patch synthesis or staging failed:', patchErr);
+    }
+  }
+
   console.log('\n========================================================');
   console.log(`Autonomous DevLog Pipeline Successfully Completed!`);
-  console.log(`Sanity Document: ${docId}`);
+  console.log(`WorkLog Document: ${docId}`);
+  if (generatedArticleDocId) {
+    console.log(`Article Draft:    ${generatedArticleDocId} (hidden: true)`);
+    if (articleReviewUrl) {
+      console.log(`Review Link:      ${articleReviewUrl}`);
+    }
+  }
   if (reviewAlertRequired) {
     console.log(`Status: PENDING HUMAN REVIEW (Published to Sanity Lake with hidden: true for audit)`);
   } else {

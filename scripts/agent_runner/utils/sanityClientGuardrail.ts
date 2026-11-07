@@ -26,7 +26,7 @@ export const SCHEMA_PERMISSIONS: Record<string, readonly AgentAction[]> = {
   // Safe write surfaces (Append/Edit only)
   workLog: ['read', 'create', 'patch'],
   project: ['read', 'create', 'patch'],
-  article: ['read', 'create'], // Drafts only
+  article: ['read', 'create', 'patch'], // Drafts only
 
   // Immutable Human-Only Surfaces (Strictly Read-Only for Agents)
   profile: ['read'],
@@ -71,9 +71,9 @@ export function assertAgentPermission(action: AgentAction, docType?: string, doc
   }
 
   // 3. Invariant: Article Draft Isolation
-  if (docType === 'article' && action === 'create' && docId && !docId.startsWith('drafts.')) {
+  if (docType === 'article' && (action === 'create' || action === 'patch') && docId && !docId.startsWith('drafts.')) {
     throw new SanitySecurityGuardrailException(
-      `DRAFT_ISOLATION_VIOLATION: AI-generated articles must be created as drafts ('drafts.${docId}'). Automatic publishing is forbidden.`
+      `DRAFT_ISOLATION_VIOLATION: AI-generated or modified articles must target drafts ('drafts.${docId}'). Automatic publishing is forbidden.`
     );
   }
 }
@@ -124,7 +124,16 @@ export function createGuardedSanityClient(baseClient: SanityClient): SanityClien
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return (idOrDoc: any, ...args: any[]) => {
           const docId = typeof idOrDoc === 'string' ? idOrDoc : idOrDoc?._id;
-          const docType = typeof idOrDoc === 'object' ? idOrDoc?._type : undefined;
+          let docType = typeof idOrDoc === 'object' ? idOrDoc?._type : undefined;
+          if (!docType && typeof docId === 'string') {
+            if (docId.includes('article') || docId.startsWith('drafts.article-')) {
+              docType = 'article';
+            } else if (docId.startsWith('project-') || docId.startsWith('drafts.project-')) {
+              docType = 'project';
+            } else if (docId.startsWith('devlog-')) {
+              docType = 'workLog';
+            }
+          }
           if (docType) {
             assertAgentPermission('patch', docType, docId);
           }

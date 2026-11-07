@@ -1,17 +1,36 @@
 import type { z } from 'zod';
-import type { ValidatedPortfolioConfig, TriageResult, DevLogSynthesisResult, FileSummary, ProjectHistoryDigest } from '../types';
+import type {
+  ValidatedPortfolioConfig,
+  TriageResult,
+  DevLogSynthesisResult,
+  FileSummary,
+  ProjectHistoryDigest,
+  ArticleSynthesisResult,
+  ArticlePatchResult,
+  FullArticleData,
+} from '../types';
 import type { GitHubContext, FileDelta } from './githubContextService';
 import {
   TriageResponseSchema,
   DevLogSynthesisSchema,
   BatchFileSummarySchema,
+  ArticleSynthesisSchema,
+  ArticlePatchSchema,
   GEMINI_TRIAGE_RESPONSE_SCHEMA,
   GEMINI_DEVLOG_SYNTHESIS_SCHEMA,
   GEMINI_BATCH_FILE_SUMMARY_SCHEMA,
+  GEMINI_ARTICLE_SYNTHESIS_SCHEMA,
+  GEMINI_ARTICLE_PATCH_SCHEMA,
   extractZodDiagnostics,
 } from '../parsers/aiResponseParser';
 import { geminiQuotaGuardrail } from '../utils/geminiQuotaGuardrail';
-import { SANITY_SCHEMA_CONTEXT_PROMPT, VALID_BADGES } from '../utils/schemaContext';
+import {
+  VALID_BADGES,
+  SANITY_WORKLOG_SCHEMA_CONTEXT_PROMPT,
+  SANITY_PROJECT_SCHEMA_CONTEXT_PROMPT,
+  SANITY_ARTICLE_SCHEMA_CONTEXT_PROMPT,
+  MERMAID_DIAGRAM_FORMAT_PROMPT,
+} from '../utils/schemaContext';
 
 /**
  * Service to execute Gemini 3-Stage Map-Reduce Pipeline with strict SDK-level responseSchema,
@@ -282,11 +301,12 @@ ${!config.projectTitle ? '- Missing Project Title: You MUST populate "suggestedP
 ${!config.category ? '- Missing Category: You MUST populate "suggestedCategory" with a matching domain classification (e.g. "CLI Tool", "Full-Stack Web", "AI / Machine Learning", "Automation", "Infrastructure").' : ''}
 
 CUMULATIVE MILESTONE & ARTICLE EVALUATION:
-${config.generateArticle ? '- Developer Directive: "generateArticle": true is active in .portfolio.json. Set articleAction: "create_article".' : ''}
+${config.generateArticle ? '- Advisory Directive: "generateArticle": true is set in .portfolio.json. The developer signals an article may be desired, but YOU MUST INDEPENDENTLY VERIFY whether this commit has genuine technical depth and architecture worthy of an article. If routine or minor, keep articleAction: "none".' : ''}
 - Analyze this commit against the RECENT PROJECT MILESTONES listed above to detect cumulative progress.
-- If this commit completes or culminates a landmark Feature, new Architecture, or Security capability not covered by an existing article -> set articleAction: "create_article".
-- If this commit fundamentally alters or supersedes architecture documented in an existing article listed above -> set articleAction: "update_article", set "targetArticleSlug" to that article\'s slug, and state why in "articleRationale".
-- Otherwise, for standard milestone commits that should remain a WorkLog only -> set articleAction: "none".
+- Landmark Milestone Thresholds:
+  * "create_article": ONLY when this commit culminates a major milestone (e.g. initial production release, breakthrough Architecture, deep Security overhaul, or landmark multi-phase Feature culmination) not covered by existing articles.
+  * "update_article": ONLY when this commit fundamentally modifies or evolves an architecture described in an EXISTING article listed above. Set "targetArticleSlug" to that article\'s slug and describe the architectural delta in "articleRationale".
+  * "none": For standard features, bug fixes, routine refactors, and minor iterations that belong in WorkLogs only.
 - Return valid JSON matching schema.
 `;
 
@@ -309,7 +329,7 @@ ${config.generateArticle ? '- Developer Directive: "generateArticle": true is ac
       suggestedBadge: validated.suggestedBadge,
       suggestedProjectTitle: validated.suggestedProjectTitle,
       suggestedCategory: validated.suggestedCategory,
-      articleAction: validated.articleAction || (config.generateArticle ? 'create_article' : 'none'),
+      articleAction: validated.articleAction || 'none',
       targetArticleSlug: validated.targetArticleSlug,
       articleRationale: validated.articleRationale,
     };
@@ -320,7 +340,7 @@ ${config.generateArticle ? '- Developer Directive: "generateArticle": true is ac
       score: 7,
       rationale: 'Fallback approval due to schema verification error after self-healing',
       suggestedBadge: 'Engineering',
-      articleAction: config.generateArticle ? 'create_article' : 'none',
+      articleAction: 'none',
     };
   }
 }
@@ -605,13 +625,15 @@ ${mermaidInstructions}
 `;
 
   const diagramGovernanceInstruction = generateDiagram
-    ? ''
+    ? `\n${MERMAID_DIAGRAM_FORMAT_PROMPT}`
     : '\nCRITICAL GOVERNANCE OVERRIDE: The developer explicitly disabled architecture diagrams ("generateArchitectureDiagrams": false). Do NOT output any mermaid diagram or mermaidDiagram property.';
 
   const systemInstruction = `
 You are my proxy — a Senior Technical Writer and Software Architect. Write as an authentic human engineer documenting real production momentum.
 
-${SANITY_SCHEMA_CONTEXT_PROMPT}
+${SANITY_WORKLOG_SCHEMA_CONTEXT_PROMPT}
+
+${SANITY_PROJECT_SCHEMA_CONTEXT_PROMPT}
 
 STRICT VOICE & VOCABULARY INVARIANTS:
 - FORBIDDEN AI BUZZWORDS: Never use "In this modern landscape", "Delve into", "Pivotal", "Testament to", "Beacon", "A game-changer", "Revolutionary", "Let's explore", "In today's fast-paced world", "Exciting new feature".
@@ -650,3 +672,190 @@ ${dynamicDirectivesBlock}${diagramGovernanceInstruction}
     techStacks: validated.techStacks,
   };
 }
+
+/**
+ * Synthesizes a deep-dive, publication-grade technical Article for a landmark project milestone.
+ * Produces structured sections with in-depth narrative, code blocks, and architecture diagrams.
+ */
+export async function synthesizeArticle(
+  headline: string,
+  gitContext: GitHubContext,
+  config: ValidatedPortfolioConfig,
+  triage: TriageResult,
+  fileSummaries: FileSummary[] = [],
+  historyDigest?: ProjectHistoryDigest
+): Promise<ArticleSynthesisResult> {
+  console.log('[GeminiService] Synthesizing Long-Form Technical Article (Landmark Milestone)...');
+
+  const generateDiagram = config.mediaPreferences?.generateArchitectureDiagrams !== false;
+
+  const summariesBlock =
+    fileSummaries.length > 0
+      ? `DISTILLED MODULE SUMMARIES:\n${fileSummaries
+          .map(
+            (f) =>
+              `### ${f.filename}\n- Role: ${f.responsibility}\n- Key Changes: ${f.keyChanges.join(', ')}\n- Architectural Impact: ${f.architecturalImpact || 'None'}`
+          )
+          .join('\n\n')}`
+      : 'No individual file summaries available.';
+
+  const historyBlock =
+    historyDigest && historyDigest.recentWorkLogs.length > 0
+      ? `HISTORICAL MILESTONE CONTEXT (Past Worklogs for Continuity):\n${historyDigest.recentWorkLogs
+          .map((l) => `- [${l.date}] (${l.badge}) "${l.title}": ${l.description}`)
+          .join('\n')}`
+      : '';
+
+  const prompt = `
+You are tasked with authoring an authoritative, publication-grade deep-dive technical engineering Article for "${config.projectTitle || 'Engineering Project'}".
+
+LANDMARK EVENT & METADATA:
+- Commit/PR Headline: "${headline}"
+- Triage Rationale: "${triage.rationale}"
+- Category: "${config.category || triage.suggestedCategory || 'Engineering'}"
+${config.projectOverview ? `PROJECT OVERVIEW:\n"${config.projectOverview}"\n` : ''}
+${config.developerDirective ? `DEVELOPER DIRECTIVE:\n"${config.developerDirective}"\n` : ''}
+TARGET AUDIENCE: "${config.targetAudience || 'Senior Software Engineers, Staff Architects, Technical Leads'}"
+
+${historyBlock}
+
+${summariesBlock}
+
+ARTICLE REQUIREMENTS & SPECIFICATION:
+1. Title: Authoritative, compelling, professional technical title (e.g. "Inside Benjineer: Designing an Autonomous Multi-Agent DevLog Engine").
+2. Slug: Clean lowercase kebab-case (e.g. "autonomous-agent-runner-guardrails").
+3. Excerpt: Concise 2-3 sentence teaser summary (MAXIMUM 300 characters).
+4. Estimated Read Time: e.g. "6 min read" or "8 min read".
+5. Structured Sections (Minimum 2, ideally 3-4 sections):
+   - Section 1: Problem Space & Architectural Motivation (Why this system/feature needed to exist, past bottlenecks).
+   - Section 2: Core Engineering Architecture & Implementation Mechanics (Deep dive into technical decisions, interfaces, state management, edge cases).
+   - Section 3: Verification, Guardrails, or Operational Guarantees (How it is secured, tested, rate-limited, or validated).
+   - Each section MUST contain:
+     * heading: Clear, engaging section title.
+     * body: Thorough, multi-paragraph engineering explanation (no fluff, concrete technical rigor).
+     * codeSnippet (optional): Significant code snippet demonstrating interfaces, core algorithms, or configs.
+     * mermaidDiagram (optional, ONLY if enabled): Architecture flowchart or sequence diagram illustrating the section.
+6. Key Architectural Takeaways: 3-5 bulleted engineering learnings or design principles.
+
+STRICT VOICE & VOCABULARY INVARIANTS:
+- FORBIDDEN BUZZWORDS: Never use "In this modern landscape", "Delve into", "Pivotal", "Testament to", "Beacon", "A game-changer", "Revolutionary", "Let's explore", "In today's fast-paced world".
+- GROUNDING: Cite concrete filenames, functions, data flows, and security/performance guarantees.
+- DIAGRAM RULES:
+  * Allowed diagram types: ONLY "flowchart TD", "flowchart LR", or "sequenceDiagram".
+  * Node labels MUST ALWAYS be wrapped in double quotes inside shape delimiters: ID["Step Name"].
+  * Edge labels in pipes MUST NOT have any quotes: A -->|Execute Command| B.
+  * Connectors: Standard ASCII arrows only (--> , -.-> , ==>).
+
+Follow the JSON schema strictly.
+`;
+
+  const mermaidContext = generateDiagram ? `\n${MERMAID_DIAGRAM_FORMAT_PROMPT}` : '';
+
+  const systemInstruction = `You are a Principal Software Engineer and technical author for "Benjineer" (Agentic Writer).
+Write with high authority, exact technical vocabulary, clear architectural depth, and zero fluff.
+
+${SANITY_ARTICLE_SCHEMA_CONTEXT_PROMPT}${mermaidContext}`;
+
+  // Dynamically tailor response schema if diagrams are disabled
+  const articleResponseSchema = JSON.parse(JSON.stringify(GEMINI_ARTICLE_SYNTHESIS_SCHEMA));
+  if (!generateDiagram) {
+    delete articleResponseSchema.properties.sections.items.properties.mermaidDiagram;
+  }
+
+  const validated = await executeWithSelfHealing(
+    'ArticleSynthesis',
+    prompt,
+    systemInstruction,
+    ArticleSynthesisSchema,
+    articleResponseSchema,
+    4
+  );
+
+  return validated;
+}
+
+/**
+ * Synthesizes an architectural addendum to update an existing article
+ * when a commit fundamentally alters or evolves an existing system architecture.
+ */
+export async function synthesizeArticlePatch(
+  targetArticleSlug: string,
+  existingArticle: FullArticleData | null,
+  headline: string,
+  gitContext: GitHubContext,
+  config: ValidatedPortfolioConfig,
+  triage: TriageResult,
+  fileSummaries: FileSummary[] = []
+): Promise<ArticlePatchResult> {
+  console.log(`[GeminiService] Synthesizing Architecture Addendum for Article "${targetArticleSlug}"...`);
+
+  const generateDiagram = config.mediaPreferences?.generateArchitectureDiagrams !== false;
+
+  const summariesBlock =
+    fileSummaries.length > 0
+      ? `DISTILLED MODULE SUMMARIES:\n${fileSummaries
+          .map(
+            (f) =>
+              `### ${f.filename}\n- Role: ${f.responsibility}\n- Key Changes: ${f.keyChanges.join(', ')}\n- Architectural Impact: ${f.architecturalImpact || 'None'}`
+          )
+          .join('\n\n')}`
+      : '';
+
+  const existingContext = existingArticle
+    ? `EXISTING ARTICLE TITLE: "${existingArticle.title}"
+EXISTING EXCERPT: "${existingArticle.excerpt || 'None'}"`
+    : `TARGET ARTICLE SLUG: "${targetArticleSlug}"`;
+
+  const prompt = `
+A significant architectural update has occurred that evolves the system architecture described in an existing published article.
+Synthesize an "Architecture Addendum / Update" section to append to this article.
+
+EXISTING ARTICLE CONTEXT:
+${existingContext}
+
+NEW COMMIT / EVOLUTION EVENT:
+- Headline: "${headline}"
+- Triage Rationale: "${triage.rationale}"
+- Target Audience: "${config.targetAudience || 'Senior Engineers'}"
+${summariesBlock}
+
+ADDENDUM REQUIREMENTS:
+1. targetArticleSlug: "${targetArticleSlug}"
+2. addendumTitle: e.g. "Architecture Update: [What Changed and Why]"
+3. summary: Concise 2-3 sentence overview of this architectural evolution.
+4. sections: 1-2 structured technical sections detailing:
+   - What architectural trade-offs or scaling bottlenecks prompted this change.
+   - The concrete implementation mechanics and new data flows.
+   - Code snippet or updated Mermaid diagram if applicable.
+
+STRICT VOICE & VOCABULARY INVARIANTS:
+- No fluff, no buzzwords ("pivotal", "game changer", "delve").
+- Concrete, grounded explanations.
+- Diagram rules: Node labels double-quoted, pipe edge labels unquoted, ASCII arrows only.
+
+Follow the JSON schema strictly.
+`;
+
+  const mermaidContext = generateDiagram ? `\n${MERMAID_DIAGRAM_FORMAT_PROMPT}` : '';
+
+  const systemInstruction = `You are a Principal Software Engineer (Agentic Writer). Synthesize a clean, authoritative architectural update addendum for an existing engineering article.
+
+${SANITY_ARTICLE_SCHEMA_CONTEXT_PROMPT}${mermaidContext}`;
+
+  const patchResponseSchema = JSON.parse(JSON.stringify(GEMINI_ARTICLE_PATCH_SCHEMA));
+  if (!generateDiagram) {
+    delete patchResponseSchema.properties.sections.items.properties.mermaidDiagram;
+  }
+
+  const validated = await executeWithSelfHealing(
+    'ArticlePatchSynthesis',
+    prompt,
+    systemInstruction,
+    ArticlePatchSchema,
+    patchResponseSchema,
+    4
+  );
+
+  return validated;
+}
+

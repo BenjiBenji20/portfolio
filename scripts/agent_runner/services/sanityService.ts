@@ -1,29 +1,13 @@
 import { createClient } from 'next-sanity';
 import type { ValidatedPortfolioConfig, DevLogSynthesisResult } from '../types';
 import { buildProjectPayload, buildWorkLogPayload } from '../utils/sanitySchemaBuilders';
+import { createGuardedSanityClient } from '../utils/sanityClientGuardrail';
 
 /**
  * Service to upload assets and persist DevLogs to Sanity Content Lake
  * with strict schema grounding, zero field omissions, and human review escalation via hidden: true.
+ * Protected by runtime RBAC guardrails (zero delete authority, schema boundaries).
  */
-
-// 1. Invariant Schema Access Control (Principle of Least Privilege)
-export const FORBIDDEN_SCHEMAS = new Set([
-  'contact',
-  'emailContactInquiryTemplate',
-  'profile',
-  'summaryOverview',
-  'focusPillar',
-  'experience',
-]);
-
-export function assertSchemaAccess(targetSchema: string) {
-  if (FORBIDDEN_SCHEMAS.has(targetSchema)) {
-    throw new Error(
-      `[Security Guard] SchemaAccessViolationError: The Agentic Writer is strictly forbidden from modifying or writing to restricted schema '${targetSchema}'.`
-    );
-  }
-}
 
 export async function persistDevLogToSanity(
   config: ValidatedPortfolioConfig,
@@ -33,28 +17,28 @@ export async function persistDevLogToSanity(
   sender = 'Developer',
   targetRepo = ''
 ): Promise<{ docId: string; assetId?: string; reviewAlertRequired?: boolean }> {
-  // Validate schema write access
-  assertSchemaAccess('workLog');
-
   const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
   const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production';
-  const token = process.env.SANITY_API_WRITE_TOKEN;
+  // Use dedicated Agent Runner token with fallback
+  const token = process.env.SANITY_AGENT_RUNNER_TOKEN
 
   if (!projectId || !token) {
     throw new Error(
-      `[SanityService] Missing credentials: NEXT_PUBLIC_SANITY_PROJECT_ID is ${projectId ? 'PRESENT' : 'MISSING'}, SANITY_API_WRITE_TOKEN is ${token ? 'PRESENT' : 'MISSING'}. Check GitHub Repository Secrets vs Variables.`
+      `[SanityService] Missing credentials: NEXT_PUBLIC_SANITY_PROJECT_ID is ${projectId ? 'PRESENT' : 'MISSING'}, SANITY_AGENT_RUNNER_TOKEN is ${token ? 'PRESENT' : 'MISSING'}. Check GitHub Repository Secrets vs Variables.`
     );
   }
 
-  const client = createClient({
+  // Instantiate base client and wrap with scalable security guardrail
+  const rawClient = createClient({
     projectId,
     dataset,
     apiVersion: '2024-01-01',
     token,
     useCdn: false,
   });
+  const client = createGuardedSanityClient(rawClient);
 
-  console.log(`[SanityService] Connecting to Sanity (${dataset})...`);
+  console.log(`[SanityService] Connecting to Sanity (${dataset}) via Guarded Client...`);
 
   // 2. Find parent project or create DRAFT project (Strict Human Review Gate)
   let projectIdRef: string | null = null;

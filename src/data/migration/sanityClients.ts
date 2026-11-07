@@ -38,7 +38,9 @@ export const v2Config = {
   projectId: v2Env.NEXT_PUBLIC_SANITY_PROJECT_ID || process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
   dataset: v2Env.NEXT_PUBLIC_SANITY_DATASET || process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
   apiVersion: '2024-01-01',
-  token: v2Env.SANITY_API_WRITE_TOKEN || process.env.SANITY_API_WRITE_TOKEN,
+  token:
+    v2Env.SANITY_AGENT_RUNNER_TOKEN ||
+    process.env.SANITY_AGENT_RUNNER_TOKEN,
   useCdn: false,
 };
 
@@ -50,6 +52,6 @@ export const v1Client = createClient(v1Config);
 
 /**
  * Read-Write Client for Sanity Portfolio v2.
- * Authenticated with SANITY_API_WRITE_TOKEN for target migrations.
+ * Authenticated with SANITY_AGENT_RUNNER_TOKEN for target migrations.
  */
 export const v2Client = createClient(v2Config);

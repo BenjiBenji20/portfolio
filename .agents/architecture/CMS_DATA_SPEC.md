@@ -7,7 +7,7 @@
 
 ## 1. Client Configuration & Runtime Boundaries
 - **Client Instances:** Maintain separate client configurations for read-only public queries and privileged server-side writes (`sanity/lib/client.ts`).
-- **Token Security:** Ensure mutations strictly utilize `SANITY_API_WRITE_TOKEN` in serverless route handlers; never expose write tokens to the browser.
+- **Token Security:** Multi-token hierarchy enforces the Principle of Least Privilege: autonomous agents use `SANITY_AGENT_RUNNER_TOKEN` (Editor/Viewer scoped) wrapped by `SanityClientGuardrail`; read queries use `SANITY_AGENT_READ_ONLY_TOKEN`;
 - **API Versioning:** Pin Sanity API versions (e.g., `2024-01-01`) across all clients to guarantee consistent GROQ response structures and avoid breaking changes.
 
 ## 2. Dynamic Mutation & Idempotency Rules

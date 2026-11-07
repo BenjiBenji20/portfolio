@@ -47,7 +47,8 @@
 
 * `GITHUB_WEBHOOK_SECRET`: HMAC-SHA256 signature verification (server-only).
 * `GEMINI_API_KEY`: AI inference for triage, generation, and chat (server-only).
-* `SANITY_API_WRITE_TOKEN`: Mutation access for the autonomous agent (server-only).
+* `SANITY_AGENT_RUNNER_TOKEN`: Scoped mutation access for autonomous agent runner (Editor role).
+* `SANITY_AGENT_READ_ONLY_TOKEN`: Read-only access for agent content inspection.
 * `NEXT_PUBLIC_SANITY_PROJECT_ID` & `NEXT_PUBLIC_SANITY_DATASET`: Client-safe configs.
 
 ## 5. Non-Negotiable Dev Constraints

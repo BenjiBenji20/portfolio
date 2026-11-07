@@ -58,7 +58,8 @@ jobs:
           GIT_REPO_PAT_TOKEN: ${{ secrets.GIT_REPO_PAT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
-          SANITY_API_WRITE_TOKEN: ${{ secrets.SANITY_API_WRITE_TOKEN }}
+          SANITY_AGENT_RUNNER_TOKEN: ${{ secrets.SANITY_AGENT_RUNNER_TOKEN }}
+          SANITY_AGENT_READ_ONLY_TOKEN: ${{ secrets.SANITY_AGENT_READ_ONLY_TOKEN }}
           NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}
           NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.NEXT_PUBLIC_SANITY_DATASET || 'production' }}
         run: |

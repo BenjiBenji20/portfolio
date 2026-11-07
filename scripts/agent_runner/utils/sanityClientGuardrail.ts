@@ -83,7 +83,7 @@ export function assertAgentPermission(action: AgentAction, docType?: string, doc
  */
 export function createGuardedSanityClient(baseClient: SanityClient): SanityClient {
   return new Proxy(baseClient, {
-    get(target, prop, receiver) {
+    get(target, prop) {
       // 1. Intercept client.delete()
       if (prop === 'delete') {
         return (idOrSelection: unknown) => {
@@ -141,7 +141,11 @@ export function createGuardedSanityClient(baseClient: SanityClient): SanityClien
         };
       }
 
-      return Reflect.get(target, prop, receiver);
+      const value = Reflect.get(target, prop, target);
+      if (typeof value === 'function') {
+        return value.bind(target);
+      }
+      return value;
     },
   });
 }

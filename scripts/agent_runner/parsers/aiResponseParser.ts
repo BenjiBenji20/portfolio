@@ -82,20 +82,14 @@ export const DevLogSynthesisSchema = z.object({
     .string()
     .optional()
     .nullable()
-    .superRefine((val, ctx) => {
-      if (!val) return;
+    .transform((val) => {
+      if (!val || typeof val !== 'string' || val.trim().length === 0) return undefined;
       const res = validateAndSanitizeMermaid(val);
       if (!res.valid) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: res.errorReport || 'Invalid Mermaid syntax',
-        });
+        console.warn(`[ArticleParser] Dropping malformed section Mermaid diagram: ${res.errorReport}`);
+        return undefined;
       }
-    })
-    .transform((val) => {
-      if (!val) return undefined;
-      const res = validateAndSanitizeMermaid(val);
-      return res.valid ? res.sanitized : undefined;
+      return res.sanitized;
     }),
   projectOverview: z.string().optional(),
   techStacks: z.array(z.string()).optional().default([]),
@@ -118,20 +112,14 @@ export const ArticleSectionSchema = z.object({
     .string()
     .optional()
     .nullable()
-    .superRefine((val, ctx) => {
-      if (!val) return;
+    .transform((val) => {
+      if (!val || typeof val !== 'string' || val.trim().length === 0) return undefined;
       const res = validateAndSanitizeMermaid(val);
       if (!res.valid) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: res.errorReport || 'Invalid Mermaid syntax',
-        });
+        console.warn(`[ArticleParser] Dropping malformed section Mermaid diagram: ${res.errorReport}`);
+        return undefined;
       }
-    })
-    .transform((val) => {
-      if (!val) return undefined;
-      const res = validateAndSanitizeMermaid(val);
-      return res.valid ? res.sanitized : undefined;
+      return res.sanitized;
     }),
 });
 
@@ -311,6 +299,7 @@ export const GEMINI_ARTICLE_SYNTHESIS_SCHEMA = {
     sections: {
       type: 'ARRAY',
       items: GEMINI_ARTICLE_SECTION_SCHEMA,
+      minItems: 2,
       description: 'Array of at least 2 structured technical sections covering the milestone',
     },
     tags: {
@@ -345,6 +334,7 @@ export const GEMINI_ARTICLE_PATCH_SCHEMA = {
     sections: {
       type: 'ARRAY',
       items: GEMINI_ARTICLE_SECTION_SCHEMA,
+      minItems: 1,
       description: 'New or revised sections to append to the article',
     },
   },

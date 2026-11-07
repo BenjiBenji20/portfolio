@@ -66,6 +66,7 @@ async function callGemini(
     generationConfig: {
       responseMimeType: 'application/json',
       temperature,
+      maxOutputTokens: 8192,
       ...(responseSchema ? { responseSchema } : {}),
     },
   };
@@ -127,13 +128,14 @@ async function executeWithSelfHealing<T>(
   systemInstruction: string,
   zodSchema: z.ZodType<T>,
   geminiSchema: Record<string, unknown>,
-  maxRetries = 4
+  maxRetries = 4,
+  preferredModel?: string
 ): Promise<T> {
   let currentPrompt = initialPrompt;
   let temperature = 0.2;
   let lastRawOutput = '';
   let lastErrorReport = '';
-  let activeModel = PRIMARY_MODEL;
+  let activeModel = preferredModel || PRIMARY_MODEL;
   let fallbackIndex = 0;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -170,8 +172,20 @@ async function executeWithSelfHealing<T>(
         `[GeminiService] [${taskName}] Validation failed on attempt ${attempt}:\n${lastErrorReport}`
       );
 
-      // Formulate targeted correction prompt for next attempt (Temperature 0.0)
-      temperature = 0.0;
+      // Rotate model on repeat validation failures to break deterministic sampling loops
+      if (attempt >= 2 && fallbackIndex < FALLBACK_MODELS.length) {
+        const nextModel = FALLBACK_MODELS[fallbackIndex++];
+        if (nextModel !== activeModel) {
+          activeModel = nextModel;
+          console.warn(
+            `[GeminiService] [${taskName}] Rotating model to ${activeModel} for attempt ${attempt + 1} to break schema validation loop...`
+          );
+        }
+        temperature = 0.1;
+      } else {
+        temperature = 0.0;
+      }
+
       currentPrompt = `
 Your previous response failed strict schema validation and violated required constraints.
 
@@ -726,7 +740,7 @@ ARTICLE REQUIREMENTS & SPECIFICATION:
 2. Slug: Clean lowercase kebab-case (e.g. "autonomous-agent-runner-guardrails").
 3. Excerpt: Concise 2-3 sentence teaser summary (MAXIMUM 300 characters).
 4. Estimated Read Time: e.g. "6 min read" or "8 min read".
-5. Structured Sections (Minimum 2, ideally 3-4 sections):
+5. Structured Sections (CRITICAL: MUST contain at least 2 complete sections, ideally 3-4):
    - Section 1: Problem Space & Architectural Motivation (Why this system/feature needed to exist, past bottlenecks).
    - Section 2: Core Engineering Architecture & Implementation Mechanics (Deep dive into technical decisions, interfaces, state management, edge cases).
    - Section 3: Verification, Guardrails, or Operational Guarantees (How it is secured, tested, rate-limited, or validated).
@@ -734,7 +748,7 @@ ARTICLE REQUIREMENTS & SPECIFICATION:
      * heading: Clear, engaging section title.
      * body: Thorough, multi-paragraph engineering explanation (no fluff, concrete technical rigor).
      * codeSnippet (optional): Significant code snippet demonstrating interfaces, core algorithms, or configs.
-     * mermaidDiagram (optional, ONLY if enabled): Architecture flowchart or sequence diagram illustrating the section.
+     * mermaidDiagram (optional, ONLY if enabled): Architecture flowchart or sequence diagram. If included, ensure all shape delimiters are completely closed. If not needed, omit.
 6. Key Architectural Takeaways: 3-5 bulleted engineering learnings or design principles.
 
 STRICT VOICE & VOCABULARY INVARIANTS:
@@ -745,6 +759,12 @@ STRICT VOICE & VOCABULARY INVARIANTS:
   * Node labels MUST ALWAYS be wrapped in double quotes inside shape delimiters: ID["Step Name"].
   * Edge labels in pipes MUST NOT have any quotes: A -->|Execute Command| B.
   * Connectors: Standard ASCII arrows only (--> , -.-> , ==>).
+
+Literal Mermaid Flowchart Example:
+flowchart TD
+  Client["User / Worker"] -->|Execute Command| Core["Core Engine"]
+  Core -->|Network Probe| Target["Remote Endpoint"]
+  Target -.->|Status / Diagnostic| Auditor["AI Auditor"]
 
 Follow the JSON schema strictly.
 `;
@@ -768,7 +788,8 @@ ${SANITY_ARTICLE_SCHEMA_CONTEXT_PROMPT}${mermaidContext}`;
     systemInstruction,
     ArticleSynthesisSchema,
     articleResponseSchema,
-    4
+    4,
+    'gemini-2.5-flash'
   );
 
   return validated;
@@ -853,7 +874,8 @@ ${SANITY_ARTICLE_SCHEMA_CONTEXT_PROMPT}${mermaidContext}`;
     systemInstruction,
     ArticlePatchSchema,
     patchResponseSchema,
-    4
+    4,
+    'gemini-2.5-flash'
   );
 
   return validated;

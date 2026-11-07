@@ -65,34 +65,81 @@ export async function fetchPortfolioConfig(
       return null;
     }
 
-    const rawJson = JSON.parse(rawConfigString);
+    // Strip single-line and multi-line comments (JSONC support) while preserving string literals
+    const cleanedConfigString = rawConfigString.replace(
+      /\\"|"(?:\\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g,
+      (m, g) => (g ? '' : m)
+    );
+
+    const rawJson = JSON.parse(cleanedConfigString);
     const parseResult = DynamicPortfolioConfigSchema.safeParse(rawJson);
 
     if (!parseResult.success) {
       console.error(`[ConfigService] Validation failed for "${matchedConfigPath}" in ${targetRepo}:`);
-      console.error(parseResult.error.format());
+      const formatted = parseResult.error.format();
+      console.error(JSON.stringify(formatted, null, 2));
       return null;
     }
 
     const config = parseResult.data as ValidatedPortfolioConfig;
 
-    // Detect and log dynamic custom keys
-    const standardKeys = new Set([
+    // Log Governance Invariants (Tier 1)
+    console.log(
+      `[ConfigService] Governance: track=${config.track} | requireHumanApproval=${config.requireHumanApproval} | primaryBranch=${config.primaryBranch}`
+    );
+    console.log(
+      `[ConfigService] Media: screenshots=${config.mediaPreferences.captureScreenshots} | diagrams=${config.mediaPreferences.generateArchitectureDiagrams}`
+    );
+
+    // Operational Keys (Tier 2): Check human override vs Agent Autonomy
+    if (config.projectTitle) {
+      console.log(`[ConfigService] Project Title (Human Override): "${config.projectTitle}" (slug: ${config.projectSlug || 'derived'})`);
+    } else {
+      console.log(`[ConfigService] Project Title: [Agent Autonomy] Missing from config. Agent will synthesize title and slug.`);
+    }
+
+    if (config.category) {
+      console.log(`[ConfigService] Category (Human Override): "${config.category}"`);
+    } else {
+      console.log(`[ConfigService] Category: [Agent Autonomy] Missing from config. Agent will classify stack category.`);
+    }
+
+    // Communication Bridge (Tier 3)
+    if (config.projectOverview) {
+      console.log(`[ConfigService] Standing Overview: "${config.projectOverview.slice(0, 80)}${config.projectOverview.length > 80 ? '...' : ''}"`);
+    }
+    if (config.developerDirective) {
+      console.log(`[ConfigService] Developer Directive (Current Run): "${config.developerDirective}"`);
+    }
+    if (config.targetAudience) {
+      console.log(`[ConfigService] Target Audience: "${config.targetAudience}"`);
+    }
+
+    // Detect and log dynamic custom keys (Tier 4)
+    const recognizedKeys = new Set([
       'track',
-      'schema',
-      '$schema',
       'requireHumanApproval',
-      'note',
-      'ignoreDirectory',
+      'requiredHumanApproval',
+      'mediaPreferences',
+      'primaryBranch',
       'projectTitle',
       'projectSlug',
       'category',
       'liveUrl',
-      'primaryBranch',
-      'mediaPreferences',
+      'ignoreDirectory',
+      'projectOverview',
+      'developerDirective',
+      'targetAudience',
+      'schema',
+      '$schema',
+      'note',
+      'projectSummary',
+      'userMessage',
+      'focusDirective',
+      'customAudience',
     ]);
 
-    const customKeys = Object.keys(config).filter((k) => !standardKeys.has(k));
+    const customKeys = Object.keys(config).filter((k) => !recognizedKeys.has(k));
     if (customKeys.length > 0) {
       console.log(`[ConfigService] Discovered ${customKeys.length} dynamic custom key(s):`, customKeys);
     }

@@ -30,7 +30,10 @@ export async function captureLiveScreenshot(
       console.warn(
         `[PlaywrightService] Chromium browser missing (${launchErr instanceof Error ? launchErr.message : String(launchErr)}). Installing Playwright Chromium on-demand...`
       );
-      execSync('npx playwright install chromium', { stdio: 'inherit' });
+      const installCmd = process.platform === 'linux'
+        ? 'npx playwright install --with-deps chromium'
+        : 'npx playwright install chromium';
+      execSync(installCmd, { stdio: 'inherit' });
       browser = await chromium.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],

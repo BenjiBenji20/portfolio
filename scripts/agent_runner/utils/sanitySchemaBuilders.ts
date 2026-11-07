@@ -58,18 +58,23 @@ export function buildProjectPayload(
   initialDescription?: string,
   synthesizedTechStacks: string[] = []
 ): SanityProjectDocument {
+  const projectTitle = config.projectTitle || (targetRepo ? targetRepo.split('/')[1] : 'Engineering Project');
+  const projectSlug = config.projectSlug || projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
   const rawDesc =
     initialDescription ||
-    (typeof config.userMessage === 'string' ? config.userMessage : '') ||
+    config.developerDirective ||
+    config.userMessage ||
+    config.projectOverview ||
     config.note ||
-    `Autonomous engineering project: ${config.projectTitle}`;
+    `Autonomous engineering project: ${projectTitle}`;
   const shortDesc = rawDesc.slice(0, 280);
 
   return {
-    _id: `project-${config.projectSlug}`,
+    _id: `project-${projectSlug}`,
     _type: 'project',
-    title: config.projectTitle,
-    slug: { _type: 'slug', current: config.projectSlug },
+    title: projectTitle,
+    slug: { _type: 'slug', current: projectSlug },
     projectType: config.category || 'Engineering',
     shortDescription: shortDesc,
     status: 'development',
@@ -116,6 +121,7 @@ export function buildWorkLogPayload(
 ): SanityWorkLogDocument {
   const cleanSha = commitSha.slice(0, 10);
   const today = new Date().toISOString().split('T')[0];
+  const projectSlug = config.projectSlug || (config.projectTitle ? config.projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : 'engineering-project');
 
   // Verify and normalize badge to schema enum
   const validBadge: ValidBadge = (VALID_BADGES as readonly string[]).includes(synthesis.badge)
@@ -123,7 +129,7 @@ export function buildWorkLogPayload(
     : 'Feature';
 
   return {
-    _id: `devlog-${config.projectSlug}-${cleanSha}`,
+    _id: `devlog-${projectSlug}-${cleanSha}`,
     _type: 'workLog',
     title: synthesis.title,
     badge: validBadge,
@@ -135,7 +141,7 @@ export function buildWorkLogPayload(
     content: contentBlocks,
     project: {
       _type: 'reference',
-      _ref: projectIdRef || `project-${config.projectSlug}`,
+      _ref: projectIdRef || `project-${projectSlug}`,
       _weak: true,
     },
     backlinks: targetRepo

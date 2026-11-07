@@ -237,14 +237,21 @@ export async function evaluateEditorialTriage(
 ): Promise<TriageResult> {
   console.log('[GeminiService] Running Stage 1: Lightweight Editorial Triage Gate (Stat-enforced)...');
 
+  const titleContext = config.projectTitle
+    ? `for project "${config.projectTitle}"`
+    : `(Project title omitted by developer: please synthesize a suggestedProjectTitle and suggestedCategory based on the repository content)`;
+
   const prompt = `
-Evaluate the engineering significance of this commit/PR for project "${config.projectTitle}".
+Evaluate the engineering significance of this commit/PR ${titleContext}.
 
 METADATA & SCOPE:
 - PR / Commit Title: ${prTitle}
 - PR Description: ${gitContext.prBody || 'None provided'}
 - Primary Commit Message: ${gitContext.commitMessage || 'None provided'}
 - Changed File Count: ${gitContext.changedFiles.length}
+
+${config.projectOverview ? `PROJECT OVERVIEW (Standing Context):\n"${config.projectOverview}"\n` : ''}
+${config.developerDirective ? `DEVELOPER DIRECTIVE (Current Run Priority):\n"${config.developerDirective}"\n` : ''}
 
 DIFF STAT OVERVIEW:
 \`\`\`text
@@ -255,6 +262,8 @@ TRIAGE EVALUATION RULES:
 - Score 1-4 (REJECT): Routine dependency updates, formatting/linting fixes, minor typo edits, or empty scaffolding.
 - Score 5-6 (BORDERLINE): Minor refactors or simple single-line bug fixes without architectural impact.
 - Score 7-10 (APPROVE): Significant feature additions, new CLI apps, architectural state changes, security hardening, or optimization.
+${!config.projectTitle ? '- Missing Project Title: You MUST populate "suggestedProjectTitle" with a clean, professional, human-friendly title based on the code purpose (e.g. "Dead Link Checker CLI", "Oravista Portfolio").' : ''}
+${!config.category ? '- Missing Category: You MUST populate "suggestedCategory" with a matching domain classification (e.g. "CLI Tool", "Full-Stack Web", "AI / Machine Learning", "Automation", "Infrastructure").' : ''}
 - Return valid JSON matching schema.
 `;
 
@@ -275,6 +284,8 @@ TRIAGE EVALUATION RULES:
       score: validated.score,
       rationale: validated.rationale,
       suggestedBadge: validated.suggestedBadge,
+      suggestedProjectTitle: validated.suggestedProjectTitle,
+      suggestedCategory: validated.suggestedCategory,
     };
   } catch (err) {
     console.warn('[GeminiService] Triage prompt failed after self-healing attempts. Error details:', err);
@@ -435,35 +446,51 @@ export async function synthesizeDevLog(
 
   const generateDiagram = config.mediaPreferences?.generateArchitectureDiagrams !== false;
 
-  // Collect all author directives and dynamic custom keys from .portfolio.json
-  const standardConfigKeys = new Set([
+  // Differentiate standing project identity from ephemeral steering and audience calibration
+  const standingOverviewBlock = config.projectOverview
+    ? `PROJECT OVERVIEW (Standing Purpose & Context):\n"${config.projectOverview}"\n(Grounding: Use this as foundational context for the system purpose.)`
+    : '';
+
+  const developerDirectiveBlock = config.developerDirective
+    ? `DEVELOPER DIRECTIVE (Current Run High Priority Steering):\n"${config.developerDirective}"\n(CRITICAL: The human developer gave explicit steering for this specific update. Strictly prioritize this directive in your title, highlights, and narrative emphasis over default heuristics.)`
+    : '';
+
+  const targetAudienceBlock = `TARGET AUDIENCE: "${config.targetAudience || 'Technical Peers, Senior Engineers, and Technical Recruiters'}"\nCalibrate technical vocabulary, depth of explanation, and architectural perspective specifically for this target audience.`;
+
+  // Collect Tier 4 dynamic custom parameters from .portfolio.json
+  const recognizedConfigKeys = new Set([
     'track',
-    'schema',
-    '$schema',
     'requireHumanApproval',
-    'note',
-    'ignoreDirectory',
+    'requiredHumanApproval',
+    'mediaPreferences',
+    'primaryBranch',
     'projectTitle',
     'projectSlug',
     'category',
     'liveUrl',
-    'primaryBranch',
-    'mediaPreferences',
+    'ignoreDirectory',
+    'projectOverview',
+    'developerDirective',
+    'targetAudience',
+    'schema',
+    '$schema',
+    'note',
+    'projectSummary',
+    'userMessage',
+    'focusDirective',
+    'customAudience',
   ]);
 
   const dynamicDirectives: string[] = [];
-  if (config.note) {
-    dynamicDirectives.push(`- Project Note: "${config.note}"`);
-  }
   for (const [key, value] of Object.entries(config)) {
-    if (!standardConfigKeys.has(key) && value !== undefined && value !== null) {
+    if (!recognizedConfigKeys.has(key) && value !== undefined && value !== null) {
       const displayVal = typeof value === 'object' ? JSON.stringify(value) : String(value);
-      dynamicDirectives.push(`- Dynamic Directive [${key}]: "${displayVal}"`);
+      dynamicDirectives.push(`- Dynamic Parameter [${key}]: "${displayVal}"`);
     }
   }
 
   const dynamicDirectivesBlock = dynamicDirectives.length > 0
-    ? `CRITICAL AUTHOR DIRECTIVES (.portfolio.json):\n${dynamicDirectives.join('\n')}\n(IMPORTANT: If "userMessage" or custom guidance is provided above, you MUST strictly follow it over default notes.)`
+    ? `ADDITIONAL DYNAMIC PARAMETERS (.portfolio.json):\n${dynamicDirectives.join('\n')}`
     : '';
 
   const mermaidInstructions = generateDiagram
@@ -516,12 +543,16 @@ sequenceDiagram
   const prompt = `
 Synthesize a structured engineering DevLog entry for project "${config.projectTitle}" (slug: "${config.projectSlug}").
 
+${standingOverviewBlock ? `${standingOverviewBlock}\n` : ''}
+${developerDirectiveBlock ? `${developerDirectiveBlock}\n` : ''}
+${targetAudienceBlock ? `${targetAudienceBlock}\n` : ''}
+${dynamicDirectivesBlock ? `${dynamicDirectivesBlock}\n` : ''}
+
 CHANGE CONTEXT:
 - PR / Commit Title: ${prTitle}
 - Suggested Badge: ${triage.suggestedBadge || 'Feature'}
 - PR Description: ${gitContext.prBody || 'None provided'}
 - Commit Message: ${gitContext.commitMessage}
-${dynamicDirectivesBlock}
 
 DISTILLED FILE MODULES & CROSS-REFERENCES:
 ${summariesBlock}

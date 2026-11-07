@@ -61,11 +61,19 @@ export async function runAgenticDevlog() {
   }
 
   if (config.track === false) {
-    console.log(`[Runner] Skipping: Project "${config.projectTitle}" has explicitly disabled tracking ("track": false).`);
+    console.log(`[Runner] Skipping: Project "${config.projectTitle || inputs.targetRepo}" has explicitly disabled tracking ("track": false).`);
     process.exit(0);
   }
 
-  console.log(`[Runner] Tracking enabled for project: "${config.projectTitle}" (slug: ${config.projectSlug})`);
+  // Enforce primaryBranch filter if specified
+  if (inputs.branch && config.primaryBranch && inputs.branch !== config.primaryBranch) {
+    console.log(
+      `[Runner] Skipping: Commit is on branch "${inputs.branch}", but tracked primaryBranch is "${config.primaryBranch}".`
+    );
+    process.exit(0);
+  }
+
+  console.log(`[Runner] Tracking enabled for project: "${config.projectTitle || inputs.targetRepo}" (primary branch: ${config.primaryBranch})`);
 
   // 2. Fetch Git Context & Diff (scrubbing ignored directories & supporting multi-commit push ranges)
   const gitContext = await fetchGitHubContext(
@@ -88,6 +96,23 @@ export async function runAgenticDevlog() {
   const triage = await evaluateEditorialTriage(effectiveTitle, gitContext, config);
   console.log(`[Runner] Triage Result: Score ${triage.score}/10 | Publishable: ${triage.publishable}`);
   console.log(`[Runner] AI Agent's Rationale: ${triage.rationale}`);
+
+  // Autonomous Agent Resolution: If projectTitle, projectSlug, or category were omitted by human, adopt agent's synthesis
+  if (!config.projectTitle) {
+    config.projectTitle = triage.suggestedProjectTitle || inputs.targetRepo.split('/')[1] || 'Engineering Project';
+    console.log(`[Runner] Agent autonomously synthesized project title: "${config.projectTitle}"`);
+  }
+  if (!config.projectSlug) {
+    config.projectSlug = config.projectTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    console.log(`[Runner] Agent derived project slug: "${config.projectSlug}"`);
+  }
+  if (!config.category && triage.suggestedCategory) {
+    config.category = triage.suggestedCategory;
+    console.log(`[Runner] Agent classified category: "${config.category}"`);
+  }
 
   if (!triage.publishable || triage.score < 7) {
     console.log(`[Runner] Skipping: Change does not meet editorial threshold (score: ${triage.score}, threshold: >= 7).`);

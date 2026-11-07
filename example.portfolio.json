@@ -1,0 +1,88 @@
+{
+  "$schema": "https://benjibenji20.dev/schemas/portfolio.v1.json",
+
+  // ===========================================================================
+  // TIER 1: REQUIRED GOVERNANCE INVARIANTS (Strict Execution Gates)
+  // These fields are mandatory. If missing or invalid, the runner halts immediately.
+  // ===========================================================================
+
+  // Master tracking kill switch. Set to true to track; set to false to completely drop webhook events.
+  "track": true,
+
+  // Governance approval gate. (Aliases accepted: "requiredHumanApproval")
+  // - true: DevLogs are created in Sanity Content Lake with "hidden: true" for human review.
+  // - false: DevLogs are published immediately to the public portfolio site.
+  "requireHumanApproval": true,
+
+  // Media generation switches. Both booleans are required.
+  "mediaPreferences": {
+    // If true AND "liveUrl" is defined, Playwright captures a high-DPI desktop screenshot.
+    "captureScreenshots": true,
+    // If true, Gemini generates deterministic Mermaid architecture/flowchart diagrams.
+    "generateArchitectureDiagrams": true
+  },
+
+  // ===========================================================================
+  // TIER 2: DUAL-MODE OPERATIONAL KEYS (Human Override OR Agent Decides)
+  // Optional for humans. If omitted, the autonomous agent decides or infers them!
+  // ===========================================================================
+
+  // Target production branch. Defaults to "main" if omitted. Commits to other branches are skipped.
+  "primaryBranch": "main",
+
+  // Project display title.
+  // - If provided: Strictly honored across the portfolio and DevLogs.
+  // - If omitted: The agent autonomously inspects repo manifests and synthesizes a professional title.
+  "projectTitle": "Dead Link Checkerr",
+
+  // Project URL slug used for routing and Sanity document references.
+  // - If provided: Strictly honored.
+  // - If omitted: The agent automatically derives a clean kebab-case slug from the project title.
+  "projectSlug": "cli-dead-link-checkr",
+
+  // Project domain classification (e.g. "CLI Tool", "Full-Stack Web", "AI / Machine Learning", "Automation").
+  // - If provided: Strictly honored.
+  // - If omitted: The agent autonomously classifies the project based on detected tech stacks.
+  "category": "Automation",
+
+  // Live deployment / production website URL.
+  // - If provided: Enables headless Playwright screenshot capture and populates Sanity project.website.
+  // - If omitted: Screenshot capture is automatically skipped.
+  "liveUrl": "https://example-deadlink-tool.benjibenji20.dev",
+
+  // Array of directory glob patterns or directory names to exclude from git diff analysis.
+  // Ignores lockfiles, test fixtures, or docs to conserve Gemini token quota.
+  "ignoreDirectory": [
+    "tests/fixtures",
+    "docs/legacy",
+    "dist"
+  ],
+
+  // ===========================================================================
+  // TIER 3: COMMUNICATION BRIDGE (Developer Directives & Intent Calibration)
+  // Differentiates permanent project context from per-commit steering and audience tone.
+  // ===========================================================================
+
+  // Persistent Standing Overview (Aliases: "note", "projectSummary")
+  // Informs the permanent identity, mission, and background of the project across all runs.
+  // Gemini uses this as foundational grounding for why the project exists.
+  "projectOverview": "A high-performance CLI utility written in Python using Requests and HTMLParser to crawl websites, harvest anchor tags, and isolate unreachable HTTP endpoints.",
+
+  // Ephemeral Per-Commit Steering (Aliases: "userMessage", "focusDirective")
+  // Specific instruction for the CURRENT commit/PR run.
+  // Takes top priority in Stage 3 synthesis (e.g. telling the agent what to spotlight).
+  "developerDirective": "Highlight the new terminal filtering flag (-b/--broken-only) and suppress 200 OK outputs.",
+
+  // Audience Calibration (Aliases: "customAudience")
+  // Directs technical vocabulary density, architectural depth, and perspective.
+  // Examples: "Senior Backend Engineers", "Technical Recruiters", "Open Source Contributors"
+  "targetAudience": "Technical Peers & Recruiters",
+
+  // ===========================================================================
+  // TIER 4: ARBITRARY DYNAMIC PARAMETERS (.passthrough())
+  // You can add ANY custom keys here. They are preserved by Zod and dynamically
+  // formatted as author directives into the AI synthesis prompt.
+  // ===========================================================================
+  "writingTone": "deep-dive engineering with concise code snippets",
+  "highlightTechnologies": ["Python 3.12", "Requests", "HTMLParser"]
+}

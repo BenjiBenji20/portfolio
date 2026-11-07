@@ -15,6 +15,8 @@ export const TriageResponseSchema = z.object({
   score: z.number().min(1).max(10),
   rationale: z.string().min(5, 'rationale must be at least 5 characters'),
   suggestedBadge: z.string().default('Engineering'),
+  suggestedProjectTitle: z.string().optional(),
+  suggestedCategory: z.string().optional(),
 });
 
 export type ValidatedTriageResponse = z.infer<typeof TriageResponseSchema>;
@@ -38,6 +40,14 @@ export const GEMINI_TRIAGE_RESPONSE_SCHEMA = {
     suggestedBadge: {
       type: 'STRING',
       description: 'Category badge, e.g. Architecture, Security, Performance, Optimization',
+    },
+    suggestedProjectTitle: {
+      type: 'STRING',
+      description: 'Professional, human-friendly title for the project if not already provided',
+    },
+    suggestedCategory: {
+      type: 'STRING',
+      description: 'High-level project category (e.g. CLI Tool, Full-Stack Web, AI / Machine Learning, Infrastructure)',
     },
   },
   required: ['publishable', 'score', 'rationale', 'suggestedBadge'],

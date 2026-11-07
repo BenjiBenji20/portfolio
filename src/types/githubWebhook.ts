@@ -7,23 +7,41 @@
  * Standard configuration contract located at `.portfolio.json` in the root of any tracked repo
  */
 export interface PortfolioConfig {
+  // Tier 1: Required Governance Invariants
   track: boolean;
-  projectTitle: string;
-  projectSlug: string;
-  schema?: string;
-  $schema?: string;
   requireHumanApproval?: boolean;
-  note?: string;
-  ignoreDirectory?: string[];
-  category?: string;
-  liveUrl?: string;
-  primaryBranch?: string;
   mediaPreferences?: {
     captureScreenshots?: boolean;
     generateArchitectureDiagrams?: boolean;
     [key: string]: unknown;
   };
-  // Dynamic arbitrary metadata keys supported for custom future requirements
+
+  // Tier 2: Dual-Mode Operational Keys (Human override or Agent decides)
+  primaryBranch?: string;
+  projectTitle?: string;
+  projectSlug?: string;
+  category?: string;
+  liveUrl?: string;
+  ignoreDirectory?: string[];
+
+  // Tier 3: Communication Bridge (Distinct Temporal Scopes)
+  projectOverview?: string;
+  developerDirective?: string;
+  targetAudience?: string;
+
+  // Tooling / Schemas
+  schema?: string;
+  $schema?: string;
+
+  // Backward-compatibility aliases
+  requiredHumanApproval?: boolean;
+  note?: string;
+  projectSummary?: string;
+  userMessage?: string;
+  focusDirective?: string;
+  customAudience?: string;
+
+  // Tier 4: Dynamic arbitrary metadata keys supported for custom future requirements
   [key: string]: unknown;
 }
 

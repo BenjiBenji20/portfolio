@@ -76,6 +76,7 @@ export const DynamicPortfolioConfigSchema = z.preprocess((val) => {
     category: z.string().optional(),
     liveUrl: z.string().optional(),
     ignoreDirectory: z.array(z.string()).default([]),
+    generateArticle: z.boolean().default(false),
 
     // Tier 3: Communication Bridge (Persistent vs Ephemeral vs Audience)
     projectOverview: z.string().optional(),
@@ -99,6 +100,8 @@ export const DynamicPortfolioConfigSchema = z.preprocess((val) => {
 
 export type ValidatedPortfolioConfig = z.infer<typeof DynamicPortfolioConfigSchema> & PortfolioConfig;
 
+export type { ProjectHistoryDigest, ProjectMilestoneItem, ExistingArticleItem } from './agentic_tools/sanityGroqTool';
+
 export interface RunnerInputs {
   targetRepo: string;
   commitSha: string;
@@ -116,6 +119,9 @@ export interface TriageResult {
   suggestedBadge?: string;
   suggestedProjectTitle?: string;
   suggestedCategory?: string;
+  articleAction?: 'none' | 'create_article' | 'update_article';
+  targetArticleSlug?: string;
+  articleRationale?: string;
 }
 
 export interface FileSummary {

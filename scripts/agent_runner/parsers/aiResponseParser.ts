@@ -17,6 +17,9 @@ export const TriageResponseSchema = z.object({
   suggestedBadge: z.string().default('Engineering'),
   suggestedProjectTitle: z.string().optional(),
   suggestedCategory: z.string().optional(),
+  articleAction: z.enum(['none', 'create_article', 'update_article']).default('none'),
+  targetArticleSlug: z.string().optional(),
+  articleRationale: z.string().optional(),
 });
 
 export type ValidatedTriageResponse = z.infer<typeof TriageResponseSchema>;
@@ -48,6 +51,19 @@ export const GEMINI_TRIAGE_RESPONSE_SCHEMA = {
     suggestedCategory: {
       type: 'STRING',
       description: 'High-level project category (e.g. CLI Tool, Full-Stack Web, AI / Machine Learning, Infrastructure)',
+    },
+    articleAction: {
+      type: 'STRING',
+      enum: ['none', 'create_article', 'update_article'],
+      description: 'Decide whether this commit warrants a long-form Article: "none" for routine/WorkLog only, "create_article" for brand new landmark architecture/feature culmination, or "update_article" to patch an existing article that this change fundamentally alters',
+    },
+    targetArticleSlug: {
+      type: 'STRING',
+      description: 'When articleAction is "update_article", the slug of the existing published article to be updated/amended',
+    },
+    articleRationale: {
+      type: 'STRING',
+      description: 'Brief justification for the articleAction decision',
     },
   },
   required: ['publishable', 'score', 'rationale', 'suggestedBadge'],

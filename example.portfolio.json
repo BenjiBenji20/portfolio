@@ -58,6 +58,11 @@
     "dist"
   ],
 
+  // Explicit Article Generation Override.
+  // - false: Normal operation. Agent creates WorkLogs and only drafts an Article when an architectural landmark is reached.
+  // - true: Forces the agent to synthesize a full deep-dive Article draft in addition to the WorkLog.
+  "generateArticle": false,
+
   // ===========================================================================
   // TIER 3: COMMUNICATION BRIDGE (Developer Directives & Intent Calibration)
   // Differentiates permanent project context from per-commit steering and audience tone.

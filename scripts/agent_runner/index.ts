@@ -6,7 +6,7 @@ import {
   distillFileSummaries,
   synthesizeDevLog,
 } from './services/geminiService';
-import { persistDevLogToSanity } from './services/sanityService';
+import { persistDevLogToSanity, getProjectHistory } from './services/sanityService';
 import type { RunnerInputs } from './types';
 
 /**
@@ -92,10 +92,34 @@ export async function runAgenticDevlog() {
 
   const effectiveTitle = inputs.prTitle || gitContext.commitMessage.split('\n')[0] || 'Engineering Update';
 
-  // 3. Prompt 1: Tier 3 Editorial Triage Gate
-  const triage = await evaluateEditorialTriage(effectiveTitle, gitContext, config);
+  // 3. Fetch Project History Digest (Ultra-lightweight memory of past milestones & articles)
+  const projectSlugCandidate =
+    config.projectSlug ||
+    (config.projectTitle
+      ? config.projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      : inputs.targetRepo.split('/')[1]);
+
+  const historyDigest = await getProjectHistory(projectSlugCandidate);
+  if (historyDigest.recentWorkLogs.length > 0 || historyDigest.existingArticles.length > 0) {
+    console.log(
+      `[Runner] Loaded history for "${projectSlugCandidate}": ${historyDigest.recentWorkLogs.length} previous worklog(s), ${historyDigest.existingArticles.length} published article(s).`
+    );
+  } else {
+    console.log(`[Runner] Initial project context: 0 previous worklogs for "${projectSlugCandidate}".`);
+  }
+
+  // 4. Prompt 1: Tier 3 Editorial Triage Gate with Cumulative Milestone Evaluation
+  const triage = await evaluateEditorialTriage(effectiveTitle, gitContext, config, historyDigest);
   console.log(`[Runner] Triage Result: Score ${triage.score}/10 | Publishable: ${triage.publishable}`);
   console.log(`[Runner] AI Agent's Rationale: ${triage.rationale}`);
+  if (triage.articleAction && triage.articleAction !== 'none') {
+    console.log(
+      `[Runner] 📰 Article Recommendation: ${triage.articleAction.toUpperCase()}${triage.targetArticleSlug ? ` (Target: "${triage.targetArticleSlug}")` : ''}`
+    );
+    if (triage.articleRationale) {
+      console.log(`[Runner] Article Rationale: ${triage.articleRationale}`);
+    }
+  }
 
   // Autonomous Agent Resolution: If projectTitle, projectSlug, or category were omitted by human, adopt agent's synthesis
   if (!config.projectTitle) {
@@ -119,11 +143,11 @@ export async function runAgenticDevlog() {
     process.exit(0);
   }
 
-  // 4. Stage 2: Per-File Semantic Distillation (Map Stage)
+  // 5. Stage 2: Per-File Semantic Distillation (Map Stage)
   const fileSummaries = await distillFileSummaries(gitContext.fileDeltas, config);
   console.log(`[Runner] Distilled ${fileSummaries.length} module summary(s) for holistic synthesis.`);
 
-  // 5. Capture Headless Screenshot (if configured)
+  // 6. Capture Headless Screenshot (if configured)
   let screenshotBuffer: Buffer | null = null;
   if (config.mediaPreferences?.captureScreenshots && config.liveUrl) {
     screenshotBuffer = await captureLiveScreenshot(config.liveUrl);
@@ -131,11 +155,11 @@ export async function runAgenticDevlog() {
     console.log('[Runner] Screenshot capture skipped (captureScreenshots is false or liveUrl not defined).');
   }
 
-  // 6. Stage 3: Cross-Referenced Holistic Synthesis (Reduce Stage)
-  const synthesis = await synthesizeDevLog(effectiveTitle, gitContext, config, triage, fileSummaries);
+  // 7. Stage 3: Cross-Referenced Holistic Synthesis (Reduce Stage)
+  const synthesis = await synthesizeDevLog(effectiveTitle, gitContext, config, triage, fileSummaries, historyDigest);
   console.log(`[Runner] Synthesized DevLog: "${synthesis.title}" [${synthesis.badge}]`);
 
-  // 7. Persist to Sanity Content Lake (enforcing schema access control and drafts)
+  // 8. Persist to Sanity Content Lake (enforcing schema access control and drafts)
   const { docId, reviewAlertRequired } = await persistDevLogToSanity(
     config,
     inputs.commitSha,

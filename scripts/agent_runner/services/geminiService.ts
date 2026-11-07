@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { ValidatedPortfolioConfig, TriageResult, DevLogSynthesisResult, FileSummary } from '../types';
+import type { ValidatedPortfolioConfig, TriageResult, DevLogSynthesisResult, FileSummary, ProjectHistoryDigest } from '../types';
 import type { GitHubContext, FileDelta } from './githubContextService';
 import {
   TriageResponseSchema,
@@ -233,13 +233,26 @@ CORRECTION INSTRUCTIONS:
 export async function evaluateEditorialTriage(
   prTitle: string,
   gitContext: GitHubContext,
-  config: ValidatedPortfolioConfig
+  config: ValidatedPortfolioConfig,
+  historyDigest?: ProjectHistoryDigest
 ): Promise<TriageResult> {
   console.log('[GeminiService] Running Stage 1: Lightweight Editorial Triage Gate (Stat-enforced)...');
 
   const titleContext = config.projectTitle
     ? `for project "${config.projectTitle}"`
     : `(Project title omitted by developer: please synthesize a suggestedProjectTitle and suggestedCategory based on the repository content)`;
+
+  const historyBlock = historyDigest && historyDigest.recentWorkLogs.length > 0
+    ? `RECENT PROJECT MILESTONES (Chronological Memory for this project):
+${historyDigest.recentWorkLogs.map((l) => `- [${l.date}] (${l.badge}) "${l.title}": ${l.description}`).join('\n')}
+`
+    : 'RECENT PROJECT MILESTONES: No prior milestones recorded (Initial project development).\n';
+
+  const articlesBlock = historyDigest && historyDigest.existingArticles.length > 0
+    ? `EXISTING PUBLISHED ARTICLES FOR THIS PROJECT:
+${historyDigest.existingArticles.map((a) => `- "${a.title}" (slug: "${a.slug}")${a.leadParagraph ? `: ${a.leadParagraph.slice(0, 120)}...` : ''}`).join('\n')}
+`
+    : '';
 
   const prompt = `
 Evaluate the engineering significance of this commit/PR ${titleContext}.
@@ -253,6 +266,9 @@ METADATA & SCOPE:
 ${config.projectOverview ? `PROJECT OVERVIEW (Standing Context):\n"${config.projectOverview}"\n` : ''}
 ${config.developerDirective ? `DEVELOPER DIRECTIVE (Current Run Priority):\n"${config.developerDirective}"\n` : ''}
 
+${historyBlock}
+${articlesBlock}
+
 DIFF STAT OVERVIEW:
 \`\`\`text
 ${gitContext.diffStat || gitContext.changedFiles.map((f) => `- ${f}`).join('\n')}
@@ -264,6 +280,13 @@ TRIAGE EVALUATION RULES:
 - Score 7-10 (APPROVE): Significant feature additions, new CLI apps, architectural state changes, security hardening, or optimization.
 ${!config.projectTitle ? '- Missing Project Title: You MUST populate "suggestedProjectTitle" with a clean, professional, human-friendly title based on the code purpose (e.g. "Dead Link Checker CLI", "Oravista Portfolio").' : ''}
 ${!config.category ? '- Missing Category: You MUST populate "suggestedCategory" with a matching domain classification (e.g. "CLI Tool", "Full-Stack Web", "AI / Machine Learning", "Automation", "Infrastructure").' : ''}
+
+CUMULATIVE MILESTONE & ARTICLE EVALUATION:
+${config.generateArticle ? '- Developer Directive: "generateArticle": true is active in .portfolio.json. Set articleAction: "create_article".' : ''}
+- Analyze this commit against the RECENT PROJECT MILESTONES listed above to detect cumulative progress.
+- If this commit completes or culminates a landmark Feature, new Architecture, or Security capability not covered by an existing article -> set articleAction: "create_article".
+- If this commit fundamentally alters or supersedes architecture documented in an existing article listed above -> set articleAction: "update_article", set "targetArticleSlug" to that article\'s slug, and state why in "articleRationale".
+- Otherwise, for standard milestone commits that should remain a WorkLog only -> set articleAction: "none".
 - Return valid JSON matching schema.
 `;
 
@@ -286,6 +309,9 @@ ${!config.category ? '- Missing Category: You MUST populate "suggestedCategory" 
       suggestedBadge: validated.suggestedBadge,
       suggestedProjectTitle: validated.suggestedProjectTitle,
       suggestedCategory: validated.suggestedCategory,
+      articleAction: validated.articleAction || (config.generateArticle ? 'create_article' : 'none'),
+      targetArticleSlug: validated.targetArticleSlug,
+      articleRationale: validated.articleRationale,
     };
   } catch (err) {
     console.warn('[GeminiService] Triage prompt failed after self-healing attempts. Error details:', err);
@@ -294,6 +320,7 @@ ${!config.category ? '- Missing Category: You MUST populate "suggestedCategory" 
       score: 7,
       rationale: 'Fallback approval due to schema verification error after self-healing',
       suggestedBadge: 'Engineering',
+      articleAction: config.generateArticle ? 'create_article' : 'none',
     };
   }
 }
@@ -440,7 +467,8 @@ export async function synthesizeDevLog(
   gitContext: GitHubContext,
   config: ValidatedPortfolioConfig,
   triage: TriageResult,
-  fileSummaries: FileSummary[] = []
+  fileSummaries: FileSummary[] = [],
+  historyDigest?: ProjectHistoryDigest
 ): Promise<DevLogSynthesisResult> {
   console.log('[GeminiService] Running Stage 3: Cross-Referenced Narrative Synthesis & Mermaid Diagram...');
 
@@ -456,6 +484,12 @@ export async function synthesizeDevLog(
     : '';
 
   const targetAudienceBlock = `TARGET AUDIENCE: "${config.targetAudience || 'Technical Peers, Senior Engineers, and Technical Recruiters'}"\nCalibrate technical vocabulary, depth of explanation, and architectural perspective specifically for this target audience.`;
+
+  const historyContinuityBlock = historyDigest && historyDigest.recentWorkLogs.length > 0
+    ? `RECENT PROJECT MILESTONES (Chronological Progression):
+${historyDigest.recentWorkLogs.map((l) => `- [${l.date}] (${l.badge}) "${l.title}"`).join('\n')}
+(Continuity: If this update builds upon previous worklogs, connect the technical progression naturally without repeating old diffs.)`
+    : '';
 
   // Collect Tier 4 dynamic custom parameters from .portfolio.json
   const recognizedConfigKeys = new Set([
@@ -546,6 +580,7 @@ Synthesize a structured engineering DevLog entry for project "${config.projectTi
 ${standingOverviewBlock ? `${standingOverviewBlock}\n` : ''}
 ${developerDirectiveBlock ? `${developerDirectiveBlock}\n` : ''}
 ${targetAudienceBlock ? `${targetAudienceBlock}\n` : ''}
+${historyContinuityBlock ? `${historyContinuityBlock}\n` : ''}
 ${dynamicDirectivesBlock ? `${dynamicDirectivesBlock}\n` : ''}
 
 CHANGE CONTEXT:

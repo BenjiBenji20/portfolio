@@ -23,6 +23,7 @@ export interface PortfolioConfig {
   category?: string;
   liveUrl?: string;
   ignoreDirectory?: string[];
+  generateArticle?: boolean;
 
   // Tier 3: Communication Bridge (Distinct Temporal Scopes)
   projectOverview?: string;

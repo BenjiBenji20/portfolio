@@ -1,13 +1,52 @@
 import { createClient } from 'next-sanity';
-import type { ValidatedPortfolioConfig, DevLogSynthesisResult } from '../types';
+import type { ValidatedPortfolioConfig, DevLogSynthesisResult, ProjectHistoryDigest } from '../types';
 import { buildProjectPayload, buildWorkLogPayload } from '../utils/sanitySchemaBuilders';
 import { createGuardedSanityClient } from '../utils/sanityClientGuardrail';
+import { fetchProjectHistoryDigest } from '../agentic_tools/sanityGroqTool';
 
 /**
  * Service to upload assets and persist DevLogs to Sanity Content Lake
  * with strict schema grounding, zero field omissions, and human review escalation via hidden: true.
  * Protected by runtime RBAC guardrails (zero delete authority, schema boundaries).
  */
+
+export function getGuardedSanityClient() {
+  const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
+  const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production';
+  const token =
+    process.env.SANITY_AGENT_RUNNER_TOKEN ||
+    process.env.SANITY_AGENT_READ_ONLY_TOKEN ||
+    process.env.SANITY_API_WRITE_TOKEN;
+
+  if (!projectId || !token) {
+    throw new Error(
+      `[SanityService] Missing credentials: NEXT_PUBLIC_SANITY_PROJECT_ID is ${projectId ? 'PRESENT' : 'MISSING'}, SANITY_AGENT_RUNNER_TOKEN is ${token ? 'PRESENT' : 'MISSING'}. Check GitHub Repository Secrets vs Variables.`
+    );
+  }
+
+  const rawClient = createClient({
+    projectId,
+    dataset,
+    apiVersion: '2024-01-01',
+    token,
+    useCdn: false,
+  });
+  return createGuardedSanityClient(rawClient);
+}
+
+/**
+ * Retrieves chronological project milestone memory & existing article topics
+ * via project-isolated GROQ tool.
+ */
+export async function getProjectHistory(projectSlug: string): Promise<ProjectHistoryDigest> {
+  try {
+    const client = getGuardedSanityClient();
+    return await fetchProjectHistoryDigest(client, projectSlug);
+  } catch (err) {
+    console.warn(`[SanityService] History digest lookup failed:`, err);
+    return { recentWorkLogs: [], existingArticles: [] };
+  }
+}
 
 export async function persistDevLogToSanity(
   config: ValidatedPortfolioConfig,
@@ -17,26 +56,8 @@ export async function persistDevLogToSanity(
   sender = 'Developer',
   targetRepo = ''
 ): Promise<{ docId: string; assetId?: string; reviewAlertRequired?: boolean }> {
-  const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
+  const client = getGuardedSanityClient();
   const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production';
-  // Use dedicated Agent Runner token with fallback
-  const token = process.env.SANITY_AGENT_RUNNER_TOKEN
-
-  if (!projectId || !token) {
-    throw new Error(
-      `[SanityService] Missing credentials: NEXT_PUBLIC_SANITY_PROJECT_ID is ${projectId ? 'PRESENT' : 'MISSING'}, SANITY_AGENT_RUNNER_TOKEN is ${token ? 'PRESENT' : 'MISSING'}. Check GitHub Repository Secrets vs Variables.`
-    );
-  }
-
-  // Instantiate base client and wrap with scalable security guardrail
-  const rawClient = createClient({
-    projectId,
-    dataset,
-    apiVersion: '2024-01-01',
-    token,
-    useCdn: false,
-  });
-  const client = createGuardedSanityClient(rawClient);
 
   console.log(`[SanityService] Connecting to Sanity (${dataset}) via Guarded Client...`);
 

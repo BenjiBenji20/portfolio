@@ -55,6 +55,7 @@ graph TD
 | [sanity_schema_agent_permissions.md](./sanity_schema_agent_permissions.md) | Agent Access Control | Schema permission matrix, zero-delete invariant, and RBAC guardrail boundary. |
 | [sanity_milestone_history_digest.md](./sanity_milestone_history_digest.md) | Milestone Memory | Project-isolated GROQ tool, cumulative milestone detection, and article lifecycle decisions. |
 | [agent_article_entry_creation.md](./agent_article_entry_creation.md) | Article Lifecycle | Landmark milestone evaluation, draft isolation, architecture addendums, and human approval gate. |
+| [agentic_tool_registry_standardization.md](./agentic_tool_registry_standardization.md) | Tool Registry | Standardized agentic tool declarations, central registry dispatch, and Sanity GROQ tooling. |
 
 
 ## 4. Ingestion Guidelines for Agentic Writer

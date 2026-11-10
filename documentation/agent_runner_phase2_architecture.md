@@ -47,4 +47,4 @@ Mermaid diagrams follow strict rules to guarantee crash-free frontend rendering:
 - **Dynamic `.portfolio.json`:** Requires `track`, `projectTitle`, `projectSlug`; dynamically passes custom properties downstream.
 - **Diff Token Budget:** Truncates diff patches at 25,000 characters while preserving status lines.
 - **Sanity Idempotency:** Uses `devlog-${projectSlug}-${commitSha.slice(0, 10)}` (or `drafts.` if `requireHumanApproval`).
-- **Phase 4 Tool Registry Ready:** Modular interfaces in `tools/toolRegistry.ts` for future tool-calling agent capabilities.
+- **Phase 4 Tool Registry Ready:** Modular interfaces in `agentic_tools/toolRegistry.ts` for future tool-calling agent capabilities.

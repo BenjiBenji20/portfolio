@@ -1,4 +1,5 @@
 import type { SanityClient } from 'next-sanity';
+import type { AgenticToolDeclaration, ToolContext } from './toolRegistry';
 
 export interface ProjectMilestoneItem {
   title: string;
@@ -100,4 +101,64 @@ export async function fetchArticleBySlug(
     return null;
   }
 }
+
+/**
+ * Standardized Agentic Tool Declaration: Project History Digest
+ */
+export const projectHistoryDigestTool: AgenticToolDeclaration<
+  { projectSlug: string },
+  ProjectHistoryDigest
+> = {
+  name: 'fetch_project_history_digest',
+  description:
+    'Queries Sanity Content Lake for recent project worklogs and published article metadata using an ultra-compact, project-isolated GROQ projection.',
+  parameters: {
+    type: 'object',
+    properties: {
+      projectSlug: {
+        type: 'string',
+        description: 'Target project slug for isolated history lookup',
+      },
+    },
+    required: ['projectSlug'],
+  },
+  execute: async (args, context: ToolContext) => {
+    const client = context.sanityClient;
+    if (!client) {
+      throw new Error('[SanityGroqTool] Execution failed: sanityClient missing in ToolContext');
+    }
+    const slug = args.projectSlug || context.projectSlug || '';
+    return fetchProjectHistoryDigest(client, slug);
+  },
+};
+
+/**
+ * Standardized Agentic Tool Declaration: Article by Slug Lookup
+ */
+export const articleBySlugTool: AgenticToolDeclaration<
+  { slug: string },
+  FullArticleData | null
+> = {
+  name: 'fetch_article_by_slug',
+  description:
+    'Retrieves full article content blocks, excerpt, and metadata by unique slug from Sanity Content Lake for grounding or architectural patch synthesis.',
+  parameters: {
+    type: 'object',
+    properties: {
+      slug: {
+        type: 'string',
+        description: 'Unique URL slug of the article to retrieve',
+      },
+    },
+    required: ['slug'],
+  },
+  execute: async (args, context: ToolContext) => {
+    const client = context.sanityClient;
+    if (!client) {
+      throw new Error('[SanityGroqTool] Execution failed: sanityClient missing in ToolContext');
+    }
+    return fetchArticleBySlug(client, args.slug);
+  },
+};
+
 

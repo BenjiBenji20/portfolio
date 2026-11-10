@@ -106,6 +106,10 @@ export type {
   ExistingArticleItem,
   FullArticleData,
 } from './agentic_tools/sanityGroqTool';
+export type {
+  ToolContext,
+  AgenticToolDeclaration,
+} from './agentic_tools/toolRegistry';
 
 export interface RunnerInputs {
   targetRepo: string;

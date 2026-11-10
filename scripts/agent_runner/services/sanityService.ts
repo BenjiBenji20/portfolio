@@ -14,7 +14,7 @@ import {
   buildArticlePatchBlocks,
 } from '../utils/sanitySchemaBuilders';
 import { createGuardedSanityClient } from '../utils/sanityClientGuardrail';
-import { fetchProjectHistoryDigest, fetchArticleBySlug } from '../agentic_tools/sanityGroqTool';
+import { executeAgenticTool } from '../agentic_tools/toolRegistry';
 
 /**
  * Service to upload assets and persist DevLogs to Sanity Content Lake
@@ -53,7 +53,11 @@ export function getGuardedSanityClient() {
 export async function getProjectHistory(projectSlug: string): Promise<ProjectHistoryDigest> {
   try {
     const client = getGuardedSanityClient();
-    return await fetchProjectHistoryDigest(client, projectSlug);
+    return await executeAgenticTool<ProjectHistoryDigest>(
+      'fetch_project_history_digest',
+      { projectSlug },
+      { projectSlug, sanityClient: client }
+    );
   } catch (err) {
     console.warn(`[SanityService] History digest lookup failed:`, err);
     return { recentWorkLogs: [], existingArticles: [] };
@@ -241,7 +245,11 @@ export async function persistDevLogToSanity(
 export async function getArticleBySlug(slug: string): Promise<FullArticleData | null> {
   try {
     const client = getGuardedSanityClient();
-    return await fetchArticleBySlug(client, slug);
+    return await executeAgenticTool<FullArticleData | null>(
+      'fetch_article_by_slug',
+      { slug },
+      { sanityClient: client }
+    );
   } catch (err) {
     console.warn(`[SanityService] getArticleBySlug failed for "${slug}":`, err);
     return null;

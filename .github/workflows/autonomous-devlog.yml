@@ -1,4 +1,4 @@
-name: Autonomous DevLog Knowledge Synthesizer (Phase 2)
+name: Autonomous Agentic Writer Knowledge Synthesizer
 
 on:
   workflow_dispatch:
@@ -53,7 +53,7 @@ jobs:
       - name: Install Monorepo Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Run Autonomous DevLog Agent Runner
+      - name: Run Agentic Writer Runner
         env:
           GIT_REPO_PAT_TOKEN: ${{ secrets.GIT_REPO_PAT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

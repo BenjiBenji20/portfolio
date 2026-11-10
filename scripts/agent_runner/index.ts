@@ -15,6 +15,8 @@ import {
   persistArticlePatchToSanity,
   getArticleBySlug,
   getGuardedSanityClient,
+  findExistingProject,
+  migrateProjectSlug,
 } from './services/sanityService';
 import type { ToolContext } from './agentic_tools/toolRegistry';
 import type { RunnerInputs } from './types';
@@ -102,7 +104,7 @@ export async function runAgenticDevlog() {
 
   const effectiveTitle = inputs.prTitle || gitContext.commitMessage.split('\n')[0] || 'Engineering Update';
 
-  // 3. Autonomous Tool Context Setup (Sandboxed to Project Scope)
+  // 3. Autonomous Tool Context Setup & Repository-Aware Project Grounding
   const projectSlugCandidate =
     config.projectSlug ||
     (config.projectTitle
@@ -111,10 +113,46 @@ export async function runAgenticDevlog() {
 
   const client = getGuardedSanityClient();
 
+  // Pre-flight check: Discover existing project by repository URL or slug
+  const existingProject = await findExistingProject(inputs.targetRepo, projectSlugCandidate);
+  if (existingProject) {
+    if (existingProject.slug !== projectSlugCandidate) {
+      // Slug discrepancy detected between Sanity Lake and .portfolio.json
+      const isConfigModified = gitContext.changedFiles.some((f) => f.includes('portfolio.json'));
+      const commitMentionsSlug = /slug/i.test(effectiveTitle) || /slug/i.test(gitContext.commitMessage);
+
+      if (isConfigModified || commitMentionsSlug) {
+        console.log(
+          `[Runner] 🔄 Slug update detected for "${existingProject.title}": "${existingProject.slug}" -> "${projectSlugCandidate}". Triggering autonomous migration in Sanity Lake...`
+        );
+        try {
+          await migrateProjectSlug(existingProject._id, existingProject.slug, projectSlugCandidate);
+          config.projectSlug = projectSlugCandidate;
+        } catch (migErr) {
+          console.warn('[Runner] Slug migration failed, adopting canonical Sanity slug:', migErr);
+          config.projectSlug = existingProject.slug;
+        }
+      } else {
+        // Accidental discrepancy or uncommitted config mismatch: adopt canonical Sanity slug
+        console.log(
+          `[Runner] Found existing Sanity project "${existingProject.title}" with canonical slug "${existingProject.slug}". Reconciling config slug "${projectSlugCandidate}" -> "${existingProject.slug}".`
+        );
+        config.projectSlug = existingProject.slug;
+      }
+    } else {
+      console.log(`[Runner] Grounded with verified Sanity project: "${existingProject.title}" (slug: "${existingProject.slug}")`);
+      config.projectSlug = existingProject.slug;
+    }
+  } else {
+    console.log(
+      `[Runner] Initial project context: No existing project found for "${inputs.targetRepo}". Initializing under candidate slug "${projectSlugCandidate}".`
+    );
+  }
+
   const toolContext: ToolContext = {
     targetRepo: inputs.targetRepo,
     commitSha: inputs.commitSha,
-    projectSlug: projectSlugCandidate,
+    projectSlug: config.projectSlug || projectSlugCandidate,
     sanityClient: client,
     repoRoot: process.cwd(),
   };
@@ -221,24 +259,30 @@ export async function runAgenticDevlog() {
     console.log(`\n[Runner] 🔄 Architectural Delta Detected -> Updating Article "${triage.targetArticleSlug}"...`);
     try {
       const existingArticle = await getArticleBySlug(triage.targetArticleSlug, config.projectSlug);
-      const patchSynthesis = await synthesizeArticlePatch(
-        triage.targetArticleSlug,
-        existingArticle,
-        effectiveTitle,
-        gitContext,
-        config,
-        triage,
-        fileSummaries
-      );
-      const patchResult = await persistArticlePatchToSanity(
-        triage.targetArticleSlug,
-        patchSynthesis,
-        config
-      );
-      generatedArticleDocId = patchResult.docId;
-      articleReviewUrl = patchResult.reviewUrl;
-      console.log(`[Runner] 📰 Staged Article Update Patch: ${generatedArticleDocId}`);
-      console.log(`[Runner] 🔗 Review in Sanity Studio: ${articleReviewUrl}`);
+      if (!existingArticle) {
+        console.warn(
+          `[Runner] ⚠️ Target article "${triage.targetArticleSlug}" was not found in Sanity Lake for project "${config.projectSlug}". Skipping article patch to avoid invalid mutations.`
+        );
+      } else {
+        const patchSynthesis = await synthesizeArticlePatch(
+          triage.targetArticleSlug,
+          existingArticle,
+          effectiveTitle,
+          gitContext,
+          config,
+          triage,
+          fileSummaries
+        );
+        const patchResult = await persistArticlePatchToSanity(
+          triage.targetArticleSlug,
+          patchSynthesis,
+          config
+        );
+        generatedArticleDocId = patchResult.docId;
+        articleReviewUrl = patchResult.reviewUrl;
+        console.log(`[Runner] 📰 Staged Article Update Patch: ${generatedArticleDocId}`);
+        console.log(`[Runner] 🔗 Review in Sanity Studio: ${articleReviewUrl}`);
+      }
     } catch (patchErr) {
       console.error('[Runner] Article patch synthesis or staging failed:', patchErr);
     }

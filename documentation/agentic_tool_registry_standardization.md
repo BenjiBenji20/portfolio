@@ -54,3 +54,4 @@ export interface AgenticToolDeclaration<TArgs = Record<string, unknown>, TResult
 2. **Rate Limit Pacing:** Every Gemini API turn is gated by `geminiQuotaGuardrail.waitForAvailableSlot()` to protect the Google AI Studio 5 RPM ceiling.
 3. **Anti-Hallucination Sandboxing:** Queries strictly bind to `context.projectSlug`. Cross-project access is blocked.
 4. **Sanity RBAC Invariants:** Zero delete authority; articles authored by agents must enforce the `drafts.` prefix.
+5. **Autonomous Slug Migration:** If a repository URL matches an existing project but the slug was updated in .portfolio.json, the runner executes atomic slug migration across the project and child documents without creating duplicate projects.

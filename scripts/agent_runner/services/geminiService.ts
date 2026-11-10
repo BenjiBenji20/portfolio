@@ -589,11 +589,14 @@ ${!config.category ? '- Missing Category: You MUST populate "suggestedCategory" 
 
 CUMULATIVE MILESTONE & ARTICLE EVALUATION:
 ${config.generateArticle ? '- Advisory Directive: "generateArticle": true is set in .portfolio.json. The developer signals an article may be desired, but YOU MUST INDEPENDENTLY VERIFY whether this commit has genuine technical depth and architecture worthy of an article. If routine or minor, keep articleAction: "none".' : ''}
-- If you need to assess cumulative momentum against recent milestones, call "fetch_project_history_digest".
-- If this commit fundamentally evolves an existing architecture article, call "fetch_article_by_slug" to verify the article\'s existing content. Set "targetArticleSlug" to that article\'s slug and describe the delta in "articleRationale".
+- If you need to assess cumulative momentum against recent milestones or inspect existing articles, call "fetch_project_history_digest".
+- CRITICAL ANTI-HALLUCINATION INVARIANT FOR ARTICLES:
+  * You MUST NEVER invent, guess, or fabricate an article slug for "targetArticleSlug".
+  * Set articleAction to "update_article" ONLY IF you first verified an existing published article by invoking "fetch_project_history_digest" or "fetch_article_by_slug" and confirmed that article exists in Sanity Lake.
+  * If no verified existing article is found in Sanity Lake to update, choose "create_article" (if landmark milestone) or "none".
 - Landmark Milestone Thresholds:
   * "create_article": ONLY when this commit culminates a major milestone not covered by existing articles.
-  * "update_article": ONLY when this commit fundamentally modifies or evolves an architecture described in an EXISTING article.
+  * "update_article": ONLY when this commit fundamentally modifies or evolves an architecture described in an EXISTING article verified via tools.
   * "none": For standard features, bug fixes, routine refactors, and minor iterations that belong in WorkLogs only.
 - Return valid JSON matching schema.
 `;

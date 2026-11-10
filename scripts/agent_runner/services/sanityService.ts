@@ -46,6 +46,149 @@ export function getGuardedSanityClient() {
   return createGuardedSanityClient(rawClient);
 }
 
+export interface ExistingProjectMatch {
+  _id: string;
+  title: string;
+  slug: string;
+  repository?: string;
+  matchedBy: 'slug' | 'repository' | 'id';
+}
+
+/**
+ * Repository-Aware Project Discovery
+ * Searches Sanity Lake by candidate slug, document ID, or repository URL.
+ * Prevents creating duplicate projects when a slug is renamed or updated in .portfolio.json.
+ */
+export async function findExistingProject(
+  targetRepo?: string,
+  candidateSlug?: string
+): Promise<ExistingProjectMatch | null> {
+  const client = getGuardedSanityClient();
+  const repoName = targetRepo ? targetRepo.split('/')[1] || targetRepo : '';
+
+  // 1. Try exact slug match
+  if (candidateSlug) {
+    try {
+      const bySlug = await client.fetch<{ _id: string; title: string; slug: { current: string }; repository?: string } | null>(
+        `*[_type == "project" && (slug.current == $slug || _id == $projId || _id == $draftProjId)][0]{
+          _id,
+          title,
+          slug,
+          repository
+        }`,
+        {
+          slug: candidateSlug,
+          projId: `project-${candidateSlug}`,
+          draftProjId: `drafts.project-${candidateSlug}`,
+        }
+      );
+      if (bySlug?._id && bySlug.slug?.current) {
+        return {
+          _id: bySlug._id.replace(/^drafts\./, ''),
+          title: bySlug.title || candidateSlug,
+          slug: bySlug.slug.current,
+          repository: bySlug.repository,
+          matchedBy: 'slug',
+        };
+      }
+    } catch (err) {
+      console.warn('[SanityService] findExistingProject (slug) query error:', err);
+    }
+  }
+
+  // 2. Try repository URL / repo name match
+  if (targetRepo) {
+    try {
+      const byRepo = await client.fetch<{ _id: string; title: string; slug: { current: string }; repository?: string } | null>(
+        `*[_type == "project" && (
+          repository match $targetRepo ||
+          (defined(repository) && repository match $repoName)
+        )][0]{
+          _id,
+          title,
+          slug,
+          repository
+        }`,
+        {
+          targetRepo,
+          repoName: `*${repoName}*`,
+        }
+      );
+
+      if (byRepo?._id && byRepo.slug?.current) {
+        return {
+          _id: byRepo._id.replace(/^drafts\./, ''),
+          title: byRepo.title || candidateSlug || 'Existing Project',
+          slug: byRepo.slug.current,
+          repository: byRepo.repository,
+          matchedBy: 'repository',
+        };
+      }
+    } catch (err) {
+      console.warn('[SanityService] findExistingProject (repo) query error:', err);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Autonomous Project Slug & Children Migration Engine
+ * Atomically updates the project document's slug in Sanity Lake and cascades
+ * the new slug across all associated workLog and article documents.
+ */
+export async function migrateProjectSlug(
+  projectId: string,
+  oldSlug: string,
+  newSlug: string
+): Promise<{ updatedCount: number; newSlug: string }> {
+  const client = getGuardedSanityClient();
+  const canonicalProjId = projectId.replace(/^drafts\./, '');
+
+  console.log(`[SanityService] 🔄 Initiating atomic slug migration for project [${canonicalProjId}]: "${oldSlug}" -> "${newSlug}"...`);
+
+  // Query all child worklogs and articles referencing this project or old slug
+  const children = await client.fetch<Array<{ _id: string; _type: string }>>(
+    `*[_type in ["workLog", "article"] && (
+      project._ref == $projId ||
+      project._ref == $draftProjId ||
+      projectSlug == $oldSlug
+    )]{ _id, _type }`,
+    {
+      projId: canonicalProjId,
+      draftProjId: `drafts.${canonicalProjId}`,
+      oldSlug,
+    }
+  );
+
+  const tx = client.transaction();
+
+  // Patch the published project document
+  tx.patch(canonicalProjId, (p) => p.set({ slug: { _type: 'slug', current: newSlug } }));
+
+  // Patch draft project document if it exists
+  try {
+    const draftDoc = await client.getDocument(`drafts.${canonicalProjId}`);
+    if (draftDoc) {
+      tx.patch(`drafts.${canonicalProjId}`, (p) => p.set({ slug: { _type: 'slug', current: newSlug } }));
+    }
+  } catch {
+    // Draft project doesn't exist, proceed
+  }
+
+  // Update denormalized projectSlug fields on child documents
+  for (const child of children) {
+    tx.patch(child._id, (p) => p.set({ projectSlug: newSlug }));
+  }
+
+  await tx.commit();
+  console.log(
+    `[SanityService] ✅ Successfully migrated project [${canonicalProjId}] slug to "${newSlug}". Updated ${children.length} child document(s).`
+  );
+
+  return { updatedCount: children.length, newSlug };
+}
+
 /**
  * Retrieves chronological project milestone memory & existing article topics
  * via project-isolated GROQ tool.
@@ -82,22 +225,15 @@ export async function persistDevLogToSanity(
   let reviewAlertRequired = false;
 
   try {
-    const parent = await client.fetch<{ _id: string } | null>(
-      `*[_type == "project" && (slug.current == $slug || _id == $projId || _id == $draftProjId)][0]{_id}`,
-      {
-        slug: config.projectSlug,
-        projId: `project-${config.projectSlug}`,
-        draftProjId: `drafts.project-${config.projectSlug}`,
-      }
-    );
+    const parent = await findExistingProject(targetRepo, config.projectSlug);
 
     if (parent?._id) {
-      projectIdRef = parent._id.replace(/^drafts\./, '');
-      console.log(`[SanityService] Found parent project ID: ${projectIdRef}`);
+      projectIdRef = parent._id;
+      console.log(`[SanityService] Found parent project ID: ${projectIdRef} (matched by ${parent.matchedBy}, slug: "${parent.slug}")`);
     } else {
       // Human Review Gate: Project is published to Content Lake to establish solid referential integrity,
       // but flagged with 'hidden: true' so it is completely invisible on the public site until reviewed.
-      console.log(`[SanityService] No project found matching slug '${config.projectSlug}'.`);
+      console.log(`[SanityService] No project found matching slug '${config.projectSlug}' or repo '${targetRepo}'.`);
       console.log(`[SanityService] Creating new Project ('project-${config.projectSlug}') with hidden: true for human review...`);
 
       const projectPayload = buildProjectPayload(

@@ -17,6 +17,7 @@ export const TriageResponseSchema = z.object({
   suggestedBadge: z.string().default('Engineering'),
   suggestedProjectTitle: z.string().optional(),
   suggestedCategory: z.string().optional(),
+  resolvedProjectSlug: z.string().optional(),
   articleAction: z.enum(['none', 'create_article', 'update_article']).default('none'),
   targetArticleSlug: z.string().optional(),
   articleRationale: z.string().optional(),
@@ -51,6 +52,10 @@ export const GEMINI_TRIAGE_RESPONSE_SCHEMA = {
     suggestedCategory: {
       type: 'STRING',
       description: 'High-level project category (e.g. CLI Tool, Full-Stack Web, AI / Machine Learning, Infrastructure)',
+    },
+    resolvedProjectSlug: {
+      type: 'STRING',
+      description: 'Canonical Sanity project slug confirmed or matched via fetch_sanity_projects',
     },
     articleAction: {
       type: 'STRING',

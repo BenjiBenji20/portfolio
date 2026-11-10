@@ -14,7 +14,9 @@ import {
   persistArticleDraftToSanity,
   persistArticlePatchToSanity,
   getArticleBySlug,
+  getGuardedSanityClient,
 } from './services/sanityService';
+import type { ToolContext } from './agentic_tools/toolRegistry';
 import type { RunnerInputs } from './types';
 
 /**
@@ -100,24 +102,25 @@ export async function runAgenticDevlog() {
 
   const effectiveTitle = inputs.prTitle || gitContext.commitMessage.split('\n')[0] || 'Engineering Update';
 
-  // 3. Fetch Project History Digest (Ultra-lightweight memory of past milestones & articles)
+  // 3. Autonomous Tool Context Setup (Sandboxed to Project Scope)
   const projectSlugCandidate =
     config.projectSlug ||
     (config.projectTitle
       ? config.projectTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
       : inputs.targetRepo.split('/')[1]);
 
-  const historyDigest = await getProjectHistory(projectSlugCandidate);
-  if (historyDigest.recentWorkLogs.length > 0 || historyDigest.existingArticles.length > 0) {
-    console.log(
-      `[Runner] Loaded history for "${projectSlugCandidate}": ${historyDigest.recentWorkLogs.length} previous worklog(s), ${historyDigest.existingArticles.length} published article(s).`
-    );
-  } else {
-    console.log(`[Runner] Initial project context: 0 previous worklogs for "${projectSlugCandidate}".`);
-  }
+  const client = getGuardedSanityClient();
 
-  // 4. Prompt 1: Tier 3 Editorial Triage Gate with Cumulative Milestone Evaluation
-  const triage = await evaluateEditorialTriage(effectiveTitle, gitContext, config, historyDigest);
+  const toolContext: ToolContext = {
+    targetRepo: inputs.targetRepo,
+    commitSha: inputs.commitSha,
+    projectSlug: projectSlugCandidate,
+    sanityClient: client,
+    repoRoot: process.cwd(),
+  };
+
+  // 4. Prompt 1: Stage 1 Autonomous Editorial Triage Gate (Tool-Enabled)
+  const triage = await evaluateEditorialTriage(effectiveTitle, gitContext, config, toolContext);
   console.log(`[Runner] Triage Result: Score ${triage.score}/10 | Publishable: ${triage.publishable}`);
   console.log(`[Runner] AI Agent's Rationale: ${triage.rationale}`);
   if (triage.articleAction && triage.articleAction !== 'none') {
@@ -127,6 +130,13 @@ export async function runAgenticDevlog() {
     if (triage.articleRationale) {
       console.log(`[Runner] Article Rationale: ${triage.articleRationale}`);
     }
+  }
+
+  // Autonomous Project Slug Resolution: If the agent resolved a canonical slug via fetch_sanity_projects, adopt it
+  if (triage.resolvedProjectSlug && triage.resolvedProjectSlug !== config.projectSlug) {
+    console.log(`[Runner] Agent autonomously resolved canonical project slug: "${triage.resolvedProjectSlug}"`);
+    config.projectSlug = triage.resolvedProjectSlug;
+    toolContext.projectSlug = triage.resolvedProjectSlug;
   }
 
   // Autonomous Agent Resolution: If projectTitle, projectSlug, or category were omitted by human, adopt agent's synthesis
@@ -164,6 +174,8 @@ export async function runAgenticDevlog() {
   }
 
   // 7. Stage 3: Cross-Referenced Holistic Synthesis (Reduce Stage)
+  const effectiveSlug = config.projectSlug || projectSlugCandidate;
+  const historyDigest = await getProjectHistory(effectiveSlug);
   const synthesis = await synthesizeDevLog(effectiveTitle, gitContext, config, triage, fileSummaries, historyDigest);
   console.log(`[Runner] Synthesized DevLog: "${synthesis.title}" [${synthesis.badge}]`);
 
@@ -208,7 +220,7 @@ export async function runAgenticDevlog() {
   } else if (triage.articleAction === 'update_article' && triage.targetArticleSlug) {
     console.log(`\n[Runner] 🔄 Architectural Delta Detected -> Updating Article "${triage.targetArticleSlug}"...`);
     try {
-      const existingArticle = await getArticleBySlug(triage.targetArticleSlug);
+      const existingArticle = await getArticleBySlug(triage.targetArticleSlug, config.projectSlug);
       const patchSynthesis = await synthesizeArticlePatch(
         triage.targetArticleSlug,
         existingArticle,

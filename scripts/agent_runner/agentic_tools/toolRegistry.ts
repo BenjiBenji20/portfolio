@@ -1,5 +1,10 @@
 import type { SanityClient } from 'next-sanity';
-import { projectHistoryDigestTool, articleBySlugTool } from './sanityGroqTool';
+import {
+  projectHistoryDigestTool,
+  articleBySlugTool,
+  sanityProjectsTool,
+} from './sanityGroqTool';
+import { readRepositoryFileTool } from './repositoryTool';
 
 /**
  * Standardized Agentic Tool Calling Registry
@@ -9,16 +14,20 @@ import { projectHistoryDigestTool, articleBySlugTool } from './sanityGroqTool';
  * matching OpenAI / Google Gemini function calling specifications.
  */
 
+export type ToolScope = 'triage' | 'synthesis' | 'all';
+
 export interface ToolContext {
   targetRepo?: string;
   commitSha?: string;
   projectSlug?: string;
   sanityClient?: SanityClient;
+  repoRoot?: string;
 }
 
 export interface AgenticToolDeclaration<TArgs = Record<string, unknown>, TResult = unknown> {
   name: string;
   description: string;
+  scopes?: ToolScope[];
   parameters: {
     type: 'object';
     properties: Record<
@@ -36,61 +45,13 @@ export interface AgenticToolDeclaration<TArgs = Record<string, unknown>, TResult
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const AGENTIC_TOOL_REGISTRY: Record<string, AgenticToolDeclaration<any, any>> = {
-  // Concrete Registered Tools: Sanity Content Lake Queries
+  // Sanity Content Lake Tools
   fetch_project_history_digest: projectHistoryDigestTool,
   fetch_article_by_slug: articleBySlugTool,
+  fetch_sanity_projects: sanityProjectsTool,
 
-  // Tool 1: YouTube Channel Video Fetcher & Embedder (Pre-wired stub)
-  fetch_youtube_video: {
-    name: 'fetch_youtube_video',
-    description: 'Searches developer YouTube channel metadata for relevant feature demonstrations or project walkthroughs.',
-    parameters: {
-      type: 'object',
-      properties: {
-        searchQuery: { type: 'string', description: 'Keywords describing the feature demonstration' },
-      },
-      required: ['searchQuery'],
-    },
-    execute: async (args: { searchQuery?: string }) => {
-      console.log(`[Tool 1: YouTube Matcher] Executing search for: ${args?.searchQuery}`);
-      return { matchFound: false, videoUrl: null };
-    },
-  },
-
-  // Tool 4: Repository Full-File & Architecture Reader (Pre-wired stub)
-  read_repository_full_file: {
-    name: 'read_repository_full_file',
-    description: 'Fetches the complete contents of a source file from the tracked repository when the diff is insufficient.',
-    parameters: {
-      type: 'object',
-      properties: {
-        filePath: { type: 'string', description: 'Path to source file in repo (e.g. src/auth/session.py)' },
-      },
-      required: ['filePath'],
-    },
-    execute: async (args: { filePath?: string }, context: ToolContext) => {
-      console.log(`[Tool 4: File Reader] Fetching ${args?.filePath} from ${context.targetRepo}...`);
-      return { content: `// File content for ${args?.filePath}` };
-    },
-  },
-
-  // Tool 5: Historical Commit & Blame Inspector (Pre-wired stub)
-  inspect_git_history: {
-    name: 'inspect_git_history',
-    description: 'Inspects recent git commit logs and file evolution across sequential commits.',
-    parameters: {
-      type: 'object',
-      properties: {
-        filePath: { type: 'string', description: 'Path to target source file' },
-        limit: { type: 'number', description: 'Number of past commits to inspect' },
-      },
-      required: ['filePath'],
-    },
-    execute: async (args: { filePath?: string }) => {
-      console.log(`[Tool 5: Git History] Inspecting history for: ${args?.filePath}`);
-      return { commits: [] };
-    },
-  },
+  // Repository Inspection Tools
+  read_repository_file: readRepositoryFileTool,
 };
 
 /**
@@ -106,7 +67,7 @@ export function getAgenticTool(name: string): AgenticToolDeclaration | undefined
  */
 export async function executeAgenticTool<TResult = unknown>(
   name: string,
-  args: Record<string, unknown>,
+  args: Record<string, unknown> = {},
   context: ToolContext = {}
 ): Promise<TResult> {
   const tool = getAgenticTool(name);
@@ -114,6 +75,80 @@ export async function executeAgenticTool<TResult = unknown>(
     throw new Error(`[ToolRegistry] Tool "${name}" is not registered in AGENTIC_TOOL_REGISTRY.`);
   }
 
-  return (await tool.execute(args, context)) as TResult;
+  try {
+    return (await tool.execute(args, context)) as TResult;
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.warn(`[ToolRegistry] Tool "${name}" threw execution error: ${errorMsg}`);
+    // Return structured error object so LLM can adapt instead of crashing the runner
+    return {
+      status: 'error',
+      tool: name,
+      message: errorMsg,
+    } as unknown as TResult;
+  }
 }
 
+/**
+ * Generates an OpenAPI / Gemini SDK-compatible function declarations array.
+ * Filtered by execution scope (e.g. 'triage' vs 'synthesis').
+ */
+export function getGeminiFunctionDeclarations(scope?: ToolScope): Array<{
+  name: string;
+  description: string;
+  parameters: {
+    type: string;
+    properties: Record<string, { type: string; description?: string; enum?: readonly string[] }>;
+    required: string[];
+  };
+}> {
+  const filteredTools = Object.values(AGENTIC_TOOL_REGISTRY).filter((tool) => {
+    if (!scope || scope === 'all') return true;
+    if (!tool.scopes || tool.scopes.includes('all')) return true;
+    return tool.scopes.includes(scope);
+  });
+
+  return filteredTools.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    parameters: {
+      type: 'OBJECT',
+      properties: Object.fromEntries(
+        Object.entries(tool.parameters.properties).map(([key, val]) => [
+          key,
+          {
+            type: val.type.toUpperCase(),
+            description: val.description,
+            ...(val.enum ? { enum: val.enum } : {}),
+          },
+        ])
+      ),
+      required: tool.parameters.required,
+    },
+  }));
+}
+
+/**
+ * Generates an explicit, programmatic prompt manifest detailing available tools,
+ * their descriptions, and parameter contracts for dynamic prompt injection.
+ */
+export function getAgenticToolManifestPrompt(scope?: ToolScope): string {
+  const filteredTools = Object.values(AGENTIC_TOOL_REGISTRY).filter((tool) => {
+    if (!scope || scope === 'all') return true;
+    if (!tool.scopes || tool.scopes.includes('all')) return true;
+    return tool.scopes.includes(scope);
+  });
+
+  const toolEntries = filteredTools.map((tool) => {
+    const paramsList = Object.entries(tool.parameters.properties)
+      .map(
+        ([paramKey, paramVal]) =>
+          `  * \`${paramKey}\` (${paramVal.type}${tool.parameters.required.includes(paramKey) ? ', required' : ', optional'}): ${paramVal.description || 'No description provided'}`
+      )
+      .join('\n');
+
+    return `### Tool: \`${tool.name}\`\nDescription: ${tool.description}\nParameters:\n${paramsList || '  * (No parameters required)'}`;
+  });
+
+  return `AVAILABLE AGENTIC TOOLS & CONTRACTS:\n\n${toolEntries.join('\n\n')}`;
+}

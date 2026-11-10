@@ -241,14 +241,15 @@ export async function persistDevLogToSanity(
 
 /**
  * Retrieves full article details by slug for patch synthesis.
+ * Sandboxed to projectSlug if provided.
  */
-export async function getArticleBySlug(slug: string): Promise<FullArticleData | null> {
+export async function getArticleBySlug(slug: string, projectSlug?: string): Promise<FullArticleData | null> {
   try {
     const client = getGuardedSanityClient();
     return await executeAgenticTool<FullArticleData | null>(
       'fetch_article_by_slug',
       { slug },
-      { sanityClient: client }
+      { sanityClient: client, projectSlug }
     );
   } catch (err) {
     console.warn(`[SanityService] getArticleBySlug failed for "${slug}":`, err);

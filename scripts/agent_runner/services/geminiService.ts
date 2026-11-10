@@ -31,6 +31,13 @@ import {
   SANITY_ARTICLE_SCHEMA_CONTEXT_PROMPT,
   MERMAID_DIAGRAM_FORMAT_PROMPT,
 } from '../utils/schemaContext';
+import {
+  executeAgenticTool,
+  getGeminiFunctionDeclarations,
+  getAgenticToolManifestPrompt,
+  type ToolContext,
+  type ToolScope,
+} from '../agentic_tools/toolRegistry';
 
 /**
  * Service to execute Gemini 3-Stage Map-Reduce Pipeline with strict SDK-level responseSchema,
@@ -43,18 +50,55 @@ import {
 const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const FALLBACK_MODELS = ['gemini-3.1-pro-preview', 'gemini-3.6-flash', 'gemini-3.1-pro'];
 
-async function callGemini(
-  prompt: string,
-  systemInstruction?: string,
-  temperature = 0.2,
-  responseSchema?: Record<string, unknown>,
-  taskName = 'GeminiCall',
-  modelName = PRIMARY_MODEL
-): Promise<string> {
+export interface GeminiPart {
+  text?: string;
+  functionCall?: {
+    name: string;
+    args: Record<string, unknown>;
+  };
+  functionResponse?: {
+    name: string;
+    response: {
+      name: string;
+      content: unknown;
+    };
+  };
+}
+
+export interface GeminiMessage {
+  role: 'user' | 'model';
+  parts: GeminiPart[];
+}
+
+export interface CallGeminiOptions {
+  contents: GeminiMessage[];
+  systemInstruction?: string;
+  tools?: Array<{ functionDeclarations: unknown[] }>;
+  temperature?: number;
+  responseSchema?: Record<string, unknown>;
+  taskName?: string;
+  modelName?: string;
+}
+
+export interface GeminiCallResponse {
+  rawJson: Record<string, unknown>;
+  text?: string;
+  functionCalls?: Array<{ name: string; args: Record<string, unknown> }>;
+  candidateParts?: GeminiPart[];
+}
+
+/**
+ * Universal Gemini API Dispatcher with Sliding-Window Rate Limit Guardrails
+ */
+async function callGeminiWithContents(options: CallGeminiOptions): Promise<GeminiCallResponse> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('[GeminiService] Missing GEMINI_API_KEY environment variable.');
   }
+
+  const taskName = options.taskName || 'GeminiCall';
+  const modelName = options.modelName || PRIMARY_MODEL;
+  const temperature = options.temperature ?? 0.2;
 
   // Enforce sliding-window rate limit guardrail before dispatching request
   await geminiQuotaGuardrail.waitForAvailableSlot(taskName);
@@ -62,20 +106,25 @@ async function callGemini(
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   const bodyPayload: Record<string, unknown> = {
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    contents: options.contents,
     generationConfig: {
-      responseMimeType: 'application/json',
       temperature,
       maxOutputTokens: 8192,
-      ...(responseSchema ? { responseSchema } : {}),
+      ...(options.responseSchema
+        ? { responseMimeType: 'application/json', responseSchema: options.responseSchema }
+        : {}),
     },
   };
 
-  if (systemInstruction) {
+  if (options.systemInstruction) {
     bodyPayload.systemInstruction = {
       role: 'system',
-      parts: [{ text: systemInstruction }],
+      parts: [{ text: options.systemInstruction }],
     };
+  }
+
+  if (options.tools && options.tools.length > 0) {
+    bodyPayload.tools = options.tools;
   }
 
   let res: Response;
@@ -104,12 +153,46 @@ async function callGemini(
   }
 
   const json = await res.json();
-  const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new Error(`[GeminiService] Empty response from Gemini API: ${JSON.stringify(json)}`);
+  const candidate = json.candidates?.[0];
+  const parts: GeminiPart[] = candidate?.content?.parts || [];
+
+  const textParts = parts.filter((p) => p.text).map((p) => p.text as string);
+  const text = textParts.length > 0 ? textParts.join('\n') : undefined;
+
+  const functionCalls = parts
+    .filter((p) => p.functionCall && p.functionCall.name)
+    .map((p) => p.functionCall as { name: string; args: Record<string, unknown> });
+
+  return {
+    rawJson: json,
+    text,
+    functionCalls,
+    candidateParts: parts,
+  };
+}
+
+async function callGemini(
+  prompt: string,
+  systemInstruction?: string,
+  temperature = 0.2,
+  responseSchema?: Record<string, unknown>,
+  taskName = 'GeminiCall',
+  modelName = PRIMARY_MODEL
+): Promise<string> {
+  const res = await callGeminiWithContents({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    systemInstruction,
+    temperature,
+    responseSchema,
+    taskName,
+    modelName,
+  });
+
+  if (!res.text) {
+    throw new Error(`[GeminiService] Empty response from Gemini API: ${JSON.stringify(res.rawJson)}`);
   }
 
-  return text;
+  return res.text;
 }
 
 /**
@@ -259,33 +342,224 @@ CORRECTION INSTRUCTIONS:
   );
 }
 
+export interface AutonomousLoopResult<T> {
+  data: T;
+  executedToolCalls: Array<{ name: string; args: Record<string, unknown>; result: unknown }>;
+  resolvedProjectSlug?: string;
+}
+
 /**
- * Stage 1: Lightweight Editorial Triage Gate
- * Analyzes git diff --stat + commit/PR metadata with minimal token overhead (< 1.5s execution)
+ * Bounded Autonomous Tool Loop Engine
+ * 
+ * Orchestrates multi-turn autonomous tool inquiries with parallel tool execution (Promise.all),
+ * turn budgeting (default max 2 turns), token-conscious projections, project-scope sandboxing,
+ * and sliding-window rate limit guardrails. Final synthesis guarantees strict Zod schema conformance.
+ */
+async function executeAutonomousToolLoop<T>(
+  taskName: string,
+  initialPrompt: string,
+  systemInstruction: string,
+  zodSchema: z.ZodType<T>,
+  geminiSchema: Record<string, unknown>,
+  toolScope: ToolScope,
+  toolContext: ToolContext,
+  maxToolTurns = 2,
+  preferredModel?: string
+): Promise<AutonomousLoopResult<T>> {
+  let activeModel = preferredModel || PRIMARY_MODEL;
+  let fallbackIndex = 0;
+
+  const functionDeclarations = getGeminiFunctionDeclarations(toolScope);
+  const toolManifest = getAgenticToolManifestPrompt(toolScope);
+
+  const augmentedSystemInstruction = `${systemInstruction}
+
+${toolManifest}
+
+AUTONOMOUS TOOL CALLING PROTOCOL:
+- You have access to the registered tools declared above matching the OpenAPI function declarations.
+- If you need to inspect historical milestones to gauge cumulative momentum, invoke "fetch_project_history_digest".
+- If you need to verify or resolve the project slug against registered Sanity projects, invoke "fetch_sanity_projects".
+- If a diffStat is ambiguous or too narrow to understand imports/types/architecture, invoke "read_repository_file".
+- If this commit evolves an existing article, invoke "fetch_article_by_slug".
+- FAST PATH: If the commit is clearly routine, self-contained, or does not require external context, do NOT call any tools. Provide your decision directly.
+- PROJECT SANDBOX: You are strictly sandboxed to the active project ("${toolContext.projectSlug || 'active repository'}"). Never inspect or target unrelated projects.
+`;
+
+  const conversationContents: GeminiMessage[] = [
+    { role: 'user', parts: [{ text: initialPrompt }] },
+  ];
+
+  const executedToolCalls: Array<{ name: string; args: Record<string, unknown>; result: unknown }> = [];
+
+  // 1. Inquiry Phase (Bounded Tool Turns)
+  for (let turn = 1; turn <= maxToolTurns; turn++) {
+    const turnTaskName = `${taskName}-Inquiry-Turn${turn}`;
+    console.log(`[GeminiService] [${taskName}] Executing Turn ${turn}/${maxToolTurns} (${activeModel})...`);
+
+    let toolTurnRes: GeminiCallResponse;
+    try {
+      toolTurnRes = await callGeminiWithContents({
+        contents: conversationContents,
+        systemInstruction: augmentedSystemInstruction,
+        tools: [{ functionDeclarations }],
+        temperature: 0.2,
+        taskName: turnTaskName,
+        modelName: activeModel,
+      });
+    } catch (turnErr) {
+      console.warn(`[GeminiService] [${taskName}] Inquiry Turn ${turn} failed:`, turnErr);
+      if (fallbackIndex < FALLBACK_MODELS.length) {
+        activeModel = FALLBACK_MODELS[fallbackIndex++];
+        console.warn(`[GeminiService] [${taskName}] Rotating model to ${activeModel}...`);
+      }
+      break;
+    }
+
+    const functionCalls = toolTurnRes.functionCalls || [];
+
+    if (functionCalls.length === 0) {
+      // Fast path: model did not call any tools
+      if (toolTurnRes.text) {
+        const diagnostics = extractZodDiagnostics(toolTurnRes.text, zodSchema);
+        if (diagnostics.valid && diagnostics.data) {
+          console.log(`[GeminiService] [${taskName}] Fast-path completed in Turn 1! Schema verified.`);
+          return {
+            data: diagnostics.data,
+            executedToolCalls,
+            resolvedProjectSlug: (diagnostics.data as Record<string, unknown>).resolvedProjectSlug as string | undefined || toolContext.projectSlug,
+          };
+        }
+      }
+      if (toolTurnRes.candidateParts && toolTurnRes.candidateParts.length > 0) {
+        conversationContents.push({ role: 'model', parts: toolTurnRes.candidateParts });
+      }
+      break;
+    }
+
+    // Parallel Execution of All Requested Tools in this Turn
+    console.log(
+      `[GeminiService] [${taskName}] Turn ${turn}: Autonomous tool call(s) requested: [${functionCalls.map((f) => f.name).join(', ')}]`
+    );
+
+    if (toolTurnRes.candidateParts && toolTurnRes.candidateParts.length > 0) {
+      conversationContents.push({ role: 'model', parts: toolTurnRes.candidateParts });
+    }
+
+    const toolResponseParts: GeminiPart[] = [];
+    for (const fc of functionCalls) {
+      const toolResult = await executeAgenticTool(fc.name, fc.args, toolContext);
+      executedToolCalls.push({ name: fc.name, args: fc.args, result: toolResult });
+
+      if (fc.name === 'fetch_sanity_projects' && Array.isArray(toolResult)) {
+        console.log(`[GeminiService] [${taskName}] Loaded ${toolResult.length} registered project(s) from Sanity Lake.`);
+      }
+
+      toolResponseParts.push({
+        functionResponse: {
+          name: fc.name,
+          response: {
+            name: fc.name,
+            content: toolResult,
+          },
+        },
+      });
+    }
+
+    conversationContents.push({ role: 'user', parts: toolResponseParts });
+  }
+
+  // 2. Final Structured Synthesis Turn (Self-Healing Loop with responseSchema)
+  console.log(`[GeminiService] [${taskName}] Synthesizing final structured response (${activeModel})...`);
+
+  conversationContents.push({
+    role: 'user',
+    parts: [
+      {
+        text: 'All requested tool inquiries are complete. Now synthesize your final decision. Return strictly valid JSON matching the required schema.',
+      },
+    ],
+  });
+
+  const maxRetries = 3;
+  let lastRawOutput = '';
+  let lastErrorReport = '';
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const isRetry = attempt > 1;
+    const currentTaskName = `${taskName}-Synthesis-Attempt${attempt}`;
+    const temp = attempt === 1 ? 0.1 : 0.0;
+
+    try {
+      const synthRes = await callGeminiWithContents({
+        contents: conversationContents,
+        systemInstruction,
+        temperature: temp,
+        responseSchema: geminiSchema,
+        taskName: currentTaskName,
+        modelName: activeModel,
+      });
+
+      lastRawOutput = synthRes.text || '';
+      const diagnostics = extractZodDiagnostics(lastRawOutput, zodSchema);
+
+      if (diagnostics.valid && diagnostics.data) {
+        if (isRetry) {
+          console.log(`[GeminiService] [${taskName}] Successful on retry ${attempt}!`);
+        }
+        return {
+          data: diagnostics.data,
+          executedToolCalls,
+          resolvedProjectSlug: (diagnostics.data as Record<string, unknown>).resolvedProjectSlug as string | undefined || toolContext.projectSlug,
+        };
+      }
+
+      lastErrorReport = diagnostics.errorReport || 'Unknown schema validation error';
+      console.warn(`[GeminiService] [${taskName}] Schema validation failed on attempt ${attempt}:\n${lastErrorReport}`);
+
+      if (attempt >= 2 && fallbackIndex < FALLBACK_MODELS.length) {
+        activeModel = FALLBACK_MODELS[fallbackIndex++];
+        console.warn(`[GeminiService] [${taskName}] Failing over to model ${activeModel}...`);
+      }
+
+      conversationContents.push({
+        role: 'user',
+        parts: [
+          {
+            text: `Your previous response failed schema validation:\n${lastErrorReport}\nReturn ONLY valid JSON conforming exactly to the required schema.`,
+          },
+        ],
+      });
+    } catch (apiErr) {
+      console.error(`[GeminiService] [${taskName}] Synthesis attempt ${attempt} failed:`, apiErr);
+      if (attempt === maxRetries) throw apiErr;
+      if (fallbackIndex < FALLBACK_MODELS.length) {
+        activeModel = FALLBACK_MODELS[fallbackIndex++];
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+
+  throw new Error(
+    `[GeminiService] [${taskName}] Autonomous tool loop failed after ${maxRetries} synthesis attempts. Diagnostics:\n${lastErrorReport}\nOutput:\n${lastRawOutput}`
+  );
+}
+
+/**
+ * Stage 1: Autonomous Editorial Triage Gate
+ * Analyzes git diff --stat + commit/PR metadata with autonomous tool calling capability
  */
 export async function evaluateEditorialTriage(
   prTitle: string,
   gitContext: GitHubContext,
   config: ValidatedPortfolioConfig,
-  historyDigest?: ProjectHistoryDigest
+  toolContext: ToolContext = {}
 ): Promise<TriageResult> {
-  console.log('[GeminiService] Running Stage 1: Lightweight Editorial Triage Gate (Stat-enforced)...');
+  console.log('[GeminiService] Running Stage 1: Autonomous Editorial Triage Gate (Tool-Enabled)...');
 
   const titleContext = config.projectTitle
-    ? `for project "${config.projectTitle}"`
-    : `(Project title omitted by developer: please synthesize a suggestedProjectTitle and suggestedCategory based on the repository content)`;
-
-  const historyBlock = historyDigest && historyDigest.recentWorkLogs.length > 0
-    ? `RECENT PROJECT MILESTONES (Chronological Memory for this project):
-${historyDigest.recentWorkLogs.map((l) => `- [${l.date}] (${l.badge}) "${l.title}": ${l.description}`).join('\n')}
-`
-    : 'RECENT PROJECT MILESTONES: No prior milestones recorded (Initial project development).\n';
-
-  const articlesBlock = historyDigest && historyDigest.existingArticles.length > 0
-    ? `EXISTING PUBLISHED ARTICLES FOR THIS PROJECT:
-${historyDigest.existingArticles.map((a) => `- "${a.title}" (slug: "${a.slug}")${a.leadParagraph ? `: ${a.leadParagraph.slice(0, 120)}...` : ''}`).join('\n')}
-`
-    : '';
+    ? `for project "${config.projectTitle}" (candidate slug: "${toolContext.projectSlug || config.projectSlug || 'unknown'}")`
+    : `(Project title omitted: inspect registered projects via "fetch_sanity_projects" or synthesize a suggestedProjectTitle and suggestedCategory based on the repository content)`;
 
   const prompt = `
 Evaluate the engineering significance of this commit/PR ${titleContext}.
@@ -295,12 +569,10 @@ METADATA & SCOPE:
 - PR Description: ${gitContext.prBody || 'None provided'}
 - Primary Commit Message: ${gitContext.commitMessage || 'None provided'}
 - Changed File Count: ${gitContext.changedFiles.length}
+- Target Repository: ${toolContext.targetRepo || 'Active Workspace'}
 
 ${config.projectOverview ? `PROJECT OVERVIEW (Standing Context):\n"${config.projectOverview}"\n` : ''}
 ${config.developerDirective ? `DEVELOPER DIRECTIVE (Current Run Priority):\n"${config.developerDirective}"\n` : ''}
-
-${historyBlock}
-${articlesBlock}
 
 DIFF STAT OVERVIEW:
 \`\`\`text
@@ -311,30 +583,36 @@ TRIAGE EVALUATION RULES:
 - Score 1-4 (REJECT): Routine dependency updates, formatting/linting fixes, minor typo edits, or empty scaffolding.
 - Score 5-6 (BORDERLINE): Minor refactors or simple single-line bug fixes without architectural impact.
 - Score 7-10 (APPROVE): Significant feature additions, new CLI apps, architectural state changes, security hardening, or optimization.
+- Active Project Verification: If .portfolio.json projectSlug is missing or ambiguous, invoke "fetch_sanity_projects" to verify against registered Sanity projects and populate "resolvedProjectSlug".
 ${!config.projectTitle ? '- Missing Project Title: You MUST populate "suggestedProjectTitle" with a clean, professional, human-friendly title based on the code purpose (e.g. "Dead Link Checker CLI", "Oravista Portfolio").' : ''}
 ${!config.category ? '- Missing Category: You MUST populate "suggestedCategory" with a matching domain classification (e.g. "CLI Tool", "Full-Stack Web", "AI / Machine Learning", "Automation", "Infrastructure").' : ''}
 
 CUMULATIVE MILESTONE & ARTICLE EVALUATION:
 ${config.generateArticle ? '- Advisory Directive: "generateArticle": true is set in .portfolio.json. The developer signals an article may be desired, but YOU MUST INDEPENDENTLY VERIFY whether this commit has genuine technical depth and architecture worthy of an article. If routine or minor, keep articleAction: "none".' : ''}
-- Analyze this commit against the RECENT PROJECT MILESTONES listed above to detect cumulative progress.
+- If you need to assess cumulative momentum against recent milestones, call "fetch_project_history_digest".
+- If this commit fundamentally evolves an existing architecture article, call "fetch_article_by_slug" to verify the article\'s existing content. Set "targetArticleSlug" to that article\'s slug and describe the delta in "articleRationale".
 - Landmark Milestone Thresholds:
-  * "create_article": ONLY when this commit culminates a major milestone (e.g. initial production release, breakthrough Architecture, deep Security overhaul, or landmark multi-phase Feature culmination) not covered by existing articles.
-  * "update_article": ONLY when this commit fundamentally modifies or evolves an architecture described in an EXISTING article listed above. Set "targetArticleSlug" to that article\'s slug and describe the architectural delta in "articleRationale".
+  * "create_article": ONLY when this commit culminates a major milestone not covered by existing articles.
+  * "update_article": ONLY when this commit fundamentally modifies or evolves an architecture described in an EXISTING article.
   * "none": For standard features, bug fixes, routine refactors, and minor iterations that belong in WorkLogs only.
 - Return valid JSON matching schema.
 `;
 
-  const systemInstruction = `You are a strict technical lead and editorial gatekeeper. Score rigorously based on real engineering momentum. Do not hallucinate or award high scores to routine housekeeping.`;
+  const systemInstruction = `You are a strict technical lead, systems architect, and editorial gatekeeper. Score rigorously based on real engineering momentum. Do not hallucinate or award high scores to routine housekeeping.`;
 
   try {
-    const validated = await executeWithSelfHealing(
+    const loopResult = await executeAutonomousToolLoop(
       'EditorialTriage',
       prompt,
       systemInstruction,
       TriageResponseSchema,
       GEMINI_TRIAGE_RESPONSE_SCHEMA,
-      4
+      'triage',
+      toolContext,
+      2
     );
+
+    const validated = loopResult.data;
 
     return {
       publishable: validated.publishable,
@@ -343,16 +621,17 @@ ${config.generateArticle ? '- Advisory Directive: "generateArticle": true is set
       suggestedBadge: validated.suggestedBadge,
       suggestedProjectTitle: validated.suggestedProjectTitle,
       suggestedCategory: validated.suggestedCategory,
+      resolvedProjectSlug: validated.resolvedProjectSlug,
       articleAction: validated.articleAction || 'none',
       targetArticleSlug: validated.targetArticleSlug,
       articleRationale: validated.articleRationale,
     };
   } catch (err) {
-    console.warn('[GeminiService] Triage prompt failed after self-healing attempts. Error details:', err);
+    console.warn('[GeminiService] Triage prompt failed after autonomous tool loop. Error details:', err);
     return {
       publishable: true,
       score: 7,
-      rationale: 'Fallback approval due to schema verification error after self-healing',
+      rationale: 'Fallback approval due to schema verification error after autonomous tool loop',
       suggestedBadge: 'Engineering',
       articleAction: 'none',
     };
@@ -788,8 +1067,7 @@ ${SANITY_ARTICLE_SCHEMA_CONTEXT_PROMPT}${mermaidContext}`;
     systemInstruction,
     ArticleSynthesisSchema,
     articleResponseSchema,
-    4,
-    'gemini-2.5-flash'
+    4
   );
 
   return validated;
@@ -874,8 +1152,7 @@ ${SANITY_ARTICLE_SCHEMA_CONTEXT_PROMPT}${mermaidContext}`;
     systemInstruction,
     ArticlePatchSchema,
     patchResponseSchema,
-    4,
-    'gemini-2.5-flash'
+    4
   );
 
   return validated;

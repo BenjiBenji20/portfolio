@@ -128,6 +128,7 @@ export interface TriageResult {
   suggestedBadge?: string;
   suggestedProjectTitle?: string;
   suggestedCategory?: string;
+  resolvedProjectSlug?: string;
   articleAction?: 'none' | 'create_article' | 'update_article';
   targetArticleSlug?: string;
   articleRationale?: string;

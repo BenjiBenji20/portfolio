@@ -55,7 +55,10 @@ jobs:
 
       - name: Run Agentic Writer Runner
         env:
+          PORTFOLIO_REPO_OWNER: ${{ github.repository_owner }}
           GIT_REPO_PAT_TOKEN: ${{ secrets.GIT_REPO_PAT_TOKEN }}
+          GIT_PAT_ORGANIZATION: ${{ secrets.GIT_PAT_ORGANIZATION }}
+          GIT_ORG_PAT_MAP: ${{ secrets.GIT_ORG_PAT_MAP }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
           SANITY_AGENT_RUNNER_TOKEN: ${{ secrets.SANITY_AGENT_RUNNER_TOKEN }}

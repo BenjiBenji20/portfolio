@@ -1,3 +1,5 @@
+import { buildGitHubHeaders, getGitHubReadTokenCandidates } from '../utils/githubTokenResolver';
+
 /**
  * Service to fetch PR metadata, commit details, and raw git diffs from GitHub REST API
  */
@@ -168,6 +170,39 @@ async function fetchSingleCommitMetadata(
   };
 }
 
+async function resolveActiveGitHubHeaders(
+  targetRepo: string,
+  explicitToken?: string
+): Promise<Record<string, string>> {
+  const candidates = getGitHubReadTokenCandidates(targetRepo, explicitToken);
+  if (candidates.length === 0) return buildGitHubHeaders(undefined);
+
+  const hasExplicitOwnerContext = Boolean(
+    explicitToken || process.env.PORTFOLIO_REPO_OWNER || process.env.GITHUB_REPOSITORY_OWNER
+  );
+  if (candidates.length === 1 || hasExplicitOwnerContext) {
+    return buildGitHubHeaders(candidates[0]);
+  }
+
+  for (let i = 0; i < candidates.length - 1; i++) {
+    const candidateHeaders = buildGitHubHeaders(candidates[i]);
+    try {
+      const checkRes = await fetch(`https://api.github.com/repos/${targetRepo}`, {
+        headers: candidateHeaders,
+        signal: AbortSignal.timeout(10000),
+      });
+      if (checkRes.ok) return candidateHeaders;
+      if (checkRes.status !== 401 && checkRes.status !== 403 && checkRes.status !== 404) {
+        return candidateHeaders;
+      }
+    } catch {
+      return candidateHeaders;
+    }
+  }
+
+  return buildGitHubHeaders(candidates[candidates.length - 1]);
+}
+
 export async function fetchGitHubContext(
   targetRepo: string,
   commitSha: string,
@@ -176,15 +211,7 @@ export async function fetchGitHubContext(
   githubToken?: string,
   baseSha?: string
 ): Promise<GitHubContext> {
-  const token = githubToken || process.env.GIT_REPO_PAT_TOKEN || process.env.GITHUB_TOKEN;
-  const headers: Record<string, string> = {
-    'User-Agent': 'Benjineer-Agent-Runner',
-    'X-GitHub-Api-Version': '2022-11-28',
-  };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
+  const headers = await resolveActiveGitHubHeaders(targetRepo, githubToken);
 
   let prBody = '';
   let commitMessage = '';

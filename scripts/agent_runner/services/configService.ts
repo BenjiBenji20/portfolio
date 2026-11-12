@@ -1,4 +1,5 @@
 import { DynamicPortfolioConfigSchema, type ValidatedPortfolioConfig } from '../types';
+import { buildGitHubHeaders, getGitHubReadTokenCandidates } from '../utils/githubTokenResolver';
 
 const IGNORED_TREE_PREFIXES = ['node_modules/', '.git/', 'dist/', 'build/', '.next/', 'venv/', '.venv/'];
 
@@ -27,11 +28,18 @@ async function fetchRepoFileRaw(
   return { ok: res.ok, status: res.status, text };
 }
 
+interface ConfigDiscoveryResult {
+  path: string | null;
+  repoAccessible: boolean;
+  repoStatus?: number;
+}
+
 async function discoverConfigPathInRepo(
   targetRepo: string,
   commitSha: string,
-  headers: Record<string, string>
-): Promise<string | null> {
+  headers: Record<string, string>,
+  isFinalAttempt: boolean
+): Promise<ConfigDiscoveryResult> {
   const jsonHeaders = { ...headers, Accept: 'application/vnd.github+json' };
   const contentsUrl = `https://api.github.com/repos/${targetRepo}/contents?ref=${commitSha}`;
   const listRes = await fetch(contentsUrl, { headers: jsonHeaders, signal: AbortSignal.timeout(30000) });
@@ -44,16 +52,19 @@ async function discoverConfigPathInRepo(
     });
 
     if (!repoCheckRes.ok) {
-      console.error(
-        `[ConfigService] Repository "${targetRepo}" returned HTTP ${repoCheckRes.status}. ` +
-          `If this is a private or external organization repository, verify GIT_REPO_PAT_TOKEN has "Contents: Read" access to "${targetRepo}".`
-      );
-    } else {
-      console.error(
-        `[ConfigService] Failed to list root directory for "${targetRepo}@${commitSha.slice(0, 7)}" (HTTP ${listRes.status}).`
-      );
+      if (isFinalAttempt) {
+        console.error(
+          `[ConfigService] Repository "${targetRepo}" returned HTTP ${repoCheckRes.status}. ` +
+            `If this is a private or organization repository, verify GIT_REPO_PAT_TOKEN (personal) or GIT_PAT_ORGANIZATION (organization) has "Contents: Read" access to "${targetRepo}".`
+        );
+      }
+      return { path: null, repoAccessible: false, repoStatus: repoCheckRes.status };
     }
-    return null;
+
+    console.error(
+      `[ConfigService] Failed to list root directory for "${targetRepo}@${commitSha.slice(0, 7)}" (HTTP ${listRes.status}).`
+    );
+    return { path: null, repoAccessible: true };
   }
 
   const rootItems = (await listRes.json()) as Array<{ name: string; type: string; path: string }>;
@@ -61,7 +72,7 @@ async function discoverConfigPathInRepo(
     (item) => item.type === 'file' && isMatchingPortfolioConfigFile(item.name)
   );
   if (rootCandidate) {
-    return rootCandidate.path;
+    return { path: rootCandidate.path, repoAccessible: true };
   }
 
   // Fallback: Search repository tree for subdirectory *.portfolio.json / portfolio.json
@@ -80,7 +91,7 @@ async function discoverConfigPathInRepo(
         isMatchingPortfolioConfigFile(entry.path)
     );
     if (subCandidate) {
-      return subCandidate.path;
+      return { path: subCandidate.path, repoAccessible: true };
     }
   }
 
@@ -88,7 +99,7 @@ async function discoverConfigPathInRepo(
   console.warn(
     `[ConfigService] Root files inspected at ${commitSha.slice(0, 7)}: [${visibleRootFiles || 'none'}]`
   );
-  return null;
+  return { path: null, repoAccessible: true };
 }
 
 /**
@@ -100,48 +111,63 @@ export async function fetchPortfolioConfig(
   commitSha: string,
   githubToken?: string
 ): Promise<ValidatedPortfolioConfig | null> {
-  const token = githubToken || process.env.GIT_REPO_PAT_TOKEN || process.env.GITHUB_TOKEN;
+  const candidates = getGitHubReadTokenCandidates(targetRepo, githubToken);
+  const attempts: Array<string | undefined> = candidates.length > 0 ? candidates : [undefined];
 
-  const headers: Record<string, string> = {
-    Accept: 'application/vnd.github.raw+json',
-    'User-Agent': 'Benjineer-Agent-Runner',
-    'X-GitHub-Api-Version': '2022-11-28',
-  };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  // 1. First probe standard `.portfolio.json` directly at root (fastest: 1 API call)
+  // 1. Probe standard `.portfolio.json` directly at root, falling back across candidate tokens on auth/404
   console.log(`[ConfigService] Checking for .portfolio.json in ${targetRepo}@${commitSha.slice(0, 7)}...`);
 
   let rawConfigString: string | null = null;
   let matchedConfigPath = '.portfolio.json';
 
   try {
-    const defaultRes = await fetchRepoFileRaw(targetRepo, '.portfolio.json', commitSha, headers);
-    if (defaultRes.ok) {
-      rawConfigString = defaultRes.text;
-    } else if (defaultRes.status === 404) {
-      // 2. Fallback: Search root directory and recursive tree for *.portfolio.json or portfolio.json variants
-      console.log(
-        `[ConfigService] .portfolio.json not found directly. Searching repository for *.portfolio.json / portfolio.json variants...`
-      );
-      const discoveredPath = await discoverConfigPathInRepo(targetRepo, commitSha, headers);
+    for (let i = 0; i < attempts.length; i++) {
+      const isFinalAttempt = i === attempts.length - 1;
+      const headers = buildGitHubHeaders(attempts[i], 'application/vnd.github.raw+json');
+      const defaultRes = await fetchRepoFileRaw(targetRepo, '.portfolio.json', commitSha, headers);
 
-      if (discoveredPath) {
-        console.log(`[ConfigService] Discovered matching config file: "${discoveredPath}". Fetching contents...`);
-        matchedConfigPath = discoveredPath;
-        const candidateRes = await fetchRepoFileRaw(targetRepo, discoveredPath, commitSha, headers);
-        if (candidateRes.ok) {
-          rawConfigString = candidateRes.text;
-        } else {
-          console.error(
-            `[ConfigService] Failed to download "${discoveredPath}" (HTTP ${candidateRes.status}).`
+      if (defaultRes.ok) {
+        rawConfigString = defaultRes.text;
+        break;
+      }
+
+      if (defaultRes.status === 404) {
+        if (i === 0) {
+          console.log(
+            `[ConfigService] .portfolio.json not found directly. Searching repository for *.portfolio.json / portfolio.json variants...`
           );
         }
+        const discovery = await discoverConfigPathInRepo(targetRepo, commitSha, headers, isFinalAttempt);
+
+        if (!discovery.repoAccessible && !isFinalAttempt) {
+          console.warn(
+            `[ConfigService] Token #${i + 1} could not access "${targetRepo}" (HTTP ${discovery.repoStatus}). Retrying with fallback token...`
+          );
+          continue;
+        }
+
+        if (discovery.path) {
+          console.log(`[ConfigService] Discovered matching config file: "${discovery.path}". Fetching contents...`);
+          matchedConfigPath = discovery.path;
+          const candidateRes = await fetchRepoFileRaw(targetRepo, discovery.path, commitSha, headers);
+          if (candidateRes.ok) {
+            rawConfigString = candidateRes.text;
+          } else {
+            console.error(
+              `[ConfigService] Failed to download "${discovery.path}" (HTTP ${candidateRes.status}).`
+            );
+          }
+        }
+        break;
       }
-    } else {
+
+      if ((defaultRes.status === 401 || defaultRes.status === 403) && !isFinalAttempt) {
+        console.warn(
+          `[ConfigService] Token #${i + 1} rejected (HTTP ${defaultRes.status}). Retrying with fallback token...`
+        );
+        continue;
+      }
+
       console.error(`[ConfigService] GitHub API error (HTTP ${defaultRes.status}): ${defaultRes.text}`);
       return null;
     }

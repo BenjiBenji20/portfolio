@@ -304,7 +304,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (pushEvent.before && !pushEvent.before.startsWith('0000000')) {
+    // Do not use an overwritten commit SHA as baseSha on force-pushes (e.g. after git reset --soft)
+    if (pushEvent.before && !pushEvent.before.startsWith('0000000') && !pushEvent.forced) {
       baseSha = pushEvent.before;
     }
 

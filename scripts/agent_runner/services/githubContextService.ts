@@ -95,6 +95,79 @@ function isIgnoredPath(filepath: string, userIgnoreDirs: string[] = []): boolean
   return false;
 }
 
+interface RawGithubFile {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  patch?: string;
+}
+
+function extractTrackedDeltas(
+  rawFiles: RawGithubFile[],
+  ignoreDirectories: string[],
+  analysisLabel: string
+): { changedFiles: string[]; fileDeltas: FileDelta[]; diffStat: string } {
+  const trackedFiles = rawFiles.filter((f) => !isIgnoredPath(f.filename, ignoreDirectories));
+  const ignoredFiles = rawFiles.filter((f) => isIgnoredPath(f.filename, ignoreDirectories));
+
+  const changedFiles = trackedFiles.map((f) => f.filename);
+  const fileDeltas: FileDelta[] = trackedFiles.map((f) => ({
+    filename: f.filename,
+    status: f.status || 'modified',
+    additions: f.additions || 0,
+    deletions: f.deletions || 0,
+    patch: f.patch,
+  }));
+
+  const diffStat = fileDeltas
+    .map((f) => `${f.filename} (+${f.additions}, -${f.deletions}) [${f.status}]`)
+    .join('\n');
+
+  console.log(`[GitHubContext] ${analysisLabel} (${rawFiles.length} total files):`);
+  if (changedFiles.length > 0) {
+    console.log(`[GitHubContext] Tracked files sent to AI Agent (${changedFiles.length}):`);
+    changedFiles.forEach((file: string) => console.log(`   + [TRACKED] ${file}`));
+  } else {
+    console.log(`[GitHubContext] Tracked files sent to AI Agent: (None)`);
+  }
+
+  if (ignoredFiles.length > 0) {
+    console.log(`[GitHubContext] Ignored/excluded files (${ignoredFiles.length}):`);
+    ignoredFiles.forEach((f) => console.log(`   - [IGNORED] ${f.filename}`));
+  }
+
+  return { changedFiles, fileDeltas, diffStat };
+}
+
+async function fetchSingleCommitMetadata(
+  targetRepo: string,
+  commitSha: string,
+  headers: Record<string, string>
+): Promise<{ commitMessage: string; rawFiles: RawGithubFile[] }> {
+  console.log(`[GitHubContext] Fetching single commit ${commitSha.slice(0, 7)} details from ${targetRepo}...`);
+  const commitRes = await fetch(`https://api.github.com/repos/${targetRepo}/commits/${commitSha}`, {
+    headers: { ...headers, Accept: 'application/vnd.github+json' },
+    signal: AbortSignal.timeout(30000), // Balanced 30s timeout
+  });
+
+  if (!commitRes.ok) {
+    console.warn(
+      `[GitHubContext] Single commit fetch failed (HTTP ${commitRes.status}) for ${targetRepo}@${commitSha.slice(0, 7)}.`
+    );
+    return { commitMessage: '', rawFiles: [] };
+  }
+
+  const commitJson = (await commitRes.json()) as {
+    commit?: { message?: string };
+    files?: RawGithubFile[];
+  };
+  return {
+    commitMessage: commitJson.commit?.message || '',
+    rawFiles: Array.isArray(commitJson.files) ? commitJson.files : [],
+  };
+}
+
 export async function fetchGitHubContext(
   targetRepo: string,
   commitSha: string,
@@ -132,7 +205,7 @@ export async function fetchGitHubContext(
       });
 
       if (prRes.ok) {
-        const prJson = await prRes.json();
+        const prJson = (await prRes.json()) as { body?: string };
         prBody = prJson.body || '';
       }
     } catch (err) {
@@ -142,13 +215,8 @@ export async function fetchGitHubContext(
 
   // 2. Fetch commit/range details and file list
   try {
-    interface RawGithubFile {
-      filename: string;
-      status: string;
-      additions: number;
-      deletions: number;
-      patch?: string;
-    }
+    let rawFiles: RawGithubFile[] = [];
+    let analysisLabel = 'Commit File Analysis';
 
     if (isComparisonRange) {
       console.log(
@@ -161,109 +229,67 @@ export async function fetchGitHubContext(
       });
 
       if (compareRes.ok) {
-        const compareJson = await compareRes.json();
-        if (compareJson.commits && Array.isArray(compareJson.commits)) {
+        const compareJson = (await compareRes.json()) as {
+          commits?: Array<{ commit?: { message?: string } }>;
+          files?: RawGithubFile[];
+        };
+        if (Array.isArray(compareJson.commits)) {
           commitMessage = compareJson.commits
-            .map((c: { commit?: { message?: string } }) => c.commit?.message || '')
+            .map((c) => c.commit?.message || '')
             .filter(Boolean)
             .join('\n\n---\n\n');
         }
-
-        if (compareJson.files && Array.isArray(compareJson.files)) {
-          const rawFiles: RawGithubFile[] = compareJson.files;
-          const trackedFiles = rawFiles.filter((f) => !isIgnoredPath(f.filename, ignoreDirectories));
-          const ignoredFiles = rawFiles.filter((f) => isIgnoredPath(f.filename, ignoreDirectories));
-
-          changedFiles = trackedFiles.map((f) => f.filename);
-          fileDeltas = trackedFiles.map((f) => ({
-            filename: f.filename,
-            status: f.status || 'modified',
-            additions: f.additions || 0,
-            deletions: f.deletions || 0,
-            patch: f.patch,
-          }));
-
-          diffStat = fileDeltas
-            .map((f) => `${f.filename} (+${f.additions}, -${f.deletions}) [${f.status}]`)
-            .join('\n');
-
-          console.log(`[GitHubContext] Comparison Range File Analysis (${rawFiles.length} total files across push):`);
-          if (changedFiles.length > 0) {
-            console.log(`[GitHubContext] Tracked files sent to AI Agent (${changedFiles.length}):`);
-            changedFiles.forEach((file: string) => console.log(`   + [TRACKED] ${file}`));
-          } else {
-            console.log(`[GitHubContext] Tracked files sent to AI Agent: (None)`);
-          }
-
-          if (ignoredFiles.length > 0) {
-            console.log(`[GitHubContext] Ignored/excluded files (${ignoredFiles.length}):`);
-            ignoredFiles.forEach((f) => console.log(`   - [IGNORED] ${f.filename}`));
-          }
-        }
+        rawFiles = Array.isArray(compareJson.files) ? compareJson.files : [];
+        analysisLabel = 'Comparison Range File Analysis';
+      } else {
+        console.warn(
+          `[GitHubContext] Comparison range returned HTTP ${compareRes.status} (e.g. rewritten/force-pushed base SHA). Falling back to single commit...`
+        );
+        const single = await fetchSingleCommitMetadata(targetRepo, commitSha, headers);
+        commitMessage = single.commitMessage;
+        rawFiles = single.rawFiles;
       }
     } else {
-      console.log(`[GitHubContext] Fetching single commit ${commitSha.slice(0, 7)} details from ${targetRepo}...`);
-      const commitRes = await fetch(`https://api.github.com/repos/${targetRepo}/commits/${commitSha}`, {
-        headers: { ...headers, Accept: 'application/vnd.github+json' },
-        signal: AbortSignal.timeout(30000), // Balanced 30s timeout
-      });
-
-      if (commitRes.ok) {
-        const commitJson = await commitRes.json();
-        commitMessage = commitJson.commit?.message || '';
-        if (commitJson.files && Array.isArray(commitJson.files)) {
-          const rawFiles: RawGithubFile[] = commitJson.files;
-          const trackedFiles = rawFiles.filter((f) => !isIgnoredPath(f.filename, ignoreDirectories));
-          const ignoredFiles = rawFiles.filter((f) => isIgnoredPath(f.filename, ignoreDirectories));
-
-          changedFiles = trackedFiles.map((f) => f.filename);
-          fileDeltas = trackedFiles.map((f) => ({
-            filename: f.filename,
-            status: f.status || 'modified',
-            additions: f.additions || 0,
-            deletions: f.deletions || 0,
-            patch: f.patch,
-          }));
-
-          diffStat = fileDeltas
-            .map((f) => `${f.filename} (+${f.additions}, -${f.deletions}) [${f.status}]`)
-            .join('\n');
-
-          console.log(`[GitHubContext] Commit File Analysis (${rawFiles.length} total files):`);
-          if (changedFiles.length > 0) {
-            console.log(`[GitHubContext] Tracked files sent to AI Agent (${changedFiles.length}):`);
-            changedFiles.forEach((file: string) => console.log(`   + [TRACKED] ${file}`));
-          } else {
-            console.log(`[GitHubContext] Tracked files sent to AI Agent: (None)`);
-          }
-
-          if (ignoredFiles.length > 0) {
-            console.log(`[GitHubContext] Ignored/excluded files (${ignoredFiles.length}):`);
-            ignoredFiles.forEach((f) => console.log(`   - [IGNORED] ${f.filename}`));
-          }
-        }
-      }
+      const single = await fetchSingleCommitMetadata(targetRepo, commitSha, headers);
+      commitMessage = single.commitMessage;
+      rawFiles = single.rawFiles;
     }
+
+    const extracted = extractTrackedDeltas(rawFiles, ignoreDirectories, analysisLabel);
+    changedFiles = extracted.changedFiles;
+    fileDeltas = extracted.fileDeltas;
+    diffStat = extracted.diffStat;
   } catch (err) {
     console.warn(`[GitHubContext] Failed to fetch commit or comparison metadata:`, err);
   }
 
-  // 3. Fetch raw git diff (either comparison range or single commit)
+  // 3. Fetch raw git diff (either comparison range or single commit, with fallback)
   try {
-    const diffUrl = isComparisonRange
-      ? `https://api.github.com/repos/${targetRepo}/compare/${baseSha}...${commitSha}`
-      : `https://api.github.com/repos/${targetRepo}/commits/${commitSha}`;
+    const fetchDiffResponse = async (useCompare: boolean): Promise<Response> => {
+      const diffUrl = useCompare
+        ? `https://api.github.com/repos/${targetRepo}/compare/${baseSha}...${commitSha}`
+        : `https://api.github.com/repos/${targetRepo}/commits/${commitSha}`;
+      console.log(
+        `[GitHubContext] Fetching raw git diff for ${useCompare ? `${baseSha?.slice(0, 7)}...${commitSha.slice(0, 7)}` : commitSha.slice(0, 7)}...`
+      );
+      return fetch(diffUrl, {
+        headers: { ...headers, Accept: 'application/vnd.github.v3.diff' },
+        signal: AbortSignal.timeout(30000), // Balanced 30s timeout
+      });
+    };
 
-    console.log(
-      `[GitHubContext] Fetching raw git diff for ${isComparisonRange ? `${baseSha?.slice(0, 7)}...${commitSha.slice(0, 7)}` : commitSha.slice(0, 7)}...`
-    );
-    const diffRes = await fetch(diffUrl, {
-      headers: { ...headers, Accept: 'application/vnd.github.v3.diff' },
-      signal: AbortSignal.timeout(30000), // Balanced 30s timeout
-    });
+    let diffRes = await fetchDiffResponse(isComparisonRange);
+    if (!diffRes.ok && isComparisonRange) {
+      console.warn(
+        `[GitHubContext] Comparison raw diff returned HTTP ${diffRes.status}. Falling back to single commit diff...`
+      );
+      diffRes = await fetchDiffResponse(false);
+    }
 
     if (diffRes.ok) {
       rawDiff = await diffRes.text();
+    } else {
+      console.warn(`[GitHubContext] Failed to fetch raw git diff (HTTP ${diffRes.status}).`);
     }
   } catch (err) {
     console.warn(`[GitHubContext] Failed to fetch raw git diff:`, err);

@@ -48,7 +48,7 @@ export async function runAgenticDevlog() {
   const inputs = parseInputs();
 
   console.log('========================================================');
-  console.log('Autonomous DevLog Agent Runner (Phase 2)');
+  console.log('Autonomous Agentic Writer Knowledge Synthesizer');
   console.log('========================================================');
   console.log(`Target Repo: ${inputs.targetRepo}`);
   console.log(`Commit SHA:  ${inputs.commitSha}`);

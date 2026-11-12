@@ -15,7 +15,7 @@ PORTFOLIO_REPO_OWNER="BenjiBenji20"
 PORTFOLIO_REPO_NAME="portfolio"
 ```
 > [!NOTE]
-> **PAT Scope:** Developer Settings > Personal Access Tokens (Fine-grained) -> Target `portfolio` repo -> **Repository permissions** -> `Actions: Read and write`.
+> **PAT Scope:** Target `portfolio` repo with `Actions: Read and write` for `workflow_dispatch`. For **private or external organization** tracked repos, also ensure `GIT_REPO_PAT_TOKEN` in GitHub Actions secrets has `Contents: Read` access to those tracked repos.
 
 ## 3. Step 2: Register the Webhook in the Tracked Repo
 In the repository you want to track:

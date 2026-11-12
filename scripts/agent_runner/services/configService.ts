@@ -1,5 +1,96 @@
 import { DynamicPortfolioConfigSchema, type ValidatedPortfolioConfig } from '../types';
 
+const IGNORED_TREE_PREFIXES = ['node_modules/', '.git/', 'dist/', 'build/', '.next/', 'venv/', '.venv/'];
+
+function isMatchingPortfolioConfigFile(filePath: string): boolean {
+  const fileName = (filePath.split('/').pop() || filePath).toLowerCase();
+  return fileName.endsWith('.portfolio.json') || fileName === 'portfolio.json';
+}
+
+function encodeGitHubContentPath(filePath: string): string {
+  return filePath
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
+
+async function fetchRepoFileRaw(
+  targetRepo: string,
+  filePath: string,
+  commitSha: string,
+  headers: Record<string, string>
+): Promise<{ ok: boolean; status: number; text: string }> {
+  const encodedPath = encodeGitHubContentPath(filePath);
+  const url = `https://api.github.com/repos/${targetRepo}/contents/${encodedPath}?ref=${commitSha}`;
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(30000) });
+  const text = await res.text();
+  return { ok: res.ok, status: res.status, text };
+}
+
+async function discoverConfigPathInRepo(
+  targetRepo: string,
+  commitSha: string,
+  headers: Record<string, string>
+): Promise<string | null> {
+  const jsonHeaders = { ...headers, Accept: 'application/vnd.github+json' };
+  const contentsUrl = `https://api.github.com/repos/${targetRepo}/contents?ref=${commitSha}`;
+  const listRes = await fetch(contentsUrl, { headers: jsonHeaders, signal: AbortSignal.timeout(30000) });
+
+  if (!listRes.ok) {
+    // Distinguish missing config file from private/org repository access failures
+    const repoCheckRes = await fetch(`https://api.github.com/repos/${targetRepo}`, {
+      headers: jsonHeaders,
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!repoCheckRes.ok) {
+      console.error(
+        `[ConfigService] Repository "${targetRepo}" returned HTTP ${repoCheckRes.status}. ` +
+          `If this is a private or external organization repository, verify GIT_REPO_PAT_TOKEN has "Contents: Read" access to "${targetRepo}".`
+      );
+    } else {
+      console.error(
+        `[ConfigService] Failed to list root directory for "${targetRepo}@${commitSha.slice(0, 7)}" (HTTP ${listRes.status}).`
+      );
+    }
+    return null;
+  }
+
+  const rootItems = (await listRes.json()) as Array<{ name: string; type: string; path: string }>;
+  const rootCandidate = rootItems.find(
+    (item) => item.type === 'file' && isMatchingPortfolioConfigFile(item.name)
+  );
+  if (rootCandidate) {
+    return rootCandidate.path;
+  }
+
+  // Fallback: Search repository tree for subdirectory *.portfolio.json / portfolio.json
+  const treeUrl = `https://api.github.com/repos/${targetRepo}/git/trees/${commitSha}?recursive=1`;
+  const treeRes = await fetch(treeUrl, { headers: jsonHeaders, signal: AbortSignal.timeout(30000) });
+  if (treeRes.ok) {
+    const treeJson = (await treeRes.json()) as {
+      truncated?: boolean;
+      tree?: Array<{ path: string; type: string }>;
+    };
+    const treeEntries = Array.isArray(treeJson.tree) ? treeJson.tree : [];
+    const subCandidate = treeEntries.find(
+      (entry) =>
+        entry.type === 'blob' &&
+        !IGNORED_TREE_PREFIXES.some((prefix) => entry.path.toLowerCase().startsWith(prefix)) &&
+        isMatchingPortfolioConfigFile(entry.path)
+    );
+    if (subCandidate) {
+      return subCandidate.path;
+    }
+  }
+
+  const visibleRootFiles = rootItems.map((item) => item.name).slice(0, 15).join(', ');
+  console.warn(
+    `[ConfigService] Root files inspected at ${commitSha.slice(0, 7)}: [${visibleRootFiles || 'none'}]`
+  );
+  return null;
+}
+
 /**
  * Service to fetch and dynamically validate .portfolio.json (or *.portfolio.json / portfolio.json)
  * from the tracked repository.
@@ -22,41 +113,36 @@ export async function fetchPortfolioConfig(
   }
 
   // 1. First probe standard `.portfolio.json` directly at root (fastest: 1 API call)
-  const defaultUrl = `https://api.github.com/repos/${targetRepo}/contents/.portfolio.json?ref=${commitSha}`;
   console.log(`[ConfigService] Checking for .portfolio.json in ${targetRepo}@${commitSha.slice(0, 7)}...`);
 
   let rawConfigString: string | null = null;
   let matchedConfigPath = '.portfolio.json';
 
   try {
-    const defaultRes = await fetch(defaultUrl, { headers, signal: AbortSignal.timeout(30000) });
+    const defaultRes = await fetchRepoFileRaw(targetRepo, '.portfolio.json', commitSha, headers);
     if (defaultRes.ok) {
-      rawConfigString = await defaultRes.text();
+      rawConfigString = defaultRes.text;
     } else if (defaultRes.status === 404) {
-      // 2. Fallback: Search repo root for flexible config patterns (e.g. project_name.portfolio.json or portfolio.json)
-      console.log(`[ConfigService] .portfolio.json not found directly. Searching root directory for *.portfolio.json variants...`);
-      const contentsUrl = `https://api.github.com/repos/${targetRepo}/contents?ref=${commitSha}`;
-      const listHeaders = { ...headers, Accept: 'application/vnd.github+json' };
-      const listRes = await fetch(contentsUrl, { headers: listHeaders, signal: AbortSignal.timeout(30000) });
+      // 2. Fallback: Search root directory and recursive tree for *.portfolio.json or portfolio.json variants
+      console.log(
+        `[ConfigService] .portfolio.json not found directly. Searching repository for *.portfolio.json / portfolio.json variants...`
+      );
+      const discoveredPath = await discoverConfigPathInRepo(targetRepo, commitSha, headers);
 
-      if (listRes.ok) {
-        const rootItems = (await listRes.json()) as Array<{ name: string; type: string; path: string }>;
-        const candidate = rootItems.find(
-          (item) => item.type === 'file' && (item.name.toLowerCase().endsWith('.portfolio.json') || item.name.toLowerCase() === 'portfolio.json')
-        );
-
-        if (candidate) {
-          console.log(`[ConfigService] Discovered matching config file: "${candidate.name}". Fetching contents...`);
-          matchedConfigPath = candidate.path;
-          const candidateUrl = `https://api.github.com/repos/${targetRepo}/contents/${encodeURIComponent(candidate.path)}?ref=${commitSha}`;
-          const candidateRes = await fetch(candidateUrl, { headers, signal: AbortSignal.timeout(30000) });
-          if (candidateRes.ok) {
-            rawConfigString = await candidateRes.text();
-          }
+      if (discoveredPath) {
+        console.log(`[ConfigService] Discovered matching config file: "${discoveredPath}". Fetching contents...`);
+        matchedConfigPath = discoveredPath;
+        const candidateRes = await fetchRepoFileRaw(targetRepo, discoveredPath, commitSha, headers);
+        if (candidateRes.ok) {
+          rawConfigString = candidateRes.text;
+        } else {
+          console.error(
+            `[ConfigService] Failed to download "${discoveredPath}" (HTTP ${candidateRes.status}).`
+          );
         }
       }
     } else {
-      console.error(`[ConfigService] GitHub API error (HTTP ${defaultRes.status}): ${await defaultRes.text()}`);
+      console.error(`[ConfigService] GitHub API error (HTTP ${defaultRes.status}): ${defaultRes.text}`);
       return null;
     }
 
@@ -77,7 +163,7 @@ export async function fetchPortfolioConfig(
       (m, g, closing) => (g ? closing : m)
     );
 
-    const rawJson = JSON.parse(cleanedConfigString);
+    const rawJson: unknown = JSON.parse(cleanedConfigString);
     const parseResult = DynamicPortfolioConfigSchema.safeParse(rawJson);
 
     if (!parseResult.success) {
@@ -99,9 +185,13 @@ export async function fetchPortfolioConfig(
 
     // Operational Keys (Tier 2): Check human override vs Agent Autonomy
     if (config.projectTitle) {
-      console.log(`[ConfigService] Project Title (Human Override): "${config.projectTitle}" (slug: ${config.projectSlug || 'derived'})`);
+      console.log(
+        `[ConfigService] Project Title (Human Override): "${config.projectTitle}" (slug: ${config.projectSlug || 'derived'})`
+      );
     } else {
-      console.log(`[ConfigService] Project Title: [Agent Autonomy] Missing from config. Agent will synthesize title and slug.`);
+      console.log(
+        `[ConfigService] Project Title: [Agent Autonomy] Missing from config. Agent will synthesize title and slug.`
+      );
     }
 
     if (config.category) {
@@ -112,7 +202,9 @@ export async function fetchPortfolioConfig(
 
     // Communication Bridge (Tier 3)
     if (config.projectOverview) {
-      console.log(`[ConfigService] Standing Overview: "${config.projectOverview.slice(0, 80)}${config.projectOverview.length > 80 ? '...' : ''}"`);
+      console.log(
+        `[ConfigService] Standing Overview: "${config.projectOverview.slice(0, 80)}${config.projectOverview.length > 80 ? '...' : ''}"`
+      );
     }
     if (config.developerDirective) {
       console.log(`[ConfigService] Developer Directive (Current Run): "${config.developerDirective}"`);
@@ -156,4 +248,3 @@ export async function fetchPortfolioConfig(
     return null;
   }
 }
-

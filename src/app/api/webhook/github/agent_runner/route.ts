@@ -304,14 +304,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Do not use an overwritten commit SHA as baseSha on force-pushes (e.g. after git reset --soft)
-    if (pushEvent.before && !pushEvent.before.startsWith('0000000') && !pushEvent.forced) {
-      baseSha = pushEvent.before;
-    }
-
     targetRepo = pushEvent.repository.full_name;
     commitSha = pushEvent.head_commit.id || pushEvent.after;
     branch = refBranch;
+
+    // Preserve push range across normal pushes, multi-commit force-pushes, and initial multi-commit pushes
+    if (pushEvent.before && !pushEvent.before.startsWith('0000000') && !pushEvent.forced) {
+      baseSha = pushEvent.before;
+    } else if (Array.isArray(pushEvent.commits) && pushEvent.commits.length > 1) {
+      const firstCommitId = pushEvent.commits[0]?.id;
+      if (firstCommitId && firstCommitId !== commitSha) {
+        baseSha = `parent:${firstCommitId}`;
+      }
+    }
 
     // Combine commit titles if push contains multiple commits
     if (pushEvent.commits && pushEvent.commits.length > 1) {

@@ -143,11 +143,17 @@ function extractTrackedDeltas(
   return { changedFiles, fileDeltas, diffStat };
 }
 
+interface SingleCommitMetadata {
+  commitMessage: string;
+  rawFiles: RawGithubFile[];
+  parentSha?: string;
+}
+
 async function fetchSingleCommitMetadata(
   targetRepo: string,
   commitSha: string,
   headers: Record<string, string>
-): Promise<{ commitMessage: string; rawFiles: RawGithubFile[] }> {
+): Promise<SingleCommitMetadata> {
   console.log(`[GitHubContext] Fetching single commit ${commitSha.slice(0, 7)} details from ${targetRepo}...`);
   const commitRes = await fetch(`https://api.github.com/repos/${targetRepo}/commits/${commitSha}`, {
     headers: { ...headers, Accept: 'application/vnd.github+json' },
@@ -163,12 +169,75 @@ async function fetchSingleCommitMetadata(
 
   const commitJson = (await commitRes.json()) as {
     commit?: { message?: string };
+    parents?: Array<{ sha?: string }>;
     files?: RawGithubFile[];
   };
   return {
     commitMessage: commitJson.commit?.message || '',
     rawFiles: Array.isArray(commitJson.files) ? commitJson.files : [],
+    parentSha: commitJson.parents?.[0]?.sha,
   };
+}
+
+type ResolvedRange =
+  | { mode: 'single' }
+  | { mode: 'compare'; resolvedBaseSha: string }
+  | { mode: 'root_plus_compare'; firstCommitSha: string; rootCommitData: SingleCommitMetadata };
+
+async function resolveComparisonRange(
+  targetRepo: string,
+  commitSha: string,
+  baseSha: string | undefined,
+  headers: Record<string, string>
+): Promise<ResolvedRange> {
+  if (!baseSha || baseSha.startsWith('0000000') || baseSha === commitSha) {
+    return { mode: 'single' };
+  }
+
+  if (baseSha.startsWith('parent:')) {
+    const firstCommitSha = baseSha.slice('parent:'.length).trim();
+    if (!firstCommitSha || firstCommitSha === commitSha) {
+      return { mode: 'single' };
+    }
+    const firstCommitData = await fetchSingleCommitMetadata(targetRepo, firstCommitSha, headers);
+    if (firstCommitData.parentSha) {
+      console.log(
+        `[GitHubContext] Resolved base parent ${firstCommitData.parentSha.slice(0, 7)} for multi-commit push starting at ${firstCommitSha.slice(0, 7)}.`
+      );
+      return { mode: 'compare', resolvedBaseSha: firstCommitData.parentSha };
+    }
+    console.log(
+      `[GitHubContext] Multi-commit push starts at root commit ${firstCommitSha.slice(0, 7)}. Aggregating root + comparison range.`
+    );
+    return { mode: 'root_plus_compare', firstCommitSha, rootCommitData: firstCommitData };
+  }
+
+  return { mode: 'compare', resolvedBaseSha: baseSha };
+}
+
+function mergeRawFiles(primary: RawGithubFile[], secondary: RawGithubFile[]): RawGithubFile[] {
+  const merged = new Map<string, RawGithubFile>();
+  for (const file of primary) {
+    merged.set(file.filename, file);
+  }
+  for (const file of secondary) {
+    merged.set(file.filename, file);
+  }
+  return Array.from(merged.values());
+}
+
+async function fetchRawDiffText(
+  url: string,
+  headers: Record<string, string>,
+  label: string
+): Promise<{ ok: boolean; status: number; text: string }> {
+  console.log(`[GitHubContext] Fetching raw git diff for ${label}...`);
+  const res = await fetch(url, {
+    headers: { ...headers, Accept: 'application/vnd.github.v3.diff' },
+    signal: AbortSignal.timeout(30000),
+  });
+  const text = res.ok ? await res.text() : '';
+  return { ok: res.ok, status: res.status, text };
 }
 
 async function resolveActiveGitHubHeaders(
@@ -221,7 +290,7 @@ export async function fetchGitHubContext(
   let changedFiles: string[] = [];
   let fileDeltas: FileDelta[] = [];
 
-  const isComparisonRange = Boolean(baseSha && !baseSha.startsWith('0000000') && baseSha !== commitSha);
+  const resolvedRange = await resolveComparisonRange(targetRepo, commitSha, baseSha, headers);
 
   // 1. Fetch Pull Request body if prNumber is present
   if (prNumber) {
@@ -246,11 +315,13 @@ export async function fetchGitHubContext(
     let rawFiles: RawGithubFile[] = [];
     let analysisLabel = 'Commit File Analysis';
 
-    if (isComparisonRange) {
+    if (resolvedRange.mode === 'compare' || resolvedRange.mode === 'root_plus_compare') {
+      const compareBase =
+        resolvedRange.mode === 'compare' ? resolvedRange.resolvedBaseSha : resolvedRange.firstCommitSha;
       console.log(
-        `[GitHubContext] Push contains multiple commits. Fetching comparison range (${baseSha?.slice(0, 7)}...${commitSha.slice(0, 7)}) from ${targetRepo}...`
+        `[GitHubContext] Push contains multiple commits. Fetching comparison range (${compareBase.slice(0, 7)}...${commitSha.slice(0, 7)}) from ${targetRepo}...`
       );
-      const compareUrl = `https://api.github.com/repos/${targetRepo}/compare/${baseSha}...${commitSha}`;
+      const compareUrl = `https://api.github.com/repos/${targetRepo}/compare/${compareBase}...${commitSha}`;
       const compareRes = await fetch(compareUrl, {
         headers: { ...headers, Accept: 'application/vnd.github+json' },
         signal: AbortSignal.timeout(30000),
@@ -261,13 +332,20 @@ export async function fetchGitHubContext(
           commits?: Array<{ commit?: { message?: string } }>;
           files?: RawGithubFile[];
         };
-        if (Array.isArray(compareJson.commits)) {
-          commitMessage = compareJson.commits
-            .map((c) => c.commit?.message || '')
+        const compareMessages = Array.isArray(compareJson.commits)
+          ? compareJson.commits.map((c) => c.commit?.message || '').filter(Boolean)
+          : [];
+        const compareFiles = Array.isArray(compareJson.files) ? compareJson.files : [];
+
+        if (resolvedRange.mode === 'root_plus_compare') {
+          commitMessage = [resolvedRange.rootCommitData.commitMessage, ...compareMessages]
             .filter(Boolean)
             .join('\n\n---\n\n');
+          rawFiles = mergeRawFiles(resolvedRange.rootCommitData.rawFiles, compareFiles);
+        } else {
+          commitMessage = compareMessages.join('\n\n---\n\n');
+          rawFiles = compareFiles;
         }
-        rawFiles = Array.isArray(compareJson.files) ? compareJson.files : [];
         analysisLabel = 'Comparison Range File Analysis';
       } else {
         console.warn(
@@ -291,33 +369,49 @@ export async function fetchGitHubContext(
     console.warn(`[GitHubContext] Failed to fetch commit or comparison metadata: ${redactSecrets(err)}`);
   }
 
-  // 3. Fetch raw git diff (either comparison range or single commit, with fallback)
+  // 3. Fetch raw git diff (single commit, comparison range, or root + comparison range)
   try {
-    const fetchDiffResponse = async (useCompare: boolean): Promise<Response> => {
-      const diffUrl = useCompare
-        ? `https://api.github.com/repos/${targetRepo}/compare/${baseSha}...${commitSha}`
-        : `https://api.github.com/repos/${targetRepo}/commits/${commitSha}`;
-      console.log(
-        `[GitHubContext] Fetching raw git diff for ${useCompare ? `${baseSha?.slice(0, 7)}...${commitSha.slice(0, 7)}` : commitSha.slice(0, 7)}...`
+    if (resolvedRange.mode === 'root_plus_compare') {
+      const rootDiff = await fetchRawDiffText(
+        `https://api.github.com/repos/${targetRepo}/commits/${resolvedRange.firstCommitSha}`,
+        headers,
+        resolvedRange.firstCommitSha.slice(0, 7)
       );
-      return fetch(diffUrl, {
-        headers: { ...headers, Accept: 'application/vnd.github.v3.diff' },
-        signal: AbortSignal.timeout(30000), // Balanced 30s timeout
-      });
-    };
-
-    let diffRes = await fetchDiffResponse(isComparisonRange);
-    if (!diffRes.ok && isComparisonRange) {
-      console.warn(
-        `[GitHubContext] Comparison raw diff returned HTTP ${diffRes.status}. Falling back to single commit diff...`
+      const tailDiff = await fetchRawDiffText(
+        `https://api.github.com/repos/${targetRepo}/compare/${resolvedRange.firstCommitSha}...${commitSha}`,
+        headers,
+        `${resolvedRange.firstCommitSha.slice(0, 7)}...${commitSha.slice(0, 7)}`
       );
-      diffRes = await fetchDiffResponse(false);
-    }
-
-    if (diffRes.ok) {
-      rawDiff = await diffRes.text();
+      rawDiff = [rootDiff.text, tailDiff.text].filter(Boolean).join('\n');
+    } else if (resolvedRange.mode === 'compare') {
+      const compareDiff = await fetchRawDiffText(
+        `https://api.github.com/repos/${targetRepo}/compare/${resolvedRange.resolvedBaseSha}...${commitSha}`,
+        headers,
+        `${resolvedRange.resolvedBaseSha.slice(0, 7)}...${commitSha.slice(0, 7)}`
+      );
+      if (compareDiff.ok) {
+        rawDiff = compareDiff.text;
+      } else {
+        console.warn(
+          `[GitHubContext] Comparison raw diff returned HTTP ${compareDiff.status}. Falling back to single commit diff...`
+        );
+        const fallbackDiff = await fetchRawDiffText(
+          `https://api.github.com/repos/${targetRepo}/commits/${commitSha}`,
+          headers,
+          commitSha.slice(0, 7)
+        );
+        rawDiff = fallbackDiff.text;
+      }
     } else {
-      console.warn(`[GitHubContext] Failed to fetch raw git diff (HTTP ${diffRes.status}).`);
+      const singleDiff = await fetchRawDiffText(
+        `https://api.github.com/repos/${targetRepo}/commits/${commitSha}`,
+        headers,
+        commitSha.slice(0, 7)
+      );
+      rawDiff = singleDiff.text;
+      if (!singleDiff.ok) {
+        console.warn(`[GitHubContext] Failed to fetch raw git diff (HTTP ${singleDiff.status}).`);
+      }
     }
   } catch (err) {
     console.warn(`[GitHubContext] Failed to fetch raw git diff: ${redactSecrets(err)}`);

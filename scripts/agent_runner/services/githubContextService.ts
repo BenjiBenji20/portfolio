@@ -1,4 +1,5 @@
 import { buildGitHubHeaders, getGitHubReadTokenCandidates } from '../utils/githubTokenResolver';
+import { redactSecrets } from '../utils/secretRedactor';
 
 /**
  * Service to fetch PR metadata, commit details, and raw git diffs from GitHub REST API
@@ -236,7 +237,7 @@ export async function fetchGitHubContext(
         prBody = prJson.body || '';
       }
     } catch (err) {
-      console.warn(`[GitHubContext] Failed to fetch PR #${prNumber} body:`, err);
+      console.warn(`[GitHubContext] Failed to fetch PR #${prNumber} body: ${redactSecrets(err)}`);
     }
   }
 
@@ -287,7 +288,7 @@ export async function fetchGitHubContext(
     fileDeltas = extracted.fileDeltas;
     diffStat = extracted.diffStat;
   } catch (err) {
-    console.warn(`[GitHubContext] Failed to fetch commit or comparison metadata:`, err);
+    console.warn(`[GitHubContext] Failed to fetch commit or comparison metadata: ${redactSecrets(err)}`);
   }
 
   // 3. Fetch raw git diff (either comparison range or single commit, with fallback)
@@ -319,7 +320,7 @@ export async function fetchGitHubContext(
       console.warn(`[GitHubContext] Failed to fetch raw git diff (HTTP ${diffRes.status}).`);
     }
   } catch (err) {
-    console.warn(`[GitHubContext] Failed to fetch raw git diff:`, err);
+    console.warn(`[GitHubContext] Failed to fetch raw git diff: ${redactSecrets(err)}`);
   }
 
   // 4. Scrub diff against ignoreDirectory and default binary/build patterns

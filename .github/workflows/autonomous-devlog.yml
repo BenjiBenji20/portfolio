@@ -34,15 +34,22 @@ on:
         default: 'Developer'
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   synthesize-devlog:
     name: Execute Agent Runner
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout Portfolio Repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js Runtime
         uses: actions/setup-node@v4
@@ -51,10 +58,17 @@ jobs:
           cache: 'npm'
 
       - name: Install Monorepo Dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci --legacy-peer-deps
 
       - name: Run Agentic Writer Runner
         env:
+          TARGET_REPO: ${{ github.event.inputs.target_repo }}
+          COMMIT_SHA: ${{ github.event.inputs.commit_sha }}
+          BASE_SHA: ${{ github.event.inputs.base_sha }}
+          BRANCH: ${{ github.event.inputs.branch }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          PR_TITLE: ${{ github.event.inputs.pr_title }}
+          SENDER: ${{ github.event.inputs.sender }}
           PORTFOLIO_REPO_OWNER: ${{ github.repository_owner }}
           GIT_REPO_PAT_TOKEN: ${{ secrets.GIT_REPO_PAT_TOKEN }}
           GIT_PAT_ORGANIZATION: ${{ secrets.GIT_PAT_ORGANIZATION }}
@@ -65,13 +79,5 @@ jobs:
           SANITY_AGENT_READ_ONLY_TOKEN: ${{ secrets.SANITY_AGENT_READ_ONLY_TOKEN }}
           NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}
           NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.NEXT_PUBLIC_SANITY_DATASET || 'production' }}
-        run: |
-          npx tsx scripts/agent_runner/index.ts \
-            --repo "${{ github.event.inputs.target_repo }}" \
-            --sha "${{ github.event.inputs.commit_sha }}" \
-            --base "${{ github.event.inputs.base_sha }}" \
-            --branch "${{ github.event.inputs.branch }}" \
-            --pr "${{ github.event.inputs.pr_number }}" \
-            --title "${{ github.event.inputs.pr_title }}" \
-            --sender "${{ github.event.inputs.sender }}"
+        run: npx tsx scripts/agent_runner/index.ts
 

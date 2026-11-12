@@ -24,6 +24,7 @@ import {
   extractZodDiagnostics,
 } from '../parsers/aiResponseParser';
 import { geminiQuotaGuardrail } from '../utils/geminiQuotaGuardrail';
+import { redactSecrets } from '../utils/secretRedactor';
 import {
   VALID_BADGES,
   SANITY_WORKLOG_SCHEMA_CONTEXT_PROMPT,
@@ -103,7 +104,7 @@ async function callGeminiWithContents(options: CallGeminiOptions): Promise<Gemin
   // Enforce sliding-window rate limit guardrail before dispatching request
   await geminiQuotaGuardrail.waitForAvailableSlot(taskName);
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
   const bodyPayload: Record<string, unknown> = {
     contents: options.contents,
@@ -131,14 +132,17 @@ async function callGeminiWithContents(options: CallGeminiOptions): Promise<Gemin
   try {
     res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
       body: JSON.stringify(bodyPayload),
       signal: AbortSignal.timeout(60000), // 60s timeout for heavy diff synthesis
     });
   } catch (fetchErr) {
     // Network timeout or connection drop: rollback slot
     geminiQuotaGuardrail.rollbackSlot();
-    throw fetchErr;
+    throw new Error(`[GeminiService] Request failed: ${redactSecrets(fetchErr)}`);
   }
 
   if (!res.ok) {
@@ -149,7 +153,7 @@ async function callGeminiWithContents(options: CallGeminiOptions): Promise<Gemin
       // Server-side congestion: rollback sliding-window quota timestamp
       geminiQuotaGuardrail.rollbackSlot();
     }
-    throw new Error(`[GeminiService] Gemini API returned HTTP ${res.status}: ${errorText}`);
+    throw new Error(`[GeminiService] Gemini API returned HTTP ${res.status}: ${redactSecrets(errorText)}`);
   }
 
   const json = await res.json();

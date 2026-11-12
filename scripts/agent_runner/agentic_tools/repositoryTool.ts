@@ -46,15 +46,14 @@ export async function readRepositoryFile(
     throw new Error('[RepositoryTool] Invalid parameter: filePath must be a non-empty string.');
   }
 
-  // Normalize path and verify it stays inside repository root
+  // Normalize path and verify it stays strictly inside repository root (blocks sibling-prefix bypasses)
   const resolvedPath = path.resolve(repoRoot, filePath);
   const normalizedRoot = path.resolve(repoRoot);
+  const relativePath = path.relative(normalizedRoot, resolvedPath);
 
-  if (!resolvedPath.startsWith(normalizedRoot)) {
+  if (!relativePath || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
     throw new Error(`[RepositoryTool] Security Exception: Path traversal attempt blocked ("${filePath}").`);
   }
-
-  const relativePath = path.relative(normalizedRoot, resolvedPath);
 
   // Check forbidden sensitive file patterns
   for (const pattern of FORBIDDEN_FILE_PATTERNS) {

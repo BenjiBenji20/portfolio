@@ -56,6 +56,7 @@ graph TD
 | [sanity_milestone_history_digest.md](./sanity_milestone_history_digest.md) | Milestone Memory | Project-isolated GROQ tool, cumulative milestone detection, and article lifecycle decisions. |
 | [agent_article_entry_creation.md](./agent_article_entry_creation.md) | Article Lifecycle | Landmark milestone evaluation, draft isolation, architecture addendums, and human approval gate. |
 | [agentic_tool_registry_standardization.md](./agentic_tool_registry_standardization.md) | Autonomous Tool Calling | Bounded 2-turn tool loop, parallel dispatch, anti-hallucination project sandboxing, and Sanity/repo reader tools. |
+| [github_runner_pat_security.md](./github_runner_pat_security.md) | Runner Security | Zero shell interpolation, minimal workflow permissions, PAT owner routing, and runtime secret redaction. |
 
 
 ## 4. Ingestion Guidelines for Agentic Writer

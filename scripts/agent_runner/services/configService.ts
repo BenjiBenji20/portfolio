@@ -1,5 +1,6 @@
 import { DynamicPortfolioConfigSchema, type ValidatedPortfolioConfig } from '../types';
 import { buildGitHubHeaders, getGitHubReadTokenCandidates } from '../utils/githubTokenResolver';
+import { redactSecrets } from '../utils/secretRedactor';
 
 const IGNORED_TREE_PREFIXES = ['node_modules/', '.git/', 'dist/', 'build/', '.next/', 'venv/', '.venv/'];
 
@@ -168,7 +169,7 @@ export async function fetchPortfolioConfig(
         continue;
       }
 
-      console.error(`[ConfigService] GitHub API error (HTTP ${defaultRes.status}): ${defaultRes.text}`);
+      console.error(`[ConfigService] GitHub API error (HTTP ${defaultRes.status}): ${redactSecrets(defaultRes.text)}`);
       return null;
     }
 
@@ -270,7 +271,7 @@ export async function fetchPortfolioConfig(
 
     return config;
   } catch (err) {
-    console.error(`[ConfigService] Error fetching or parsing configuration file:`, err);
+    console.error(`[ConfigService] Error fetching or parsing configuration file: ${redactSecrets(err)}`);
     return null;
   }
 }

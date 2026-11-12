@@ -20,6 +20,7 @@ import {
 } from './services/sanityService';
 import type { ToolContext } from './agentic_tools/toolRegistry';
 import type { RunnerInputs } from './types';
+import { redactSecrets } from './utils/secretRedactor';
 
 /**
  * Phase 2 Master Runner Entrypoint
@@ -253,7 +254,7 @@ export async function runAgenticDevlog() {
       console.log(`[Runner] 📰 Staged New Article Draft: ${generatedArticleDocId}`);
       console.log(`[Runner] 🔗 Review in Sanity Studio: ${articleReviewUrl}`);
     } catch (articleErr) {
-      console.error('[Runner] Article synthesis or staging failed:', articleErr);
+      console.error(`[Runner] Article synthesis or staging failed: ${redactSecrets(articleErr)}`);
     }
   } else if (triage.articleAction === 'update_article' && triage.targetArticleSlug) {
     console.log(`\n[Runner] 🔄 Architectural Delta Detected -> Updating Article "${triage.targetArticleSlug}"...`);
@@ -284,7 +285,7 @@ export async function runAgenticDevlog() {
         console.log(`[Runner] 🔗 Review in Sanity Studio: ${articleReviewUrl}`);
       }
     } catch (patchErr) {
-      console.error('[Runner] Article patch synthesis or staging failed:', patchErr);
+      console.error(`[Runner] Article patch synthesis or staging failed: ${redactSecrets(patchErr)}`);
     }
   }
 
@@ -308,7 +309,7 @@ export async function runAgenticDevlog() {
 // Execute CLI
 if (require.main === module) {
   runAgenticDevlog().catch((err) => {
-    console.error('[Runner Fatal Error]:', err);
+    console.error(`[Runner Fatal Error]: ${redactSecrets(err)}`);
     process.exit(1);
   });
 }

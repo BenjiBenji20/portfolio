@@ -1,3 +1,5 @@
+import { maskAndRegisterSecret } from './secretRedactor';
+
 /**
  * GitHub Read Token Resolver for Multi-Owner Tracked Repositories
  *
@@ -12,8 +14,17 @@ function parseOrgPatMap(rawMap: string | undefined, owner: string): string | und
     const parsed: unknown = JSON.parse(rawMap);
     if (typeof parsed !== 'object' || parsed === null) return undefined;
     const entries = Object.entries(parsed as Record<string, unknown>);
-    const matched = entries.find(([key]) => key.toLowerCase() === owner.toLowerCase());
-    return typeof matched?.[1] === 'string' && matched[1].trim() ? matched[1].trim() : undefined;
+    let matchedToken: string | undefined;
+    for (const [key, val] of entries) {
+      if (typeof val === 'string' && val.trim()) {
+        const trimmed = val.trim();
+        maskAndRegisterSecret(trimmed);
+        if (key.toLowerCase() === owner.toLowerCase()) {
+          matchedToken = trimmed;
+        }
+      }
+    }
+    return matchedToken;
   } catch {
     console.warn('[GitHubTokenResolver] Ignoring malformed GIT_ORG_PAT_MAP JSON.');
     return undefined;

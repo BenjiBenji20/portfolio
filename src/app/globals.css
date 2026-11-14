@@ -22,3 +22,37 @@ body {
 .grecaptcha-badge {
   visibility: hidden !important;
 }
+
+/* IDE Code Block Highlighting */
+.ide-shiki-container pre.shiki {
+  background-color: transparent !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: inherit !important;
+  font-family: inherit !important;
+  line-height: inherit !important;
+  white-space: normal !important;
+  overflow: visible !important;
+}
+
+.ide-shiki-container pre.shiki code {
+  display: block;
+  font-size: inherit !important;
+  font-family: inherit !important;
+  line-height: inherit !important;
+  white-space: normal !important;
+}
+
+.ide-shiki-container .line {
+  display: block;
+  min-height: 1.25rem;
+  line-height: inherit;
+  white-space: pre;
+}
+
+@media (min-width: 640px) {
+  .ide-shiki-container .line {
+    min-height: 1.5rem;
+  }
+}
+

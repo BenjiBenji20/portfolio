@@ -111,7 +111,7 @@ function ArticleContentClientInternal({
       {/* ========================================================= */}
       {/* MAIN ARTICLE BODY (Reusing PortableText system from /blog) */}
       {/* ========================================================= */}
-      <article className="flex-1 min-w-0 space-y-8 animate-in fade-in duration-200 text-zinc-100">
+      <article className="w-full flex-1 min-w-0 space-y-8 animate-in fade-in duration-200 text-zinc-100">
         {/* Top back navigation */}
         <div className="border-b border-zinc-800/80 pb-4">
           <BackButton

@@ -13,6 +13,7 @@ import type {
 import { urlForImage } from '@/sanity/lib/image';
 import { AmbientImage } from '@/components/ui/AmbientImage';
 import { MermaidRenderer } from '@/components/ui/MermaidRenderer';
+import { CodeBlock } from '@/components/ui/CodeBlock';
 
 export interface TocItem {
   id: string;
@@ -117,7 +118,6 @@ export function normalizeMermaidBlocks(blocks: any[]): any[] {
               break;
             }
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const isDiagramLine =
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               nextBlock.children?.some((c: any) => c.marks?.includes('code')) ||
@@ -182,6 +182,75 @@ export function normalizeMermaidBlocks(blocks: any[]): any[] {
   return result;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function normalizeCodeBlocks(blocks: any[]): any[] {
+  if (!Array.isArray(blocks) || blocks.length === 0) return blocks;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result: any[] = [];
+  let i = 0;
+
+  while (i < blocks.length) {
+    const block = blocks[i];
+
+    if (block?._type === 'code' || block?._type === 'mermaid') {
+      result.push(block);
+      i++;
+      continue;
+    }
+
+    if (block?._type === 'block' && (block?.style === 'normal' || !block?.style)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawText = block.children?.map((c: any) => c.text || '').join('') || '';
+      const unescaped = rawText.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').trim();
+
+      // 1. Check for markdown code fences (```lang ... ```)
+      if (unescaped.startsWith('```') && !unescaped.startsWith('```mermaid')) {
+        const fenceMatch = unescaped.match(/^```([a-zA-Z0-9_\-]+)?\s*([\s\S]*?)(?:```)?$/);
+        if (fenceMatch) {
+          const detectedLang = fenceMatch[1] || 'text';
+          const innerCode = (fenceMatch[2] || '').trim();
+          result.push({
+            _key: block._key || `code-${i}`,
+            _type: 'code',
+            code: innerCode,
+            language: detectedLang,
+          });
+          i++;
+          continue;
+        }
+      }
+
+      // 2. Check for multiline code span or code block disguised as normal block
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const hasCodeMark = block.children?.some((c: any) => c.marks?.includes('code'));
+      const isMultiLine = unescaped.includes('\n');
+      const isFileHeaderComment = /^(?:\/\/|#)\s*[a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9_\-]+/m.test(unescaped);
+
+      if (hasCodeMark && (isMultiLine || isFileHeaderComment)) {
+        result.push({
+          _key: block._key || `code-${i}`,
+          _type: 'code',
+          code: unescaped,
+          language: 'text',
+        });
+        i++;
+        continue;
+      }
+    }
+
+    result.push(block);
+    i++;
+  }
+
+  return result;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function normalizeContentBlocks(blocks: any[]): any[] {
+  return normalizeCodeBlocks(normalizeMermaidBlocks(blocks));
+}
+
 export function PortableTextRenderer({
   value,
   activePlayKey,
@@ -190,7 +259,7 @@ export function PortableTextRenderer({
   className = '',
 }: PortableTextRendererProps) {
   const [localPlayingKey, setLocalPlayingKey] = useState<string | null>(null);
-  const normalizedValue = normalizeMermaidBlocks(value);
+  const normalizedValue = normalizeContentBlocks(value);
 
 
   const isVideoPlaying = (key: string) => {
@@ -206,8 +275,8 @@ export function PortableTextRenderer({
     block: {
       normal: ({ value, children }) => {
         // Extract raw text directly from Sanity block spans (handles plain text, code decorators, and marks)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rawText =
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (value as any)?.children
             ?.map((span: { text?: string }) => span.text || '')
             .join('') ||
@@ -307,7 +376,7 @@ export function PortableTextRenderer({
       strong: ({ children }) => <strong className="font-semibold text-zinc-100">{children}</strong>,
       em: ({ children }) => <em className="italic text-zinc-200">{children}</em>,
       code: ({ children }) => (
-        <code className="px-1.5 py-0.5 rounded-none bg-zinc-900 text-sky-300 font-mono text-xs border border-zinc-800">
+        <code className="px-1.5 py-0.5 rounded-none bg-zinc-900 text-sky-300 font-mono text-xs border border-zinc-800 break-words">
           {children}
         </code>
       ),
@@ -552,17 +621,11 @@ export function PortableTextRenderer({
         }
 
         return (
-          <div className="my-5 overflow-hidden border border-zinc-800/80 bg-zinc-950">
-            {value.filename && (
-              <div className="flex items-center justify-between px-4 py-1.5 border-b border-zinc-800/80 bg-zinc-900/40 text-[11px] font-mono text-zinc-400">
-                <span>{value.filename}</span>
-                <span className="uppercase text-zinc-500">{language}</span>
-              </div>
-            )}
-            <pre className="p-4 text-xs font-mono text-zinc-200 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-700">
-              <code>{rawCode}</code>
-            </pre>
-          </div>
+          <CodeBlock
+            code={rawCode}
+            language={language}
+            filename={value.filename}
+          />
         );
       },
 
@@ -591,7 +654,7 @@ export function PortableTextRenderer({
   };
 
   return (
-    <div className={`portable-text-container ${className}`}>
+    <div className={`portable-text-container w-full max-w-full min-w-0 ${className}`}>
       <PortableText value={normalizedValue} components={components} />
     </div>
   );

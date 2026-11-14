@@ -70,7 +70,7 @@ export function BlogContentClient({ blog, projects = [] }: BlogContentClientProp
       {/* ========================================================= */}
       {/* CENTER / MAIN BODY: Sanity PortableText (No bg-color)     */}
       {/* ========================================================= */}
-      <article className="flex-1 min-w-0 bg-transparent text-zinc-100">
+      <article className="w-full flex-1 min-w-0 bg-transparent text-zinc-100">
         {/* Article Header */}
         <header className="border-b border-zinc-800/80 pb-6 mb-8">
           <div className="flex items-center gap-3 text-xs font-mono text-zinc-400 mb-3 flex-wrap">

@@ -243,6 +243,10 @@ function LightboxContent({
 
   const mediaSource = getMediaSource();
   const isZoomable = mediaSource.type === 'image' || mediaSource.type === 'mermaid';
+  const displayTitle =
+    currentItem.title ||
+    ('alt' in currentItem ? currentItem.alt : undefined) ||
+    (currentItem._type === 'mermaid' ? 'Architecture Diagram' : 'Media Details');
   const description =
     currentItem.description || ('caption' in currentItem ? currentItem.caption : '') || '';
   const isLongDescription = description.length > 110;
@@ -387,7 +391,7 @@ function LightboxContent({
                     transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
                   }}
                 >
-                  <MermaidRenderer chart={mediaSource.chart} isLightboxView />
+                  <MermaidRenderer key={currentItem._key} chart={mediaSource.chart} isLightboxView />
                 </div>
               )}
 
@@ -482,9 +486,9 @@ function LightboxContent({
                   </div>
                 )}
 
-                {currentItem.title && (
+                {displayTitle && (
                   <h3 className="text-sm font-bold text-zinc-100">
-                    {currentItem.title}
+                    {displayTitle}
                   </h3>
                 )}
 
@@ -553,7 +557,7 @@ function LightboxContent({
               {/* Media Title */}
               <div>
                 <h2 className="text-base lg:text-lg font-bold text-zinc-100 tracking-tight">
-                  {currentItem.title || 'Media Details'}
+                  {displayTitle}
                 </h2>
                 {currentItem.publishedAt && (
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs font-mono text-zinc-400">
@@ -688,16 +692,39 @@ export function MediaLightboxModal({
 }: MediaLightboxModalProps) {
   const activeIndex = mediaItems.findIndex((item) => item._key === activeKey);
   const currentItem = activeIndex !== -1 ? mediaItems[activeIndex] : null;
+  const isModalOpen = Boolean(activeKey && currentItem);
 
-  // Disable outside scroll when lightbox is on
+  // Disable outside scroll when lightbox is open and preserve exact scroll position on close
   useEffect(() => {
-    if (!activeKey) return;
-    const originalOverflow = document.body.style.overflow;
+    if (!isModalOpen) return;
+
+    const savedScrollY = window.scrollY;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+    const originalBodyOverscroll = document.body.style.overscrollBehavior;
+
+    document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overscrollBehavior = 'none';
+    document.body.style.overscrollBehavior = 'none';
+
     return () => {
-      document.body.style.overflow = originalOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overscrollBehavior = originalHtmlOverscroll;
+      document.body.style.overscrollBehavior = originalBodyOverscroll;
+
+      if (window.scrollY !== savedScrollY) {
+        window.scrollTo({ top: savedScrollY, left: 0, behavior: 'instant' });
+      }
+      requestAnimationFrame(() => {
+        if (window.scrollY !== savedScrollY) {
+          window.scrollTo({ top: savedScrollY, left: 0, behavior: 'instant' });
+        }
+      });
     };
-  }, [activeKey]);
+  }, [isModalOpen]);
 
   const handleNext = useCallback(() => {
     if (mediaItems.length <= 1) return;

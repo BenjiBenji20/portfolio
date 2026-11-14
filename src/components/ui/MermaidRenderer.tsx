@@ -162,11 +162,11 @@ export function MermaidRenderer({
     );
   }
 
-  // Inside the Lightbox modal: render clean SVG
+  // Inside the Lightbox modal: render clean SVG constrained to fit container
   if (isLightboxView) {
     return (
       <div
-        className={`w-full flex items-center justify-center select-none ${className}`}
+        className={`w-full h-full flex items-center justify-center select-none [&>svg]:max-w-full [&>svg]:max-h-full [&>svg]:w-auto [&>svg]:h-auto ${className}`}
         dangerouslySetInnerHTML={{ __html: svgContent }}
       />
     );

@@ -89,7 +89,7 @@ function WorkLogRow({
             value={log.content}
             activePlayKey={activePlayKey}
             onPlayVideo={onPlayVideo}
-            onOpenLightbox={onOpenLightbox}
+            onOpenLightbox={onOpenLightbox ? (key) => onOpenLightbox(`${log._id}::${key}`) : undefined}
           />
         ) : log.description ? (
           <p className="text-xs text-zinc-400 leading-relaxed max-w-3xl whitespace-pre-line">
@@ -237,7 +237,20 @@ function ProjectBlogTabsContent({
             block._type === 'projectMediaVimeo' ||
             block._type === 'mermaid'
           ) {
-            items.push(block as ProjectMediaItem);
+            const mediaItem = block as ProjectMediaItem;
+            items.push({
+              ...mediaItem,
+              _key: `${log._id}::${mediaItem._key}`,
+              title:
+                mediaItem.title ||
+                ('alt' in mediaItem ? mediaItem.alt : undefined) ||
+                (mediaItem._type === 'mermaid' ? `${log.title} — Diagram` : log.title),
+              publishedAt: mediaItem.publishedAt || log.date,
+              description:
+                mediaItem.description ||
+                ('caption' in mediaItem ? mediaItem.caption : undefined) ||
+                log.description,
+            });
           }
         });
       }
@@ -298,20 +311,20 @@ function ProjectBlogTabsContent({
   const handleOpenLightbox = (key: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('media', key);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
   };
 
   const handleCloseLightbox = () => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('media');
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    window.history.replaceState(null, '', query ? `${pathname}?${query}` : pathname);
   };
 
   const handleSelectMedia = (key: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('media', key);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
   };
 
   const handlePlayVideo = (key: string) => {

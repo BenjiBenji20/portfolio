@@ -33,15 +33,31 @@ function ProjectDetailClientInternal({
   const allMediaItems = useMemo<ProjectMediaItem[]>(() => {
     if (!project.content || !Array.isArray(project.content)) return [];
     const normalized = normalizeMermaidBlocks(project.content);
-    return normalized.filter(
-      (item) =>
-        item._type === 'projectMediaImage' ||
-        item._type === 'projectMediaSanityVideo' ||
-        item._type === 'projectMediaYoutube' ||
-        item._type === 'projectMediaVimeo' ||
-        item._type === 'mermaid'
-    ) as ProjectMediaItem[];
-  }, [project.content]);
+    return normalized
+      .filter(
+        (item) =>
+          item._type === 'projectMediaImage' ||
+          item._type === 'projectMediaSanityVideo' ||
+          item._type === 'projectMediaYoutube' ||
+          item._type === 'projectMediaVimeo' ||
+          item._type === 'mermaid'
+      )
+      .map((item) => {
+        const mediaItem = item as ProjectMediaItem;
+        return {
+          ...mediaItem,
+          title:
+            mediaItem.title ||
+            ('alt' in mediaItem ? mediaItem.alt : undefined) ||
+            (mediaItem._type === 'mermaid' ? `${project.title} — Architecture Diagram` : project.title),
+          publishedAt: mediaItem.publishedAt || project.dateStarted,
+          description:
+            mediaItem.description ||
+            ('caption' in mediaItem ? mediaItem.caption : undefined) ||
+            project.shortDescription,
+        };
+      });
+  }, [project.content, project.title, project.dateStarted, project.shortDescription]);
 
   // Extract headings (h2/h3) from Portable Text blocks for sticky Table of Contents
   const tocItems = useMemo<TabNavItem[]>(() => {
@@ -67,26 +83,26 @@ function ProjectDetailClientInternal({
     return items;
   }, [project.content, project.title]);
 
-  // Handle Lightbox Open (sets ?media=<key> in URL)
+  // Handle Lightbox Open (sets ?media=<key> in URL without triggering router scroll/RSC refresh)
   const handleOpenLightbox = (key: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('media', key);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
   };
 
-  // Handle Lightbox Close (removes ?media from URL)
+  // Handle Lightbox Close (removes ?media from URL without triggering router scroll/RSC refresh)
   const handleCloseLightbox = () => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('media');
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    window.history.replaceState(null, '', query ? `${pathname}?${query}` : pathname);
   };
 
   // Handle Lightbox Slide Change
   const handleSelectMedia = (key: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('media', key);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
   };
 
   // Handle Video Play (sets ?play=<key> in URL)

@@ -1,5 +1,7 @@
 # BENJINEER Portfolio & Autonomous Agentic Technical Writer
 
+## Architecture & Technical Details
+
 <div align="center">
     <a href="https://youtu.be/jg4Dp8fIFwE" target="_blank" rel="noopener noreferrer">
         <img width="3840" height="2160" alt="BENJINEER Portfolio & Autonomous Agentic Technical Writer Demo" src="https://github.com/user-attachments/assets/d6876382-7cdc-4b2e-bdb5-04fcae2bce3c" />
